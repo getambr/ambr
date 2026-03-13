@@ -83,3 +83,7 @@ The platform (dashboard, contract engine, API, signing infrastructure) is propri
 
 Open-source components (`open-source/`) are licensed under [MIT](open-source/reader-portal/LICENSE).
 All other code is proprietary. See [LICENSE](LICENSE) for details.
+
+---
+
+Development Partner: OMRA Corp.
