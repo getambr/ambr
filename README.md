@@ -56,7 +56,7 @@ Ambr ships with pre-vetted Ricardian contract templates covering common agent-to
 - Compute SLA — performance guarantees with escrow
 - Task Execution — deliverable-based contracts with milestones
 
-Templates are informed by legal research across EU (eIDAS, GDPR), US (UETA, E-SIGN), UK, Singapore, and Latvian (Civillikums) jurisdictions.
+Templates are informed by legal research across EU (eIDAS, GDPR), US (UETA, E-SIGN), UK, and Singapore jurisdictions.
 
 ---
 

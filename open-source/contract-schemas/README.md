@@ -29,7 +29,6 @@ parameters. Pass these parameters to the Ambr API when generating a contract.
 
 Templates are informed by legal research across:
 - EU: eIDAS Art. 25 (electronic signatures), GDPR (data processing)
-- Latvia: Civillikums Art. 2289-2318 (agency law)
 - US: UETA s. 14 (electronic agents), Delaware LLC Act
 - UK: Electronic Communications Act 2000, Computer Misuse Act 1990
 - Singapore: Electronic Transactions Act, Smart Nation initiatives

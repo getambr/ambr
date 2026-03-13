@@ -2,7 +2,7 @@
  * LLM prompt templates for Ricardian Contract generation.
  *
  * Legal basis:
- *   EU/LV — Civillikums Art. 2289-2318, eIDAS 910/2014, GDPR
+ *   EU    — eIDAS 910/2014, GDPR, EU agency law principles
  *   US    — UETA s. 14, ESIGN Act, Delaware 6 Del. C. s. 2708
  *   UK    — ECA 2000 s. 7, common law agency
  *   SG    — Electronic Transactions Act (Cap. 88)
@@ -34,7 +34,7 @@ MANDATORY ELEMENTS (every contract must include):
 ELECTRONIC AGENT FORMATION RECITAL (include in every contract, select by governing_law):
 For Singapore: "This contract is formed pursuant to the Electronic Transactions Act (Cap. 88), Section 15. The parties acknowledge that contracts formed through electronic agents are valid and enforceable."
 For Delaware/US: "This contract is formed pursuant to the Uniform Electronic Transactions Act (UETA) Section 14 and the Electronic Signatures in Global and National Commerce Act (ESIGN). The parties acknowledge that electronic agents may form binding contracts."
-For Latvia/EU: "This contract is formed in compliance with eIDAS Regulation (EU) 910/2014 and the Latvian Electronic Documents Law. The Principal Declaration establishes the legal attribution of the agent's electronic signatures to the principal under Art. 25."
+For EU: "This contract is formed in compliance with eIDAS Regulation (EU) 910/2014. The Principal Declaration establishes the legal attribution of the agent's electronic signatures to the principal under Art. 25."
 For England-Wales/UK: "This contract is formed under English common law principles of agency. Electronic signatures are admissible in evidence pursuant to the Electronic Communications Act 2000, Section 7."
 
 DUAL-FORMAT RECONCILIATION (include in machineReadable):
@@ -61,7 +61,7 @@ TEMPLATE: D1 — General Agent Authorization
 PURPOSE: Broad delegation of authority from a principal to an AI agent, defining categories of permitted actions, spending caps, duration, and revocation terms.
 
 LEGAL BASIS:
-- LV: Civillikums Art. 2289 (mandate definition), Art. 2291 (scope), Art. 2298 (ultra vires acts void), Art. 2305 (sub-delegation), Art. 2310 (revocation)
+- EU: Agency law principles — mandate definition, scope limits, ultra vires acts void, sub-delegation rules, revocation rights
 - US: UETA s. 14 (electronic agent formation), Restatement (Third) of Agency
 - EU: eIDAS Art. 25 (electronic signatures), Art. 3(9) (signatory = natural person)
 - SG: ETA s. 15 (contracts via electronic agents)
@@ -82,7 +82,7 @@ CONTRACT STRUCTURE:
 3. AGENT IDENTIFICATION — wallet address, agent type, platform reference
 4. SCOPE OF DELEGATION — enumerated authorized actions, approved categories, geographic limitations if any
 5. FINANCIAL LIMITS — per-transaction cap, monthly aggregate cap, approval thresholds
-6. ULTRA VIRES CLAUSE — acts outside scope do NOT bind the principal (per Civillikums Art. 2298); third parties must verify agent authority via Ambr reader
+6. ULTRA VIRES CLAUSE — acts outside scope do NOT bind the principal (per EU agency law); third parties must verify agent authority via Ambr reader
 7. LIABILITY — principal fully liable within scope; no party liable for indirect/consequential damages; both liable for gross negligence
 8. DURATION — start date, end date, renewal terms
 9. REVOCATION — method (on-chain revocation tx or API call), notice period, effect on pending transactions
@@ -101,7 +101,7 @@ TEMPLATE: D2 — Limited Service Agent
 PURPOSE: Time-bounded, task-specific delegation for a single service engagement with a fixed budget and automatic expiry.
 
 LEGAL BASIS:
-- LV: Civillikums Art. 2291 (specific mandate), Art. 2298 (scope limits)
+- EU: Agency law — specific mandate, scope limits
 - US: UETA s. 14, agency law (specific agency)
 - EU: eIDAS Art. 25
 - SG: ETA s. 15
@@ -139,7 +139,7 @@ TEMPLATE: D3 — Multi-Agent Fleet Authorization
 PURPOSE: Authorize a fleet of AI agents under a lead/orchestrator agent with shared budget pool, escalation thresholds, and sub-delegation governance.
 
 LEGAL BASIS:
-- LV: Civillikums Art. 2305 (sub-delegation requires authorization), Art. 2298 (scope limits)
+- EU: Agency law — sub-delegation requires authorization, scope limits apply
 - US: Restatement (Third) of Agency s. 3.15 (subagents)
 - EU: eIDAS Art. 25 — each agent's signature attributed to the principal
 - SG: ETA s. 15
