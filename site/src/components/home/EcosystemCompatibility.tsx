@@ -1,0 +1,87 @@
+'use client';
+
+import SectionWrapper from '@/components/ui/SectionWrapper';
+import ScrollReveal from '@/components/ui/ScrollReveal';
+import Button from '@/components/ui/Button';
+
+const ecosystemProjects = [
+  {
+    name: 'KAMIYO',
+    layer: 'Escrow',
+    description: 'Oracle-verified escrow with conditional payment release for agent contracts.',
+    status: 'planned' as const,
+  },
+  {
+    name: 'Nevermined',
+    layer: 'Payments',
+    description: 'Metered billing and session-based payment coordination for compute and data services.',
+    status: 'planned' as const,
+  },
+  {
+    name: 'ERC-8004',
+    layer: 'Trust',
+    description: 'On-chain identity and reputation registries for agent verification before contract signing.',
+    status: 'planned' as const,
+  },
+  {
+    name: 'x402 V2',
+    layer: 'Payments',
+    description: 'HTTP-native micropayments enabling per-call billing within contract terms.',
+    status: 'planned' as const,
+  },
+];
+
+const statusColors = {
+  planned: 'text-text-secondary bg-surface-elevated',
+  'in-development': 'text-amber bg-amber-glow',
+  live: 'text-success bg-success/10',
+};
+
+export default function EcosystemCompatibility() {
+  return (
+    <SectionWrapper>
+      <ScrollReveal>
+        <div className="text-center mb-10">
+          <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+            Built for the Stack
+          </p>
+          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+            Ecosystem Compatibility
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
+            Ambr is designed to integrate with the emerging AI agent
+            commerce stack. These are ecosystem projects we&apos;re building compatibility with.
+          </p>
+        </div>
+      </ScrollReveal>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {ecosystemProjects.map((project, i) => (
+          <ScrollReveal key={project.name} delay={i * 0.08}>
+            <div className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated/80 backdrop-blur-sm p-5 h-full hover:border-amber/30 hover:bg-amber/5 transition-colors">
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-text-primary">{project.name}</h3>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusColors[project.status]}`}>
+                  {project.status}
+                </span>
+              </div>
+              <p className="text-xs font-mono text-amber mb-2">{project.layer} Layer</p>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {project.description}
+              </p>
+            </div>
+          </ScrollReveal>
+        ))}
+      </div>
+
+      <ScrollReveal delay={0.3}>
+        <div className="mt-8 text-center">
+          <Button href="/ecosystem" variant="secondary">
+            Explore the Ecosystem
+          </Button>
+        </div>
+      </ScrollReveal>
+    </SectionWrapper>
+  );
+}

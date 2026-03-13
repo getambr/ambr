@@ -1,0 +1,97 @@
+{
+  "slug": "c2-compute-sla",
+  "name": "Compute & Data Processing SLA",
+  "category": "commerce",
+  "description": "Service-level agreement for ongoing compute, infrastructure, or data processing. Covers performance guarantees, auto-scaling, GDPR data handling, and breach remedies.",
+  "price_cents": 400,
+  "parameter_schema": {
+    "type": "object",
+    "required": [
+      "client_name",
+      "client_agent_id",
+      "provider_name",
+      "service_description",
+      "resource_type",
+      "monthly_fee",
+      "sla_uptime_percent",
+      "term_months",
+      "governing_law"
+    ],
+    "properties": {
+      "client_name": {
+        "type": "string",
+        "description": "Legal name of the client entity"
+      },
+      "client_agent_id": {
+        "type": "string",
+        "description": "Wallet address of the client agent"
+      },
+      "provider_name": {
+        "type": "string",
+        "description": "Legal name of the service provider"
+      },
+      "provider_agent_id": {
+        "type": "string",
+        "description": "Wallet address of the provider agent"
+      },
+      "service_description": {
+        "type": "string",
+        "description": "Detailed description of compute/data services provided"
+      },
+      "resource_type": {
+        "type": "string",
+        "enum": ["gpu-compute", "cpu-compute", "storage", "data-processing", "ml-inference", "mixed"],
+        "description": "Primary resource type"
+      },
+      "monthly_fee": {
+        "type": "number",
+        "description": "Base monthly fee in specified currency"
+      },
+      "currency": {
+        "type": "string",
+        "default": "USDC"
+      },
+      "sla_uptime_percent": {
+        "type": "number",
+        "default": 99.95,
+        "description": "Guaranteed uptime percentage"
+      },
+      "sla_response_ms": {
+        "type": "integer",
+        "description": "Maximum p95 latency in milliseconds"
+      },
+      "auto_scaling": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether auto-scaling is included"
+      },
+      "max_scaling_multiplier": {
+        "type": "number",
+        "default": 2,
+        "description": "Maximum auto-scale factor (e.g. 2x = up to double base resources)"
+      },
+      "data_processing_location": {
+        "type": "string",
+        "description": "GDPR: geographic restriction on data processing"
+      },
+      "data_deletion_on_termination": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether provider deletes all client data on contract end"
+      },
+      "breach_credit_percent": {
+        "type": "number",
+        "default": 10,
+        "description": "Service credit percentage per SLA breach incident"
+      },
+      "term_months": {
+        "type": "integer",
+        "description": "Contract duration in months"
+      },
+      "governing_law": {
+        "type": "string",
+        "default": "Singapore"
+      }
+    }
+  }
+}

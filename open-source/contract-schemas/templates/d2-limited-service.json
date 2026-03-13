@@ -1,0 +1,75 @@
+{
+  "slug": "d2-limited-service",
+  "name": "Limited Service Agent",
+  "category": "delegation",
+  "description": "Time-bounded, task-specific delegation for a single service engagement. Fixed budget, narrow scope, automatic expiry. Suitable for one-off agent deployments.",
+  "price_cents": 150,
+  "parameter_schema": {
+    "type": "object",
+    "required": [
+      "principal_name",
+      "principal_type",
+      "principal_registration_number",
+      "agent_id",
+      "service_description",
+      "budget_usd",
+      "start_date",
+      "end_date",
+      "governing_law"
+    ],
+    "properties": {
+      "principal_name": {
+        "type": "string",
+        "description": "Full legal name of the delegating entity"
+      },
+      "principal_type": {
+        "type": "string",
+        "enum": ["corporation", "llc", "individual", "partnership", "foundation"]
+      },
+      "principal_registration_number": {
+        "type": "string",
+        "description": "Company registration or personal identification number"
+      },
+      "agent_id": {
+        "type": "string",
+        "description": "Agent wallet address or identifier"
+      },
+      "service_description": {
+        "type": "string",
+        "description": "Specific service the agent is authorized to perform"
+      },
+      "budget_usd": {
+        "type": "number",
+        "description": "Total fixed budget for the engagement in USD"
+      },
+      "start_date": {
+        "type": "string",
+        "format": "date",
+        "description": "ISO 8601 date when authority begins"
+      },
+      "end_date": {
+        "type": "string",
+        "format": "date",
+        "description": "ISO 8601 date when authority automatically expires"
+      },
+      "permitted_counterparties": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Specific entities the agent may transact with (empty = any)"
+      },
+      "reporting_frequency": {
+        "type": "string",
+        "enum": ["per-transaction", "daily", "weekly", "on-completion"],
+        "default": "per-transaction"
+      },
+      "governing_law": {
+        "type": "string",
+        "default": "Singapore"
+      },
+      "early_termination_allowed": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+Copyright (c) 2025-2026 Ambr. All rights reserved.
+
+This repository contains both proprietary and open-source components.
+
+PROPRIETARY CODE
+All code outside the `open-source/` directory is proprietary and
+confidential. No license is granted to use, copy, modify, or distribute
+this code without explicit written permission.
+
+OPEN-SOURCE COMPONENTS
+Code within the `open-source/` directory is licensed under the MIT License.
+See `open-source/reader-portal/LICENSE` for the full MIT License text.

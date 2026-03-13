@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #000000;
+  --color-surface: #111111;
+  --color-surface-elevated: #1C1C1C;
+  --color-border: #2E2E2E;
+  --color-text-primary: #F0F0F5;
+  --color-text-secondary: #9090A0;
+  --color-amber: #F5A623;
+  --color-amber-light: #FFD080;
+  --color-amber-dark: #C47F0A;
+  --color-amber-glow: rgba(245, 166, 35, 0.15);
+  --color-success: #34D399;
+  --color-error: #F87171;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: var(--color-amber);
+  color: var(--color-background);
+}
+
+@keyframes auroraShift {
+  0% { filter: hue-rotate(0deg); transform: scale(1) translate(0, 0); }
+  33% { transform: scale(1.05) translate(2%, -1%); }
+  66% { filter: hue-rotate(10deg); transform: scale(1.02) translate(-1%, 2%); }
+  100% { filter: hue-rotate(-5deg); transform: scale(1) translate(1%, -1%); }
+}

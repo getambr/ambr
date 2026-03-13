@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Build output
+.next/
+out/
+build/
+dist/
+
+# Environment
+.env*
+!.env.example
+
+# Vercel
+.vercel/
+
+# Supabase temp
+supabase/.temp/
+
+# Sensitive documents
+*.pdf
+docs/JDA-CONTRACT-LV.md
+docs/contract-appendices/
+
+# Design assets (not for repo)
+Image Assets/
+
+# Loose research files
+*.docx
+Agentic_Commerce_extracted.txt
+
+# IDE
+.vscode/
+.cursor/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Misc
+*.pem

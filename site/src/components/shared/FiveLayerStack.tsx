@@ -1,0 +1,124 @@
+'use client';
+
+import { motion, useReducedMotion } from 'framer-motion';
+
+type Variant = 'compact' | 'detailed';
+
+interface FiveLayerStackProps {
+  variant?: Variant;
+  highlightLayer?: number;
+}
+
+interface Layer {
+  name: string;
+  description: string;
+  detail: string;
+  projects: string[];
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}
+
+const layers: Layer[] = [
+  {
+    name: 'Discovery',
+    description: 'Agent discovery & capability exchange',
+    detail: 'Agents advertise capabilities via A2A Agent Cards and MCP Server manifests. Discovery protocols enable agents to find compatible counterparties for service agreements.',
+    projects: ['A2A Agent Cards', 'MCP'],
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/10',
+    borderColor: 'border-violet-500/30',
+  },
+  {
+    name: 'Agreements',
+    description: 'Contract negotiation, signing & management',
+    detail: 'Ambr provides the agreement layer — Ricardian Contracts that are both human-readable and machine-parsable, minted as transferable cNFTs with Principal Declarations linking agents to their legal entities.',
+    projects: ['Ambr'],
+    color: 'text-amber',
+    bgColor: 'bg-amber-glow',
+    borderColor: 'border-amber/30',
+  },
+  {
+    name: 'Trust',
+    description: 'Identity verification & reputation',
+    detail: 'ERC-8004 provides on-chain identity and reputation registries. Agents verify counterparty track records before entering agreements, building a web of trust across the agent economy.',
+    projects: ['ERC-8004'],
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/30',
+  },
+  {
+    name: 'Escrow',
+    description: 'Conditional payment holding & release',
+    detail: 'KAMIYO and x0 Protocol provide escrow services with oracle-verified conditions. Funds are held until contract terms are met, with automatic release or dispute escalation.',
+    projects: ['KAMIYO', 'x0 Protocol'],
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/30',
+  },
+  {
+    name: 'Payments',
+    description: 'Micropayments & session billing',
+    detail: 'x402 V2 enables HTTP-native micropayments. ACP and AP2 provide agent-to-agent payment coordination. Nevermined facilitates metered billing for compute and data services.',
+    projects: ['x402 V2', 'ACP', 'AP2'],
+    color: 'text-rose-400',
+    bgColor: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/30',
+  },
+];
+
+export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1 }: FiveLayerStackProps) {
+  const prefersReduced = useReducedMotion();
+  const isDetailed = variant === 'detailed';
+
+  return (
+    <div className="w-full">
+      <div className="flex flex-col gap-3">
+        {layers.map((layer, i) => {
+          const isHighlighted = i === highlightLayer;
+          return (
+            <motion.div
+              key={layer.name}
+              initial={prefersReduced ? {} : { opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.3, delay: i * 0.08 }}
+              className={`rounded-xl border p-4 transition-colors ${
+                isHighlighted
+                  ? `${layer.borderColor} ${layer.bgColor} ring-1 ring-amber/20`
+                  : 'border-border bg-surface/80 backdrop-blur-sm hover:bg-surface-elevated/80 hover:border-amber/20'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className={`text-xs font-mono uppercase tracking-wider ${layer.color}`}>
+                      Layer {i + 1}
+                    </span>
+                    <h3 className={`text-base font-semibold ${isHighlighted ? layer.color : 'text-text-primary'}`}>
+                      {layer.name}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-text-secondary">{layer.description}</p>
+                  {isDetailed && (
+                    <p className="mt-2 text-sm text-text-secondary leading-relaxed">{layer.detail}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 shrink-0">
+                  {layer.projects.map((p) => (
+                    <span
+                      key={p}
+                      className={`rounded-md px-2 py-0.5 text-xs font-medium ${layer.bgColor} ${layer.color}`}
+                    >
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

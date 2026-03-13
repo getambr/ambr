@@ -1,0 +1,83 @@
+{
+  "slug": "d3-fleet-auth",
+  "name": "Multi-Agent Fleet Authorization",
+  "category": "delegation",
+  "description": "Authorize a class of AI agents under a lead agent, with shared budget pool, escalation thresholds, and sub-delegation rules. For organizations running multiple coordinated agents.",
+  "price_cents": 500,
+  "parameter_schema": {
+    "type": "object",
+    "required": [
+      "principal_name",
+      "principal_type",
+      "principal_registration_number",
+      "lead_agent_id",
+      "agent_class",
+      "max_fleet_size",
+      "shared_budget_monthly",
+      "escalation_threshold",
+      "duration_months",
+      "governing_law"
+    ],
+    "properties": {
+      "principal_name": {
+        "type": "string",
+        "description": "Full legal name of the delegating entity"
+      },
+      "principal_type": {
+        "type": "string",
+        "enum": ["corporation", "llc", "partnership", "foundation"]
+      },
+      "principal_registration_number": {
+        "type": "string",
+        "description": "Company registration number"
+      },
+      "lead_agent_id": {
+        "type": "string",
+        "description": "Wallet address of the lead/orchestrator agent"
+      },
+      "agent_class": {
+        "type": "string",
+        "description": "Class identifier for authorized sub-agents (e.g. procurement-bot-v2)"
+      },
+      "max_fleet_size": {
+        "type": "integer",
+        "description": "Maximum number of concurrent sub-agents"
+      },
+      "shared_budget_monthly": {
+        "type": "number",
+        "description": "Total monthly budget shared across the fleet in USD"
+      },
+      "per_agent_tx_limit": {
+        "type": "number",
+        "description": "Maximum single transaction for any individual agent"
+      },
+      "escalation_threshold": {
+        "type": "number",
+        "description": "Transaction value above which lead agent must approve"
+      },
+      "permitted_actions": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Actions any fleet agent may perform"
+      },
+      "restricted_actions": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Actions reserved for lead agent only"
+      },
+      "duration_months": {
+        "type": "integer",
+        "description": "Fleet authorization duration in months"
+      },
+      "governing_law": {
+        "type": "string",
+        "default": "Singapore"
+      },
+      "audit_log_required": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether all sub-agent actions must be logged"
+      }
+    }
+  }
+}
