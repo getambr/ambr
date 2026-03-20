@@ -61,7 +61,7 @@ export async function POST(
 
   const db = getSupabaseAdmin();
 
-  let query = db.from('contracts').select('id, contract_id, status, sha256_hash');
+  let query = db.from('contracts').select('id, contract_id, status, sha256_hash, visibility');
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
   } else if (/^[a-f0-9]{64}$/.test(id)) {
@@ -118,6 +118,29 @@ export async function POST(
   if (contract.status === 'draft' || contract.status === 'handshake') {
     newStatus = 'pending_signature';
   } else if (contract.status === 'pending_signature') {
+    // Check visibility agreement before activating
+    const { data: acceptHandshakes } = await db
+      .from('handshakes')
+      .select('wallet_address, visibility_preference')
+      .eq('contract_id', contract.id)
+      .eq('intent', 'accept')
+      .not('visibility_preference', 'is', null);
+
+    const contractVisibility = contract.visibility || 'private';
+    const mismatch = (acceptHandshakes ?? []).find(
+      (h) => h.visibility_preference !== contractVisibility,
+    );
+
+    if (mismatch) {
+      return NextResponse.json(
+        {
+          error: 'visibility_mismatch',
+          message: `Cannot activate: visibility mismatch. Contract is '${contractVisibility}' but ${mismatch.wallet_address} prefers '${mismatch.visibility_preference}'. Resolve via handshake before signing.`,
+        },
+        { status: 409 },
+      );
+    }
+
     newStatus = 'active';
   }
 

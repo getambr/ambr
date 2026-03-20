@@ -33,7 +33,7 @@ export function buildNftMetadata(contract: ContractForMetadata): ERC721Metadata 
       { trait_type: 'Contract Type', value: contractType },
       { trait_type: 'Amendment Type', value: amendmentType },
       { trait_type: 'Principal', value: principalName },
-      { trait_type: 'Transferable', value: 'true' },
+      { trait_type: 'Transfer Status', value: 'Locked' },
     ],
   };
 }

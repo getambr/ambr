@@ -23,11 +23,20 @@ export async function POST(
     );
   }
 
-  const { wallet_address, intent, message } = body as {
+  const { wallet_address, intent, message, visibility_preference } = body as {
     wallet_address?: string;
     intent?: string;
     message?: string;
+    visibility_preference?: string;
   };
+
+  const VALID_VISIBILITY = ['private', 'metadata_only', 'public', 'encrypted'];
+  if (visibility_preference && !VALID_VISIBILITY.includes(visibility_preference)) {
+    return NextResponse.json(
+      { error: 'validation_error', message: `visibility_preference must be one of: ${VALID_VISIBILITY.join(', ')}` },
+      { status: 400 },
+    );
+  }
 
   if (!wallet_address || !intent) {
     return NextResponse.json(
@@ -46,7 +55,7 @@ export async function POST(
   const db = getSupabaseAdmin();
 
   // Lookup contract
-  let query = db.from('contracts').select('id, contract_id, status');
+  let query = db.from('contracts').select('id, contract_id, status, visibility');
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
   } else if (/^[a-f0-9]{64}$/.test(id)) {
@@ -64,7 +73,6 @@ export async function POST(
     );
   }
 
-  // Only draft or handshake contracts can receive handshakes
   if (!['draft', 'handshake'].includes(contract.status)) {
     return NextResponse.json(
       { error: 'invalid_status', message: `Cannot handshake a contract in '${contract.status}' status. Must be 'draft' or 'handshake'.` },
@@ -81,6 +89,7 @@ export async function POST(
         wallet_address: wallet_address.toLowerCase(),
         intent,
         message: message || null,
+        visibility_preference: visibility_preference || null,
       },
       { onConflict: 'contract_id,wallet_address' },
     );
@@ -111,14 +120,33 @@ export async function POST(
   // Get all handshakes for this contract
   const { data: allHandshakes } = await db
     .from('handshakes')
-    .select('wallet_address, intent, message, created_at')
+    .select('wallet_address, intent, message, visibility_preference, created_at')
     .eq('contract_id', contract.id)
     .order('created_at', { ascending: true });
+
+  // Check visibility agreement across accept handshakes
+  const acceptHandshakes = (allHandshakes ?? []).filter(
+    (h) => h.intent === 'accept' && h.visibility_preference,
+  );
+  const contractVisibility = contract.visibility || 'private';
+  const hasMismatch = acceptHandshakes.some(
+    (h) => h.visibility_preference !== contractVisibility,
+  );
+  const visibilityAgreement = acceptHandshakes.length === 0
+    ? 'pending'
+    : hasMismatch
+      ? 'mismatch'
+      : 'agreed';
 
   return NextResponse.json({
     contract_id: contract.contract_id,
     your_intent: intent,
     status: intent === 'accept' && contract.status === 'draft' ? 'handshake' : contract.status,
+    visibility: contractVisibility,
+    visibility_agreement: visibilityAgreement,
+    ...(hasMismatch && {
+      visibility_warning: `Visibility mismatch: contract is '${contractVisibility}' but a party prefers '${acceptHandshakes.find((h) => h.visibility_preference !== contractVisibility)?.visibility_preference}'. Resolve before signing.`,
+    }),
     handshakes: allHandshakes ?? [],
     next_step: intent === 'accept'
       ? 'Intent recorded. Once all parties accept, proceed to signing via POST /api/v1/contracts/[id]/sign'
@@ -161,7 +189,7 @@ export async function GET(
 
   const { data: handshakes } = await db
     .from('handshakes')
-    .select('wallet_address, intent, message, created_at')
+    .select('wallet_address, intent, message, visibility_preference, created_at')
     .eq('contract_id', contract.id)
     .order('created_at', { ascending: true });
 
