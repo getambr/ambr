@@ -5,6 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import ContractViewer from './ContractViewer';
 import ExportButtons from './ExportButtons';
 import SignContract from '@/components/reader/SignContract';
+import NftStatus from '@/components/reader/NftStatus';
+import ReaderAuthGate from '@/components/reader/ReaderAuthGate';
 
 interface Props {
   params: Promise<{ hashOrId: string }>;
@@ -208,6 +210,19 @@ export default async function ReaderPage({ params, searchParams }: Props) {
               </div>
             )}
 
+            {/* NFT status — show when minted or minting */}
+            {contract.nft_mint_status && (
+              <div className="mb-6">
+                <NftStatus
+                  mintStatus={contract.nft_mint_status}
+                  tokenId={contract.nft_token_id}
+                  txHash={contract.nft_tx_hash}
+                  holderWallet={contract.nft_holder_wallet}
+                  counterpartyWallet={contract.nft_counterparty_wallet}
+                />
+              </div>
+            )}
+
             {/* Contract content — full access only */}
             <ContractViewer
               humanReadable={contract.human_readable}
@@ -215,23 +230,20 @@ export default async function ReaderPage({ params, searchParams }: Props) {
             />
           </>
         ) : (
-          /* Metadata-only view for unauthenticated visitors */
-          <div className="rounded-lg border border-border bg-surface p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              <h2 className="text-lg font-semibold text-text-primary">Private Contract</h2>
-            </div>
-            <p className="text-sm text-text-secondary mb-4">
-              This contract exists and its hash has been verified, but the full text is private.
-              Only authorized parties can view the complete contract.
-            </p>
-            <div className="space-y-2 text-sm text-text-secondary">
-              <p>To view the full contract, you need a <span className="text-amber font-medium">share link</span> from one of the contract parties.</p>
-              <p className="text-xs text-text-secondary/60 mt-3">
-                Contract parties can generate share links via the API:
-                <code className="ml-1 text-xs font-mono text-amber/70">POST /api/v1/contracts/{'{id}'}/share</code>
+          /* Unauthenticated: show wallet connect OR metadata-only message */
+          <div className="space-y-6 mb-6">
+            {/* Wallet connect for access */}
+            <ReaderAuthGate
+              contractId={contract.contract_id}
+              contractUuid={contract.id}
+            />
+
+            {/* Metadata hint below wallet connect */}
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <p className="text-xs text-text-secondary">
+                You can also access this contract with a{' '}
+                <span className="text-amber font-medium">share link</span>{' '}
+                from one of the contract parties.
               </p>
             </div>
           </div>
