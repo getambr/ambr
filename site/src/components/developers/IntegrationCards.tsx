@@ -3,7 +3,7 @@ import ScrollReveal from '@/components/ui/ScrollReveal';
 const integrations = [
   {
     name: 'x402 V2 Protocol',
-    description: 'HTTP-native micropayments. Per-call billing within contract terms on Base and Solana.',
+    description: 'HTTP-native micropayments on Base L2. Multi-token support: USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC.',
     category: 'Payments',
     color: 'text-rose-400',
   },
@@ -20,8 +20,8 @@ const integrations = [
     color: 'text-violet-400',
   },
   {
-    name: 'Base / Solana L2',
-    description: 'cNFT minting and on-chain contract hashes on low-cost L2 networks.',
+    name: 'Base L2',
+    description: 'cNFT minting and on-chain contract hashes on Base L2.',
     category: 'Chain',
     color: 'text-blue-400',
   },
@@ -33,9 +33,9 @@ const integrations = [
   },
   {
     name: 'A2A Agent Card',
-    description: 'Standardized agent capability cards for peer discovery in the A2A commerce stack.',
-    category: 'Discovery',
-    color: 'text-violet-400',
+    description: 'Live at getamber.dev/.well-known/agent.json — standardized agent capability card for peer discovery in the A2A commerce stack.',
+    category: 'Live',
+    color: 'text-emerald-400',
   },
   {
     name: 'Nevermined SDK',

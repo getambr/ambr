@@ -89,11 +89,11 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
               </Link>
             ))}
             <Link
-              href="/waitlist"
+              href="/activate"
               onClick={onClose}
               className="mt-4 rounded-lg bg-amber px-4 py-3 text-center text-lg font-medium text-background transition-colors hover:bg-amber-light"
             >
-              Join Waitlist
+              Get Started
             </Link>
           </div>
         </motion.div>

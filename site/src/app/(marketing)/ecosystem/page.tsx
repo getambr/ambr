@@ -21,6 +21,20 @@ export const metadata: Metadata = {
 
 const ecosystemProjects = [
   {
+    name: 'x402 V2',
+    description:
+      'Primary payment rail. Ambr functions as an x402 extension — contract hashes embedded in payment metadata. Multi-token support across Base, Solana, ACH, SEPA, and cards.',
+    layer: 'Payments',
+    status: 'live' as const,
+  },
+  {
+    name: 'A2A Protocol',
+    description:
+      'Agent-to-Agent discovery and communication via JSON-RPC at getamber.dev/api/a2a, discoverable at /.well-known/agent.json.',
+    layer: 'Discovery',
+    status: 'live' as const,
+  },
+  {
     name: 'KAMIYO',
     description:
       'Optional escrow integration for high-value transactions. Oracle-verified quality checks and conditional payment release. Not a dependency — available when escrow is needed.',
@@ -39,13 +53,6 @@ const ecosystemProjects = [
     description:
       'On-chain identity and reputation standard. Agents verify counterparty track records before entering agreements, building a web of trust across the agent economy.',
     layer: 'Trust',
-    status: 'planned' as const,
-  },
-  {
-    name: 'x402 V2',
-    description:
-      'Primary payment rail. Ambr functions as an x402 extension — contract hashes embedded in payment metadata. Supports Base, Solana, ACH, SEPA, and cards.',
-    layer: 'Payments',
     status: 'planned' as const,
   },
 ];
@@ -118,8 +125,9 @@ export default function EcosystemPage() {
               identity. Escrow holds funds. Payment rails move money. But none of that
               works without a formal agreement defining the terms. That&apos;s what Ambr
               provides — the Ricardian Contract layer that binds the entire stack together,
-              with human-readable terms, machine-parsable structure, and on-chain proof
-              via transferable cNFTs.
+              with human-readable terms, machine-parsable structure, and on-chain proof —
+              each contract minted as a single NFT on Base L2 with counterparty-gated
+              transfers and SHA-256 hash stored permanently on-chain.
             </p>
           </div>
         </ScrollReveal>
@@ -132,15 +140,15 @@ export default function EcosystemPage() {
               Build With Us
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-              Interested in integrating with Ambr? Join the waitlist or
+              Interested in integrating with Ambr? Get started or
               explore the developer docs.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button href="/developers" size="lg">
                 Developer Docs
               </Button>
-              <Button href="/waitlist" variant="secondary" size="lg">
-                Join the Waitlist
+              <Button href="/activate" variant="secondary" size="lg">
+                Get Started
               </Button>
             </div>
           </div>

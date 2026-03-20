@@ -12,9 +12,9 @@ interface FormData {
 }
 
 const tiers = [
-  { value: 'starter' as const, label: 'Starter — $29 USDC', credits: '50 contracts' },
-  { value: 'builder' as const, label: 'Builder — $99 USDC', credits: '250 contracts' },
-  { value: 'enterprise' as const, label: 'Enterprise — $299 USDC', credits: 'Unlimited' },
+  { value: 'starter' as const, label: 'Starter — $29', credits: '50 contracts' },
+  { value: 'builder' as const, label: 'Builder — $99', credits: '250 contracts' },
+  { value: 'enterprise' as const, label: 'Enterprise — $299', credits: 'Unlimited' },
 ];
 
 export default function ActivatePage() {
@@ -74,14 +74,14 @@ export default function ActivatePage() {
               Claim Your API Key
             </h1>
             <p className="mt-4 text-text-secondary text-sm">
-              Send USDC on Base to the wallet below, then paste your transaction
+              Send any supported token on Base (USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC) to the wallet below, then paste your transaction
               hash to receive your API key instantly.
             </p>
           </div>
 
           {/* Wallet address */}
           <div className="rounded-xl border border-amber/20 bg-amber-glow p-4 text-center mb-8">
-            <p className="text-xs text-text-secondary mb-2">Send USDC on Base to:</p>
+            <p className="text-xs text-text-secondary mb-2">Send a supported token on Base to:</p>
             <code className="text-sm font-mono text-text-primary select-all break-all">
               {process.env.NEXT_PUBLIC_WALLET_ADDRESS}
             </code>

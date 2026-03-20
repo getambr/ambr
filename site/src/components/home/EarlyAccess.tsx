@@ -54,12 +54,11 @@ export default function EarlyAccess() {
             Support the Build
           </p>
           <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
-            Early Access — Pay with USDC on Base
+            Get Started — Pay on Base
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-text-secondary text-sm">
-            Fund protocol development directly. All payments in USDC on Base L2
-            — no intermediaries, no platform fees. Early supporters get priority
-            access when the contract engine launches.
+            Pay with any supported token on Base L2 (USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC)
+            — no intermediaries, no platform fees. On-chain verification, instant API key activation.
           </p>
         </div>
       </ScrollReveal>
@@ -87,7 +86,7 @@ export default function EarlyAccess() {
                 <span className="text-3xl font-bold text-amber">
                   ${tier.price}
                 </span>
-                <span className="text-xs text-text-secondary">USDC</span>
+                <span className="text-xs text-text-secondary">USD</span>
               </div>
               <p className="mt-3 text-sm text-text-secondary leading-relaxed flex-1">
                 {tier.description}
@@ -137,7 +136,7 @@ export default function EarlyAccess() {
             Activate Builder Tier
           </p>
           <p className="text-sm text-text-secondary mb-4">
-            Pay with USDC on <span className="font-semibold text-text-primary">Base</span> to unlock 250 contract credits and API access.
+            Send any supported token on <span className="font-semibold text-text-primary">Base</span> to unlock 250 contract credits and API access.
           </p>
           <div className="inline-flex items-center gap-3 rounded-lg border border-amber/20 bg-amber-glow px-5 py-3">
             <svg
@@ -155,7 +154,7 @@ export default function EarlyAccess() {
             </code>
           </div>
           <p className="mt-3 text-xs text-text-secondary">
-            Base L2 &middot; USDC &middot; $99 Builder / $299 Enterprise
+            Base L2 &middot; USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC &middot; $99 Builder / $299 Enterprise
           </p>
           <p className="mt-2 text-xs text-text-secondary/60">
             After payment, <a href="/activate" className="text-amber hover:underline">activate your API key</a> with

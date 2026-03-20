@@ -57,10 +57,10 @@ export default function Navigation() {
                 </Link>
               ))}
               <Link
-                href="/waitlist"
+                href="/activate"
                 className="rounded-lg bg-amber px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-amber-light"
               >
-                Join Waitlist
+                Get Started
               </Link>
             </div>
 

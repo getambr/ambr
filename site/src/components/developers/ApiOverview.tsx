@@ -21,7 +21,7 @@ const endpoints = [
       api_endpoint: 'https://api.dataco.io/v1',
       pricing_model: 'per-call',
       price_per_call: 0.002,
-      currency: 'USDC',
+      currency: 'USDC', // also supports USDbC, DAI, ETH, WETH, cbETH, cbBTC
       sla_uptime_percent: 99.9,
       governing_law: 'Singapore',
     },
@@ -63,9 +63,86 @@ const endpoints = [
   { headers: { 'X-API-Key': '<API_KEY>' } }
 ).then(r => r.json());
 
-// contract.status → 'draft' | 'pending_signature' | 'active' | 'amended'
+// contract.status → 'draft' | 'handshake' | 'pending_signature' | 'active' | 'amended'
 // contract.sha256_hash → 'a1b2c3...'
 // contract.amendment_chain → [{ hash, parent_hash, type }]`,
+  },
+  {
+    method: 'POST',
+    path: '/v1/contracts/:id/handshake',
+    description: 'Submit a handshake response — accept, reject, or request changes to a draft contract. Includes visibility preference.',
+    code: `const response = await fetch(
+  'https://getamber.dev/api/v1/contracts/amb-2026-0001/handshake',
+  {
+    method: 'POST',
+    headers: {
+      'X-API-Key': '<API_KEY>',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'accept', // 'accept' | 'reject' | 'request_changes'
+      visibility: 'parties_only', // 'public' | 'parties_only' | 'private'
+      message: 'Terms accepted. Proceeding to signature.',
+    }),
+  }
+);
+// action: accept → draft → pending_signature
+// action: request_changes → remains draft with change request attached`,
+  },
+  {
+    method: 'POST',
+    path: '/v1/contracts/:id/wallet-auth',
+    description: 'Verify wallet ownership for contract access. Returns a signed challenge for authenticated reads.',
+    code: `const response = await fetch(
+  'https://getamber.dev/api/v1/contracts/amb-2026-0001/wallet-auth',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      wallet_address: '0x7a3b...9f2e',
+      signature: '0xabcd...1234',
+      message: 'Authenticate wallet for contract amb-2026-0001',
+    }),
+  }
+);
+// response.access_token → short-lived JWT for contract reads`,
+  },
+  {
+    method: 'POST',
+    path: '/v1/dashboard/wallet-auth',
+    description: 'Dashboard login via wallet signature. Returns a session token for the Ambr dashboard.',
+    code: `const response = await fetch(
+  'https://getamber.dev/api/v1/dashboard/wallet-auth',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      wallet_address: '0x7a3b...9f2e',
+      signature: '0xabcd...1234',
+      message: 'Sign in to Ambr Dashboard',
+    }),
+  }
+);
+// response.session_token → use in Authorization header for dashboard API`,
+  },
+  {
+    method: 'POST',
+    path: '/v1/keys',
+    description: 'Activate an API key with on-chain payment verification. Requires a Base L2 transaction hash.',
+    code: `const response = await fetch(
+  'https://getamber.dev/api/v1/keys',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      wallet_address: '0x7a3b...9f2e',
+      tx_hash: '0x9876...fedc',
+      chain: 'base',
+    }),
+  }
+);
+// response.api_key → 'ambr_live_...'
+// response.tier → 'starter' | 'pro' | 'enterprise'`,
   },
 ];
 
@@ -96,8 +173,10 @@ export default function ApiOverview() {
         <div className="rounded-xl border border-amber/20 bg-amber-glow p-5">
           <h3 className="text-base font-semibold text-amber mb-2">Contract Lifecycle</h3>
           <p className="text-sm text-text-secondary leading-relaxed">
-            Contracts are created as <strong className="text-text-primary">drafts</strong>. The first
-            ECDSA wallet signature moves the contract to <strong className="text-text-primary">pending_signature</strong>.
+            Contracts are created as <strong className="text-text-primary">drafts</strong>. The counterparty
+            reviews and submits a <strong className="text-text-primary">handshake</strong> — accepting, rejecting,
+            or requesting changes. Once accepted, the first ECDSA wallet signature moves the contract
+            to <strong className="text-text-primary">pending_signature</strong>.
             When the second party signs, the contract becomes <strong className="text-text-primary">active</strong>.
             Both signatures are cryptographically verified — no API key needed to sign, just a valid wallet.
           </p>

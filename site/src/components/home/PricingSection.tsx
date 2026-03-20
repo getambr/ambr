@@ -7,7 +7,13 @@ const pricingItems = [
     label: 'Delegation & Commerce Contracts',
     price: '$0.50–$5.00',
     unit: 'per contract',
-    description: 'Create delegation authority or commerce contracts — minted as transferable cNFTs on-chain.',
+    description: 'Create delegation authority or commerce contracts — each minted as a single NFT on Base L2 with counterparty-gated transfers and SHA-256 hash stored permanently on-chain.',
+  },
+  {
+    label: 'x402 Pay-per-Contract',
+    price: 'From $0.50',
+    unit: 'per contract',
+    description: 'HTTP-native x402 payments — agents pay per contract via multi-token support (USDC, EURC, and more) with no subscription required.',
   },
   {
     label: 'Template Licensing',
@@ -16,10 +22,10 @@ const pricingItems = [
     description: 'Industry-specific, jurisdiction-aware templates for delegation, procurement, SaaS, and vendor agreements.',
   },
   {
-    label: 'Reader Portal',
+    label: 'Enterprise Compliance',
     price: '$99',
     unit: 'per month',
-    description: 'Enterprise compliance subscription — view, verify, audit, and export all agent-executed contracts.',
+    description: 'Audit dashboard, bulk contract export, compliance reporting, and priority support. Wallet-auth contract access is free for all contract parties.',
   },
   {
     label: 'Dispute Resolution',
@@ -72,8 +78,8 @@ export default function PricingSection() {
 
       <ScrollReveal delay={0.3}>
         <div className="mt-8 text-center">
-          <Button href="/waitlist" variant="secondary">
-            Get Early Access Pricing
+          <Button href="/activate" variant="secondary">
+            Get Started
           </Button>
         </div>
       </ScrollReveal>

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function DevelopersPage() {
   return (
-    <main>
+    <main className="pt-20">
       <SectionWrapper>
         <ScrollReveal>
           <div className="text-center max-w-3xl mx-auto mb-12">
@@ -32,16 +32,8 @@ export default function DevelopersPage() {
               Build on Ambr
             </h1>
             <p className="mt-4 text-lg text-text-secondary">
-              Agent-facing API for contract creation, signing, status queries, and
-              dispute resolution. Full documentation coming soon.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal>
-          <div className="rounded-xl border border-amber/20 bg-amber-glow p-5 mb-10 text-center">
-            <p className="text-sm text-amber font-medium">
-              🚧 API documentation is in development. Join the waitlist for early access.
+              Agent-facing API for contract creation, handshake negotiation, signing,
+              status queries, and dispute resolution.
             </p>
           </div>
         </ScrollReveal>

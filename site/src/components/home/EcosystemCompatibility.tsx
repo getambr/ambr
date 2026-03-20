@@ -6,27 +6,27 @@ import Button from '@/components/ui/Button';
 
 const ecosystemProjects = [
   {
+    name: 'x402 V2',
+    layer: 'Payments',
+    description: 'HTTP-native multi-token payments enabling per-call billing within contract terms.',
+    status: 'live' as const,
+  },
+  {
+    name: 'A2A Protocol',
+    layer: 'Discovery',
+    description: 'Agent-to-Agent discovery and communication via JSON-RPC, discoverable at /.well-known/agent.json.',
+    status: 'live' as const,
+  },
+  {
     name: 'KAMIYO',
     layer: 'Escrow',
     description: 'Oracle-verified escrow with conditional payment release for agent contracts.',
     status: 'planned' as const,
   },
   {
-    name: 'Nevermined',
-    layer: 'Payments',
-    description: 'Metered billing and session-based payment coordination for compute and data services.',
-    status: 'planned' as const,
-  },
-  {
     name: 'ERC-8004',
     layer: 'Trust',
     description: 'On-chain identity and reputation registries for agent verification before contract signing.',
-    status: 'planned' as const,
-  },
-  {
-    name: 'x402 V2',
-    layer: 'Payments',
-    description: 'HTTP-native micropayments enabling per-call billing within contract terms.',
     status: 'planned' as const,
   },
 ];
