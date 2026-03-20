@@ -26,8 +26,12 @@ supabase/.temp/
 
 # Sensitive documents
 *.pdf
-docs/JDA-CONTRACT-LV.md
-docs/contract-appendices/
+*.edoc
+*.7z
+wire-instructions-*.pdf
+AP-JDA-*/
+NDA-*.edoc
+docs/internal/latvian/
 
 # Design assets (not for repo)
 Image Assets/

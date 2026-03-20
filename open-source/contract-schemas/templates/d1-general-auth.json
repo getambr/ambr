@@ -71,7 +71,7 @@
       "governing_law": {
         "type": "string",
         "default": "Singapore",
-        "description": "Governing jurisdiction (Singapore, Delaware, Latvia, England-Wales)"
+        "description": "Governing jurisdiction (Singapore, Delaware, England-Wales, Switzerland)"
       },
       "requires_approval_above": {
         "type": "number",
