@@ -4,6 +4,7 @@ import { getSupabase } from '@/lib/supabase';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import ContractViewer from './ContractViewer';
 import ExportButtons from './ExportButtons';
+import SignContract from '@/components/reader/SignContract';
 
 interface Props {
   params: Promise<{ hashOrId: string }>;
@@ -69,6 +70,18 @@ export default async function ReaderPage({ params, searchParams }: Props) {
     contract.machine_readable,
     contract.sha256_hash,
   );
+
+  // Fetch existing signatures for display + signing gate
+  const { data: signatures } = await getSupabaseAdmin()
+    .from('signatures')
+    .select('signer_wallet, signed_at')
+    .eq('contract_id', contract.id)
+    .order('created_at', { ascending: true });
+
+  const existingSignatures = (signatures ?? []).map((s: { signer_wallet: string; signed_at: string }) => ({
+    signer_wallet: s.signer_wallet,
+    signed_at: s.signed_at,
+  }));
 
   return (
     <main className="pt-20">
@@ -181,6 +194,19 @@ export default async function ReaderPage({ params, searchParams }: Props) {
               machineReadable={contract.machine_readable}
               sha256Hash={contract.sha256_hash}
             />
+
+            {/* Wallet signing — show when signable */}
+            {['draft', 'handshake', 'pending_signature'].includes(contract.status) && (
+              <div className="mb-6">
+                <SignContract
+                  contractId={contract.contract_id}
+                  contractUuid={contract.id}
+                  sha256Hash={contract.sha256_hash}
+                  status={contract.status}
+                  existingSignatures={existingSignatures}
+                />
+              </div>
+            )}
 
             {/* Contract content — full access only */}
             <ContractViewer

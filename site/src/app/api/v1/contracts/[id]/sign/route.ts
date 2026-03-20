@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { verifyMessage } from 'ethers';
+import { mintContractNFTAsync } from '@/lib/chain/cnft-mint';
+import { getMetadataUri } from '@/lib/chain/cnft-metadata';
 
 export const runtime = 'nodejs';
 
@@ -39,7 +41,7 @@ export async function POST(
     );
   }
 
-  // Verify the ECDSA signature
+  // Verify ECDSA signature
   let recoveredAddress: string;
   try {
     recoveredAddress = verifyMessage(message, signature);
@@ -59,7 +61,6 @@ export async function POST(
 
   const db = getSupabaseAdmin();
 
-  // Lookup contract
   let query = db.from('contracts').select('id, contract_id, status, sha256_hash');
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
@@ -78,7 +79,6 @@ export async function POST(
     );
   }
 
-  // Check the message references this contract's hash
   if (!message.includes(contract.sha256_hash)) {
     return NextResponse.json(
       { error: 'hash_mismatch', message: 'Signed message must contain the contract SHA-256 hash' },
@@ -86,7 +86,6 @@ export async function POST(
     );
   }
 
-  // Check for duplicate signature
   const { data: existing } = await db
     .from('signatures')
     .select('id')
@@ -101,7 +100,6 @@ export async function POST(
     );
   }
 
-  // Store signature
   const { error: sigError } = await db.from('signatures').insert({
     contract_id: contract.id,
     signer_wallet: wallet_address.toLowerCase(),
@@ -116,9 +114,8 @@ export async function POST(
     );
   }
 
-  // Transition status: draft → pending_signature (first sig), pending_signature → active (could add multi-sig logic later)
   let newStatus = contract.status;
-  if (contract.status === 'draft') {
+  if (contract.status === 'draft' || contract.status === 'handshake') {
     newStatus = 'pending_signature';
   } else if (contract.status === 'pending_signature') {
     newStatus = 'active';
@@ -131,7 +128,14 @@ export async function POST(
       .eq('id', contract.id);
   }
 
-  // Audit log
+  let nftMintTriggered = false;
+  if (newStatus === 'active') {
+    mintContractNFTAsync(contract.id).catch((err) =>
+      console.error('cNFT mint fire-and-forget error:', err),
+    );
+    nftMintTriggered = true;
+  }
+
   await db.from('audit_log').insert({
     contract_id: contract.id,
     action: 'signed',
@@ -144,5 +148,9 @@ export async function POST(
     signer: wallet_address.toLowerCase(),
     status: newStatus,
     message: `Contract signed successfully${newStatus !== contract.status ? `. Status: ${contract.status} → ${newStatus}` : ''}`,
+    ...(nftMintTriggered && {
+      nft_mint_status: 'pending',
+      nft_metadata_url: getMetadataUri(contract.sha256_hash),
+    }),
   });
 }

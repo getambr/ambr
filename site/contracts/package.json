@@ -1,0 +1,17 @@
+{
+  "name": "ambr-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy:base-sepolia": "npx hardhat run scripts/deploy.ts --network baseSepolia",
+    "deploy:base": "npx hardhat run scripts/deploy.ts --network base"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.0"
+  }
+}
