@@ -12,6 +12,8 @@ export const createContractSchema = z.object({
   principal_declaration: principalDeclarationSchema,
   parent_contract_hash: z.string().optional(),
   amendment_type: z.enum(['original', 'amendment', 'extension']).optional(),
+  visibility: z.enum(['private', 'metadata_only', 'public', 'encrypted']).optional(),
+  publish_to: z.array(z.string()).optional(),
 });
 
 export type CreateContractInput = z.input<typeof createContractSchema>;

@@ -11,14 +11,7 @@
 import { randomUUID } from 'crypto';
 import { rateLimit } from '@/lib/rate-limit';
 
-// Re-export callTool and validateApiKeyDirect from MCP server
-// We import the MCP server's tool dispatch to avoid duplicating business logic
-// The MCP server's callTool returns { content: [{type, text}], isError? }
-// We need to convert that to A2A Task format
-
-// ---------------------------------------------------------------------------
-// A2A Types (per spec: https://a2a-protocol.org/latest/specification/)
-// ---------------------------------------------------------------------------
+// --- A2A Types (spec: https://a2a-protocol.org/latest/specification/) ---
 
 type TaskState =
   | 'submitted'
@@ -79,9 +72,7 @@ interface JsonRpcResponse {
   error?: { code: number; message: string; data?: unknown };
 }
 
-// ---------------------------------------------------------------------------
-// Skill-to-tool mapping
-// ---------------------------------------------------------------------------
+// --- Skill-to-tool mapping ---
 
 interface ToolMapping {
   tool: string;
@@ -186,12 +177,7 @@ function extractCreateParams(text: string): Record<string, unknown> {
   return params;
 }
 
-// ---------------------------------------------------------------------------
-// Tool execution (calls same Supabase queries as MCP server)
-// ---------------------------------------------------------------------------
-
-// Import the actual tool handlers from MCP server to avoid duplication
-// We need to dynamically import to avoid circular dependencies
+// --- Tool execution (bridges to MCP server) ---
 async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
@@ -231,9 +217,7 @@ async function executeTool(
   return { text, isError: result.isError ?? false };
 }
 
-// ---------------------------------------------------------------------------
-// JSON-RPC helpers
-// ---------------------------------------------------------------------------
+// --- JSON-RPC helpers ---
 
 function jsonRpcOk(id: string | number | null, result: unknown): JsonRpcResponse {
   return { jsonrpc: '2.0', id: id ?? null, result };
@@ -248,9 +232,7 @@ function jsonRpcError(
   return { jsonrpc: '2.0', id: id ?? null, error: { code, message, data } };
 }
 
-// ---------------------------------------------------------------------------
-// A2A method handlers
-// ---------------------------------------------------------------------------
+// --- A2A method handlers ---
 
 async function handleSendMessage(
   params: Record<string, unknown>,
@@ -289,16 +271,42 @@ async function handleSendMessage(
   // Check auth for tools that need it
   const needsAuth = toolMapping.tool === 'ambr_create_contract';
   if (needsAuth && !apiKey) {
+    // Return input_required with x402 pricing info so agents can pay per-contract
     const task: Task = {
       id: randomUUID(),
       status: {
-        state: 'auth_required',
+        state: 'input_required',
         message: {
           role: 'agent',
           parts: [
             {
               type: 'text',
-              text: 'API key required. Pass X-API-Key header on the HTTP request. Get a key at https://getamber.dev/activate',
+              text: 'Payment required. Options: (1) Send USDC on Base to the recipient wallet and include the tx hash in the X-Payment header, or (2) pass an API key via the X-API-Key header.',
+            },
+            {
+              type: 'data',
+              data: {
+                x402: {
+                  version: '2',
+                  currency: 'USDC',
+                  chain: 'base',
+                  recipient: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
+                  accepts: ['exact', 'overpay'],
+                  pricing: {
+                    'd1-general-auth': '$2.00',
+                    'd2-limited-service': '$1.50',
+                    'd3-fleet-auth': '$5.00',
+                    'c1-api-access': '$3.00',
+                    'c2-compute-sla': '$4.00',
+                    'c3-task-execution': '$3.50',
+                  },
+                },
+                alternative: {
+                  method: 'api_key',
+                  header: 'X-API-Key',
+                  activate_url: 'https://getamber.dev/activate',
+                },
+              },
             },
           ],
         },
@@ -386,9 +394,7 @@ function handleCancelTask(params: Record<string, unknown>): JsonRpcResponse {
   return jsonRpcError(id, -32001, 'Task not found. Ambr processes tasks synchronously — they cannot be canceled.');
 }
 
-// ---------------------------------------------------------------------------
-// Main A2A message handler
-// ---------------------------------------------------------------------------
+// --- Main handler ---
 
 export async function handleA2AMessage(
   body: unknown,

@@ -1,31 +1,34 @@
 import { NextResponse } from 'next/server';
 
-/**
- * A2A Agent Card — Google Agent-to-Agent Protocol Discovery
- *
- * Returns a spec-compliant Agent Card at /.well-known/agent.json
- * so other AI agents can discover Ambr and delegate contract tasks.
- *
- * Spec: https://a2a-protocol.org/latest/specification/
- */
+/** A2A Agent Card — /.well-known/agent.json discovery endpoint */
 
 const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL || 'https://getamber.dev';
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://ambr.run';
 
-export async function GET() {
-  const agentCard = {
+export function buildAgentCard() {
+  const a2aUrl = `${PLATFORM_URL}/api/a2a`;
+
+  return {
     name: 'Ambr',
     description:
       'Legal framework for AI agents — create, sign, and verify Ricardian Contracts for delegation and commerce. Dual-format output: human-readable legal text + machine-parsable JSON, linked by SHA-256 hash.',
-    url: `${PLATFORM_URL}/api/a2a`,
+    url: a2aUrl,
+    version: '1.0.0',
     provider: {
       organization: 'Ambr',
       url: MARKETING_URL,
     },
-    version: '1.0.0',
+    supported_interfaces: [
+      {
+        url: a2aUrl,
+        protocol_binding: 'jsonrpc/http',
+        protocol_version: '1.0.0',
+      },
+    ],
     capabilities: {
       streaming: false,
       pushNotifications: false,
+      extendedAgentCard: false,
     },
     skills: [
       {
@@ -89,12 +92,37 @@ export async function GET() {
         type: 'apiKey',
         in: 'header',
         name: 'X-API-Key',
+        description: 'Pre-registered API key for businesses with credit-based access',
+      },
+      x402: {
+        type: 'http',
+        scheme: 'x402',
+        description: 'Pay-per-contract via USDC on Base L2. Send payment, include tx hash in X-Payment header.',
       },
     },
-    security: ['apiKey'],
+    security_schemes: {
+      apiKey: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'X-API-Key',
+        description: 'Pre-registered API key for businesses with credit-based access',
+      },
+      x402: {
+        type: 'http',
+        scheme: 'x402',
+        description: 'Pay-per-contract via USDC on Base L2. Send payment, include tx hash in X-Payment header.',
+      },
+    },
+    security: [{ apiKey: [] }, { x402: [] }],
     defaultInputModes: ['application/json'],
     defaultOutputModes: ['application/json'],
+    default_input_modes: ['application/json'],
+    default_output_modes: ['application/json'],
   };
+}
+
+export async function GET() {
+  const agentCard = buildAgentCard();
 
   return NextResponse.json(agentCard, {
     headers: {

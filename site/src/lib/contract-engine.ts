@@ -35,7 +35,10 @@ export async function storeContract(params: {
   sha256Hash: string;
   principalDeclaration: Record<string, unknown>;
   parameters: Record<string, unknown>;
-  apiKeyId: string;
+  apiKeyId?: string;
+  payerWallet?: string;
+  paymentMethod?: 'api_key' | 'x402' | 'usdc_direct';
+  visibility?: 'private' | 'metadata_only' | 'public' | 'encrypted';
   parentContractHash?: string;
   amendmentType?: 'original' | 'amendment' | 'extension';
 }) {
@@ -51,7 +54,10 @@ export async function storeContract(params: {
       sha256_hash: params.sha256Hash,
       principal_declaration: params.principalDeclaration,
       parameters: params.parameters,
-      api_key_id: params.apiKeyId,
+      api_key_id: params.apiKeyId ?? null,
+      payer_wallet: params.payerWallet ?? null,
+      payment_method: params.paymentMethod ?? 'api_key',
+      visibility: params.visibility ?? 'private',
       parent_contract_hash: params.parentContractHash ?? null,
       amendment_type: params.amendmentType ?? 'original',
     })

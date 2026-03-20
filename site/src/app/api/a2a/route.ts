@@ -46,7 +46,7 @@ export async function GET() {
       description: 'Legal framework for AI agents — create and verify Ricardian Contracts via A2A protocol.',
       protocol: 'A2A',
       methods: ['message/send', 'tasks/get', 'tasks/cancel'],
-      agent_card: '/.well-known/agent.json',
+      agent_card: ['/.well-known/agent.json', '/.well-known/agent-card.json'],
     },
     {
       headers: {
