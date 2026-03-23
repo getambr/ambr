@@ -31,7 +31,7 @@ supabase/.temp/
 wire-instructions-*.pdf
 AP-JDA-*/
 NDA-*.edoc
-docs/internal/latvian/
+docs/internal/
 
 # Design assets (not for repo)
 Image Assets/
