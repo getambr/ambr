@@ -33,16 +33,6 @@ const capabilities = [
     meta: 'REF: AUDIT\nSTATE: SYNCED',
     footer: { left: 'VERIFY.SIGNATURE', right: 'SEC. 4.1(B)' },
   },
-  {
-    title: 'Dispute Resolution',
-    description:
-      'IETF ADP-compliant arbitration built into every contract. When agents exceed mandates or deliverables fall short, automated escalation with on-chain evidence.',
-    variant: 'dark' as const,
-    geoPattern: 'circle' as const,
-    label: '// COMP.04',
-    meta: 'REF: DISPUTE\nSTATE: ACTIVE',
-    footer: { left: 'ARBITRATION.IETF', right: 'ADP.1' },
-  },
 ];
 
 export default function CoreCapabilities() {
@@ -58,10 +48,11 @@ export default function CoreCapabilities() {
         </div>
       </ScrollReveal>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {capabilities.map((cap, i) => (
           <ScrollReveal key={cap.title} delay={i * 0.1}>
             <AmbrCard
+              className="min-h-[400px]"
               variant={cap.variant}
               geoPattern={cap.geoPattern}
               label={cap.label}

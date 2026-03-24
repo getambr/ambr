@@ -58,25 +58,15 @@ export default function EcosystemCompatibility() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {ecosystemProjects.map((project, i) => (
           <ScrollReveal key={project.name} delay={i * 0.08}>
-            <div className="group relative overflow-hidden rounded-none bg-surface border border-amber/60 p-5 h-full">
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              {/* Inner frame */}
-              <div className="absolute top-3 left-3 right-3 bottom-3 border border-amber/30 pointer-events-none" />
-              {/* Corner dots */}
-              <div className="absolute top-3 left-3 w-1.5 h-1.5 bg-amber" />
-              <div className="absolute top-3 right-3 w-1.5 h-1.5 bg-amber" />
-              <div className="absolute bottom-3 left-3 w-1.5 h-1.5 bg-amber" />
-              <div className="absolute bottom-3 right-3 w-1.5 h-1.5 bg-amber" />
-              <div className="flex items-center justify-between mb-3">
+            <div className="border border-amber/60 bg-surface p-6">
+              <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base text-text-primary">{project.name}</h3>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusColors[project.status]}`}>
                   {project.status}
                 </span>
               </div>
-              <p className="text-xs font-mono text-amber mb-2">{project.layer} Layer</p>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {project.description}
-              </p>
+              <p className="text-micro !text-[#666] mb-2">{project.layer} Layer</p>
+              <p className="text-sm text-[#999]">{project.description}</p>
             </div>
           </ScrollReveal>
         ))}
