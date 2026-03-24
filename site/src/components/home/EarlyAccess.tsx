@@ -53,7 +53,7 @@ export default function EarlyAccess() {
           <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
             Support the Build
           </p>
-          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
             Get Started — Pay on Base
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-text-secondary text-sm">
@@ -67,10 +67,10 @@ export default function EarlyAccess() {
         {tiers.map((tier, i) => (
           <ScrollReveal key={tier.name} delay={i * 0.1}>
             <div
-              className={`group relative overflow-hidden rounded-xl border p-6 h-full flex flex-col transition-colors ${
+              className={`group relative overflow-hidden rounded-xl glass-card p-6 h-full flex flex-col ${
                 tier.highlighted
-                  ? 'border-amber/40 bg-amber-glow'
-                  : 'border-border bg-surface/80 backdrop-blur-sm hover:border-amber/30 hover:bg-amber/5'
+                  ? 'bg-gradient-to-br from-amber/8 via-transparent to-amber/5'
+                  : ''
               }`}
             >
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

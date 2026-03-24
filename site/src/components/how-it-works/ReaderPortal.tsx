@@ -47,7 +47,7 @@ export default function ReaderPortal() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {features.map((f, i) => (
           <ScrollReveal key={f.title} delay={i * 0.08}>
-            <div className="rounded-xl border border-border bg-background p-5 h-full">
+            <div className="glass-card rounded-xl p-5 h-full">
               <svg className="w-5 h-5 text-amber" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d={f.iconPath} />
               </svg>

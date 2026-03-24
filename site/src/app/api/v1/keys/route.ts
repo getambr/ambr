@@ -4,6 +4,8 @@ import { generateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { verifyUSDCPayment } from '@/lib/chain/verify-payment';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { logAudit } from '@/lib/audit';
+import { checkVelocity } from '@/lib/velocity';
 
 const TIER_CREDITS: Record<string, number> = {
   starter: 50,
@@ -58,10 +60,35 @@ export async function POST(request: Request) {
   // Verify payment on-chain
   const verification = await verifyUSDCPayment(tx_hash, tier);
   if (!verification.valid) {
+    logAudit({
+      event_type: 'failed_payment',
+      severity: 'warn',
+      actor: email,
+      details: { tx_hash, tier, error: verification.error },
+      ip_address: ip,
+    });
     return NextResponse.json(
       { error: 'payment_invalid', message: verification.error },
       { status: 402 },
     );
+  }
+
+  // Velocity check on payer wallet
+  if (verification.from) {
+    const velocity = await checkVelocity(verification.from, Number(verification.amount) || 0);
+    if (!velocity.allowed) {
+      logAudit({
+        event_type: 'velocity_blocked',
+        severity: 'error',
+        actor: verification.from,
+        details: { reason: velocity.reason, tx_hash },
+        ip_address: ip,
+      });
+      return NextResponse.json(
+        { error: 'velocity_limit', message: velocity.reason },
+        { status: 429 },
+      );
+    }
   }
 
   // Generate API key

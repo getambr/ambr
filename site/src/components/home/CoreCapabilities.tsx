@@ -59,7 +59,7 @@ export default function CoreCapabilities() {
           <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
             Core Capabilities
           </p>
-          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
             What Ambr Does
           </h2>
         </div>
@@ -68,7 +68,7 @@ export default function CoreCapabilities() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {capabilities.map((cap, i) => (
           <ScrollReveal key={cap.title} delay={i * 0.1}>
-            <div className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated/80 backdrop-blur-sm p-6 h-full hover:border-amber/30 hover:bg-amber/5 transition-colors">
+            <div className="group relative overflow-hidden rounded-xl glass-card p-6 h-full">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <span className="text-amber">
                 {cap.icon}

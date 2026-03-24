@@ -45,7 +45,7 @@ export default function EcosystemCompatibility() {
           <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
             Built for the Stack
           </p>
-          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
             Ecosystem Compatibility
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
@@ -58,7 +58,7 @@ export default function EcosystemCompatibility() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {ecosystemProjects.map((project, i) => (
           <ScrollReveal key={project.name} delay={i * 0.08}>
-            <div className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated/80 backdrop-blur-sm p-5 h-full hover:border-amber/30 hover:bg-amber/5 transition-colors">
+            <div className="group relative overflow-hidden rounded-xl glass-card p-5 h-full">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold text-text-primary">{project.name}</h3>

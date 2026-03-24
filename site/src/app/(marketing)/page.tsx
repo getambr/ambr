@@ -13,6 +13,7 @@ export default function Home() {
   return (
     <main>
       <HeroSection />
+      <div className="section-divider" />
 
       {/* All post-hero content wrapped with Aurora background */}
       <div className="relative">
@@ -76,8 +77,11 @@ export default function Home() {
       </SectionWrapper>
 
       <CoreCapabilities />
+      <div className="section-divider" />
       <PricingSection />
+      <div className="section-divider" />
       <EcosystemCompatibility />
+      <div className="section-divider" />
 
       {/* Target Customers */}
       <SectionWrapper>

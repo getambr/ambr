@@ -14,7 +14,7 @@ export default function SectionWrapper({
   as: Tag = 'section',
 }: SectionWrapperProps) {
   return (
-    <Tag id={id} className={`mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 ${className}`}>
+    <Tag id={id} className={`mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32 ${className}`}>
       {children}
     </Tag>
   );

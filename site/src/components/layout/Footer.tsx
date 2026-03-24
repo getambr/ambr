@@ -1,21 +1,31 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
-const navLinks = [
+const marketingLinks = [
   { href: '/', label: 'Home' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/use-cases', label: 'Use Cases' },
-  { href: '/developers', label: 'Developers' },
   { href: '/ecosystem', label: 'Ecosystem' },
+];
+
+const platformLinks = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/developers', label: 'Developers' },
+  { href: 'https://getamber.dev', label: 'Activate' },
+];
+
+const legalLinks = [
+  { href: '/privacy', label: 'Privacy Policy' },
+  { href: '/terms', label: 'Terms of Service' },
 ];
 
 export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border bg-surface">
+    <footer className="border-t border-white/[0.06] bg-surface">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
               <Image src="/logo.png" alt="" width={28} height={28} className="rounded-sm" />
@@ -29,9 +39,22 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-text-primary mb-3">Navigation</h3>
+            <h3 className="text-sm font-medium text-text-primary mb-3">Product</h3>
             <ul className="space-y-2">
-              {navLinks.map((link) => (
+              {marketingLinks.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-text-secondary hover:text-amber transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-medium text-text-primary mb-3">Platform</h3>
+            <ul className="space-y-2">
+              {platformLinks.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm text-text-secondary hover:text-amber transition-colors">
                     {link.label}
@@ -43,14 +66,15 @@ export default function Footer() {
 
           <div>
             <h3 className="text-sm font-medium text-text-primary mb-3">Legal</h3>
-            <div className="space-y-1">
-              <Link href="/privacy" className="block text-sm text-text-secondary hover:text-amber transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="block text-sm text-text-secondary hover:text-amber transition-colors">
-                Terms of Service
-              </Link>
-            </div>
+            <ul className="space-y-2">
+              {legalLinks.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-text-secondary hover:text-amber transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

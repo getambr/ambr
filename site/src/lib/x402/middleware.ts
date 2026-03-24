@@ -9,6 +9,8 @@ import {
   tokenAmountToUnits,
 } from './tokens';
 import { getTokenPriceUsd, calculateUsdValue } from './oracle';
+import { logAudit } from '@/lib/audit';
+import { checkVelocity } from '@/lib/velocity';
 
 const BASE_RPC = 'https://mainnet.base.org';
 const WALLET_ADDRESS = (process.env.NEXT_PUBLIC_WALLET_ADDRESS ?? '').toLowerCase();
@@ -96,7 +98,28 @@ export async function authenticateRequest(
 
   if (!verification.valid) {
     await db.from('x402_payments').delete().eq('tx_hash', txHash);
+    logAudit({
+      event_type: 'x402_payment_rejected',
+      severity: 'warn',
+      actor: txHash,
+      details: { template: templateSlug, error: verification.error },
+    });
     return null;
+  }
+
+  // Velocity check on payer wallet
+  if (verification.from) {
+    const velocity = await checkVelocity(verification.from, verification.usdValue || 0);
+    if (!velocity.allowed) {
+      await db.from('x402_payments').delete().eq('tx_hash', txHash);
+      logAudit({
+        event_type: 'x402_velocity_blocked',
+        severity: 'error',
+        actor: verification.from,
+        details: { reason: velocity.reason, tx_hash: txHash, template: templateSlug },
+      });
+      return null;
+    }
   }
 
   // 5. Update claim with real data

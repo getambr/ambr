@@ -61,7 +61,7 @@ export default function CnftLifecycle() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.3, delay: i * 0.1 }}
-            className="rounded-xl border border-border bg-background p-5 relative"
+            className="glass-card rounded-xl p-5 relative"
           >
             <span className="text-3xl font-bold text-amber/20 font-mono">
               {step.number}

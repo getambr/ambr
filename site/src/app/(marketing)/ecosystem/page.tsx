@@ -81,7 +81,7 @@ export default function EcosystemPage() {
       <SectionWrapper className="bg-surface">
         <ScrollReveal>
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-2">
+            <h2 className="text-3xl font-bold text-text-primary mb-2 sm:text-4xl lg:text-5xl">
               The Five-Layer Stack
             </h2>
             <p className="text-text-secondary max-w-2xl">
@@ -98,7 +98,7 @@ export default function EcosystemPage() {
       <SectionWrapper>
         <ScrollReveal>
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text-primary mb-2">
+            <h2 className="text-3xl font-bold text-text-primary mb-2 sm:text-4xl lg:text-5xl">
               Ecosystem Projects
             </h2>
             <p className="text-text-secondary max-w-2xl">
@@ -107,7 +107,7 @@ export default function EcosystemPage() {
             </p>
           </div>
         </ScrollReveal>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {ecosystemProjects.map((project, i) => (
             <EcosystemCard key={project.name} {...project} index={i} />
           ))}
@@ -117,7 +117,7 @@ export default function EcosystemPage() {
       <SectionWrapper className="bg-surface">
         <ScrollReveal>
           <div className="rounded-xl border border-amber/20 bg-amber-glow p-8 max-w-3xl mx-auto">
-            <h2 className="text-2xl font-bold text-text-primary mb-3">
+            <h2 className="text-3xl font-bold text-text-primary mb-3 sm:text-4xl lg:text-5xl">
               Ambr&apos;s Role: The Agreement Layer
             </h2>
             <p className="text-text-secondary leading-relaxed">
@@ -136,7 +136,7 @@ export default function EcosystemPage() {
       <SectionWrapper>
         <ScrollReveal>
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-text-primary">
+            <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
               Build With Us
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
