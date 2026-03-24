@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   try {
     const stripe = getStripe();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://getamber.dev';
+    const appUrl = 'https://getamber.dev';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -71,9 +71,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error('Stripe checkout error:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('Stripe checkout error:', errMsg);
     return NextResponse.json(
-      { error: 'stripe_error', message: 'Failed to create checkout session' },
+      { error: 'stripe_error', message: errMsg },
       { status: 500 },
     );
   }
