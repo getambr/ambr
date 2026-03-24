@@ -27,7 +27,7 @@ export default function UseCasesPage() {
             <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
               Use Cases
             </p>
-            <h1 className="text-4xl font-bold text-text-primary sm:text-5xl">
+            <h1 className="text-4xl text-text-primary sm:text-5xl">
               Delegation & Commerce in Action
             </h1>
             <p className="mt-4 text-lg text-text-secondary">

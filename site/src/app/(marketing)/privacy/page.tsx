@@ -16,12 +16,12 @@ export default function PrivacyPage() {
     <main>
       <SectionWrapper>
         <div className="mx-auto max-w-3xl prose-invert">
-          <h1 className="text-3xl font-bold text-text-primary mb-6">Privacy Policy</h1>
+          <h1 className="text-3xl text-text-primary mb-6">Privacy Policy</h1>
           <p className="text-sm text-text-secondary mb-8">Last updated: March 11, 2026</p>
 
           <div className="space-y-6 text-sm text-text-secondary leading-relaxed">
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">1. Information We Collect</h2>
+              <h2 className="text-lg text-text-primary mb-2">1. Information We Collect</h2>
               <p className="mb-3">
                 <span className="font-medium text-text-primary">Waitlist:</span> Email address, and optionally your name, role, and message.
               </p>
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">2. Lawful Basis for Processing</h2>
+              <h2 className="text-lg text-text-primary mb-2">2. Lawful Basis for Processing</h2>
               <p className="mb-3">
                 Under the EU General Data Protection Regulation (GDPR), we process personal data on the following bases:
               </p>
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">3. Contract Visibility</h2>
+              <h2 className="text-lg text-text-primary mb-2">3. Contract Visibility</h2>
               <p className="mb-3">
                 Ambr follows a <span className="font-medium text-text-primary">private-by-default</span> model for contract data:
               </p>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">4. Data Storage and Security</h2>
+              <h2 className="text-lg text-text-primary mb-2">4. Data Storage and Security</h2>
               <p>
                 Your data is stored securely using Supabase with row-level security policies.
                 Data is encrypted in transit (TLS) and at rest. API keys are stored as irreversible
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">5. Data Minimization</h2>
+              <h2 className="text-lg text-text-primary mb-2">5. Data Minimization</h2>
               <p>
                 We collect only data necessary to provide the service. Public-facing views
                 expose only metadata (no personal data). Share tokens are ephemeral with
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">6. Your Rights</h2>
+              <h2 className="text-lg text-text-primary mb-2">6. Your Rights</h2>
               <p className="mb-3">Under GDPR, you have the right to:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li><span className="font-medium text-text-primary">Access:</span> Request a copy of all personal data we hold about you.</li>
@@ -114,7 +114,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">7. Third Parties</h2>
+              <h2 className="text-lg text-text-primary mb-2">7. Third Parties</h2>
               <p>
                 We do not sell or share your personal information with third parties.
                 Contract data is processed using Anthropic&apos;s Claude API for AI-generated
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-text-primary mb-2">8. Contact</h2>
+              <h2 className="text-lg text-text-primary mb-2">8. Contact</h2>
               <p>
                 For privacy-related inquiries, data access requests, or erasure requests,
                 contact us at privacy@ambr.run.

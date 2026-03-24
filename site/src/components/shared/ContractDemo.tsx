@@ -18,10 +18,10 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
   return (
     <div className="w-full">
       {/* Toggle tabs */}
-      <div className="mb-4 flex gap-1 rounded-lg bg-surface p-1 w-fit">
+      <div className="mb-4 flex gap-1 rounded-none bg-surface p-1 w-fit">
         <button
           onClick={() => setView('human')}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+          className={`rounded-none px-4 py-2 text-sm font-medium transition-colors ${
             view === 'human'
               ? 'bg-amber text-background'
               : 'text-text-secondary hover:text-text-primary'
@@ -31,7 +31,7 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
         </button>
         <button
           onClick={() => setView('machine')}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+          className={`rounded-none px-4 py-2 text-sm font-medium transition-colors ${
             view === 'machine'
               ? 'bg-amber text-background'
               : 'text-text-secondary hover:text-text-primary'
@@ -42,7 +42,7 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
       </div>
 
       {/* Contract view */}
-      <div className={`rounded-xl border border-border bg-surface overflow-hidden ${isExpanded ? '' : 'max-h-[420px]'}`}>
+      <div className={`rounded-none border border-amber/60 bg-surface overflow-hidden ${isExpanded ? '' : 'max-h-[420px]'}`}>
         <AnimatePresence mode="wait">
           {view === 'human' ? (
             <motion.div
@@ -65,9 +65,11 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.2 }}
-              className="p-6 overflow-auto"
+              className="relative p-6 overflow-auto"
               style={isExpanded ? {} : { maxHeight: 420 }}
             >
+              {/* Grid overlay for machine view */}
+              <div className="grid-bg grid-bg-dark opacity-50 pointer-events-none" />
               <pre className="font-mono text-sm leading-relaxed text-text-primary whitespace-pre-wrap">
                 {JSON.stringify(sampleContract.machineReadable, null, 2)}
               </pre>
@@ -77,7 +79,7 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
       </div>
 
       {/* SHA-256 hash highlight */}
-      <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-glow border border-amber/20 px-4 py-2">
+      <div className="mt-3 flex items-center gap-2 rounded-none bg-amber-glow border border-amber/60 px-4 py-2">
         <span className="text-xs font-medium text-amber">SHA-256</span>
         <code className="font-mono text-xs text-text-secondary break-all">
           {sampleContract.sha256Hash}
@@ -85,7 +87,7 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
       </div>
 
       {/* Principal Declaration */}
-      <div className="mt-3 rounded-lg border border-border bg-surface-elevated px-4 py-3">
+      <div className="mt-3 rounded-none border border-border bg-surface-elevated px-4 py-3">
         <p className="text-xs font-medium text-amber mb-1">Principal Declaration</p>
         <p className="text-sm text-text-primary">
           Agent <code className="font-mono text-amber-light">{sampleContract.principalDeclaration.agentId}</code>{' '}
@@ -103,13 +105,7 @@ export default function ContractDemo({ variant = 'landing' }: ContractDemoProps)
             {sampleContract.amendmentChain.map((item, i) => (
               <div key={item.contractHash} className="flex items-center gap-2">
                 <div
-                  className={`rounded-lg border px-3 py-2 text-xs ${
-                    item.type === 'original'
-                      ? 'border-amber bg-amber-glow text-amber'
-                      : item.type === 'amendment'
-                      ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
-                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                  }`}
+                  className="rounded-none border border-amber/60 bg-surface px-3 py-2 text-xs text-amber"
                 >
                   <span className="font-medium">{item.label}</span>
                   <p className="font-mono text-[10px] mt-0.5 opacity-70">

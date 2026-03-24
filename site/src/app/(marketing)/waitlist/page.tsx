@@ -27,7 +27,7 @@ export default function WaitlistPage() {
               <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
                 Early Access
               </p>
-              <h1 className="text-4xl font-bold text-text-primary">
+              <h1 className="text-4xl text-text-primary">
                 Join the Waitlist
               </h1>
               <p className="mt-4 text-text-secondary">
@@ -38,7 +38,7 @@ export default function WaitlistPage() {
           </ScrollReveal>
 
           <ScrollReveal delay={0.15}>
-            <div className="rounded-xl border border-border bg-surface p-6">
+            <div className="rounded-none border border-border bg-surface p-6">
               <WaitlistForm />
             </div>
           </ScrollReveal>

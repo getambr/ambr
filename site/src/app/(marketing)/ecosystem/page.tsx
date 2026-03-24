@@ -60,13 +60,13 @@ const ecosystemProjects = [
 export default function EcosystemPage() {
   return (
     <main>
-      <SectionWrapper>
+      <SectionWrapper variant="dark">
         <ScrollReveal>
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+            <p className="text-micro mb-2">
               Built for the Stack
             </p>
-            <h1 className="text-4xl font-bold text-text-primary sm:text-5xl">
+            <h1 className="text-4xl text-text-primary sm:text-5xl">
               Ecosystem Compatibility
             </h1>
             <p className="mt-4 text-lg text-text-secondary">
@@ -78,13 +78,14 @@ export default function EcosystemPage() {
         </ScrollReveal>
       </SectionWrapper>
 
-      <SectionWrapper className="bg-surface">
+      <SectionWrapper variant="light">
         <ScrollReveal>
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-text-primary mb-2 sm:text-4xl lg:text-5xl">
+            <p className="text-micro-dark mb-2">Architecture</p>
+            <h2 className="text-3xl text-background mb-2 sm:text-4xl lg:text-5xl">
               The Five-Layer Stack
             </h2>
-            <p className="text-text-secondary max-w-2xl">
+            <p className="text-[#333] max-w-2xl">
               Ambr sits at Layer 2. Each layer in the stack handles a distinct
               concern — from discovery to payments.
             </p>
@@ -95,10 +96,11 @@ export default function EcosystemPage() {
         </ScrollReveal>
       </SectionWrapper>
 
-      <SectionWrapper>
+      <SectionWrapper variant="dark">
         <ScrollReveal>
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-text-primary mb-2 sm:text-4xl lg:text-5xl">
+            <p className="text-micro mb-2">Integrations</p>
+            <h2 className="text-3xl text-text-primary mb-2 sm:text-4xl lg:text-5xl">
               Ecosystem Projects
             </h2>
             <p className="text-text-secondary max-w-2xl">
@@ -114,13 +116,14 @@ export default function EcosystemPage() {
         </div>
       </SectionWrapper>
 
-      <SectionWrapper className="bg-surface">
+      <SectionWrapper variant="light">
         <ScrollReveal>
-          <div className="rounded-xl border border-amber/20 bg-amber-glow p-8 max-w-3xl mx-auto">
-            <h2 className="text-3xl font-bold text-text-primary mb-3 sm:text-4xl lg:text-5xl">
+          <div className="border border-amber/60 bg-amber-glow p-8 max-w-3xl mx-auto rounded-none">
+            <p className="text-micro-dark mb-2">Purpose</p>
+            <h2 className="text-3xl text-background mb-3 sm:text-4xl lg:text-5xl">
               Ambr&apos;s Role: The Agreement Layer
             </h2>
-            <p className="text-text-secondary leading-relaxed">
+            <p className="text-[#333] leading-relaxed">
               Discovery protocols help agents find each other. Trust registries verify
               identity. Escrow holds funds. Payment rails move money. But none of that
               works without a formal agreement defining the terms. That&apos;s what Ambr
@@ -133,10 +136,10 @@ export default function EcosystemPage() {
         </ScrollReveal>
       </SectionWrapper>
 
-      <SectionWrapper>
+      <SectionWrapper variant="dark">
         <ScrollReveal>
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
+            <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
               Build With Us
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">

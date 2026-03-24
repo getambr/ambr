@@ -164,23 +164,24 @@ function ActivateContent() {
   const isLoading = status === 'loading' || status === 'polling';
 
   return (
-    <main className="pt-20">
+    <main className="pt-20 section-dark relative">
+      <div className="grid-bg grid-bg-dark" />
       <SectionWrapper>
-        <div className="mx-auto max-w-lg">
+        <div className="mx-auto max-w-lg relative">
           <div className="text-center mb-8">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+            <p className="text-micro mb-2">
               Activate
             </p>
-            <h1 className="text-3xl font-bold text-text-primary sm:text-4xl">
+            <h1 className="text-3xl text-text-primary sm:text-4xl">
               Claim Your API Key
             </h1>
-            <p className="mt-4 text-text-secondary text-sm">
+            <p className="mt-4 text-[#aaa] text-sm font-light">
               Pay with card or crypto to activate your API key instantly.
             </p>
           </div>
 
           {status === 'success' ? (
-            <div className="rounded-xl border border-amber/30 bg-amber-glow p-6 text-center">
+            <div className="rounded-none border border-amber/60 bg-amber-glow relative p-6 text-center">
               <svg
                 className="w-12 h-12 text-amber mx-auto mb-4"
                 fill="none"
@@ -194,20 +195,20 @@ function ActivateContent() {
                   d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <h2 className="text-xl font-bold text-text-primary mb-2">
+              <h2 className="text-xl text-text-primary mb-2">
                 Key Activated
               </h2>
               <p className="text-sm text-text-secondary mb-4">
                 Save this key — it cannot be retrieved again.
               </p>
-              <div className="rounded-lg bg-surface border border-border p-3 mb-4">
+              <div className="rounded-none bg-surface border border-amber/40 p-3 mb-4">
                 <code className="text-sm font-mono text-amber break-all select-all">
                   {apiKey}
                 </code>
               </div>
               <button
                 onClick={copyKey}
-                className="rounded-lg bg-amber px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-amber-light"
+                className="rounded-none bg-amber px-4 py-2 text-sm font-mono uppercase tracking-wide text-xs text-background transition-colors hover:bg-amber-light"
               >
                 {copied ? 'Copied' : 'Copy Key'}
               </button>
@@ -220,7 +221,7 @@ function ActivateContent() {
               </p>
             </div>
           ) : status === 'polling' ? (
-            <div className="rounded-xl border border-amber/20 bg-amber-glow p-6 text-center">
+            <div className="rounded-none border border-amber/60 bg-amber-glow relative p-6 text-center">
               <div className="w-8 h-8 border-2 border-amber border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-sm text-text-secondary">
                 Payment received. Generating your API key...
@@ -229,7 +230,7 @@ function ActivateContent() {
           ) : (
             <>
               {/* Tab switcher — only show when Stripe is live */}
-              {stripeReady && <div className="flex rounded-lg border border-border bg-surface mb-6 p-1">
+              {stripeReady && <div className="flex rounded-none border border-amber/60 bg-surface mb-6 p-1">
                 <button
                   type="button"
                   onClick={() => { setTab('card'); setStatus('idle'); setErrorMessage(''); }}
@@ -295,7 +296,7 @@ function ActivateContent() {
                       type="email"
                       {...stripeForm.register('email', { required: 'Email is required' })}
                       placeholder="you@company.com"
-                      className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                      className="w-full rounded-none border border-amber/40 bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-amber focus:border-amber"
                     />
                     {stripeForm.formState.errors.email && (
                       <p className="text-xs text-red-400 mt-1">{stripeForm.formState.errors.email.message}</p>
@@ -319,7 +320,7 @@ function ActivateContent() {
               ) : (
                 <form onSubmit={cryptoForm.handleSubmit(onCryptoSubmit)} className="space-y-5">
                   {/* Wallet address */}
-                  <div className="rounded-xl border border-amber/20 bg-amber-glow p-4 text-center">
+                  <div className="rounded-none border border-amber/60 bg-amber-glow relative p-4 text-center">
                     <p className="text-xs text-text-secondary mb-2">Send a supported token on Base to:</p>
                     <code className="text-sm font-mono text-text-primary select-all break-all">
                       {process.env.NEXT_PUBLIC_WALLET_ADDRESS}
@@ -368,7 +369,7 @@ function ActivateContent() {
                       type="email"
                       {...cryptoForm.register('email', { required: 'Email is required' })}
                       placeholder="you@company.com"
-                      className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                      className="w-full rounded-none border border-amber/40 bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-amber focus:border-amber"
                     />
                     {cryptoForm.formState.errors.email && (
                       <p className="text-xs text-red-400 mt-1">{cryptoForm.formState.errors.email.message}</p>
@@ -390,7 +391,7 @@ function ActivateContent() {
                         },
                       })}
                       placeholder="0x..."
-                      className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-mono text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                      className="w-full rounded-none border border-amber/40 bg-surface px-4 py-2.5 text-sm font-mono text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-amber focus:border-amber"
                     />
                     {cryptoForm.formState.errors.tx_hash && (
                       <p className="text-xs text-red-400 mt-1">{cryptoForm.formState.errors.tx_hash.message}</p>

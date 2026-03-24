@@ -1,0 +1,863 @@
+<html lang="en" vid="0"><head vid="1">
+    <meta charset="UTF-8" vid="2">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" vid="3">
+    <title vid="4">Ambr | Ricardian Legal Infrastructure for AI</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" vid="5">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" vid="6">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@300;400;500&amp;family=JetBrains+Mono:wght@100;300;400&amp;display=swap" rel="stylesheet" vid="7">
+    <style vid="8">
+        :root {
+            --onyx: #0a0a0a;
+            --taupe: #aba59a;
+            --taupe-dark: #8f897e;
+            --brass: #c6a87c;
+            --brass-glow: rgba(198, 168, 124, 0.15);
+            --brass-gradient: linear-gradient(135deg, #9a7d52 0%, #d8c29d 40%, #c6a87c 60%, #e8d9bb 100%);
+            --off-white: #f4f4f0;
+            --gray-dark: #222222;
+            --gray-light: #dddddd;
+            
+            --font-serif: 'Instrument Serif', serif;
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --grid-line-dark: rgba(198, 168, 124, 0.2);
+            --grid-line-light: rgba(10, 10, 10, 0.15);
+            --grid-line-gold: rgba(198, 168, 124, 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--onyx);
+            color: var(--off-white);
+            font-family: var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            line-height: 1.4;
+        }
+
+        ::selection {
+            background-color: var(--brass);
+            color: var(--onyx);
+        }
+
+        
+        h1, h2, h3, h4 {
+            font-family: var(--font-serif);
+            font-weight: 400;
+        }
+
+        .text-micro {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--brass);
+        }
+
+        .text-mono {
+            font-family: var(--font-mono);
+        }
+
+        
+        .section-dark {
+            background-color: var(--onyx);
+            color: var(--off-white);
+            position: relative;
+        }
+
+        .section-light {
+            background-color: var(--taupe);
+            color: var(--onyx);
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .grid-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .grid-bg-dark {
+            background-image: 
+                linear-gradient(var(--grid-line-dark) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line-dark) 1px, transparent 1px);
+            background-size: 4rem 4rem;
+        }
+
+        .grid-bg-light {
+            background-image: 
+                linear-gradient(var(--grid-line-light) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line-light) 1px, transparent 1px);
+            background-size: 4rem 4rem;
+        }
+
+        
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            mix-blend-mode: difference;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .logo-mark {
+            width: 24px;
+            height: 24px;
+            position: relative;
+        }
+
+        .logo-mark svg {
+            width: 100%;
+            height: 100%;
+            stroke: #fff;
+            fill: none;
+        }
+
+        nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            padding-top: 5rem;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--grid-line-gold);
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            margin-bottom: 2rem;
+            background: rgba(10,10,10,0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--brass);
+            box-shadow: 0 0 8px var(--brass);
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 6vw, 6rem);
+            line-height: 0.95;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+            background: var(--brass-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: #aaa;
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            letter-spacing: -0.01em;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background-color: var(--brass);
+            color: var(--onyx);
+            border: 1px solid var(--brass);
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(255,255,255,0.2), transparent);
+            pointer-events: none;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--brass);
+            border: 1px solid var(--grid-line-gold);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--brass);
+            background: rgba(198, 168, 124, 0.05);
+        }
+
+        
+        .hero-motif-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        .svg-motif {
+            width: 100%;
+            height: 100%;
+            animation: rotateMotif 120s linear infinite;
+        }
+
+        @keyframes rotateMotif {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        
+        .cards-section {
+            padding: 8rem 0;
+            border-top: 1px solid var(--grid-line-light);
+        }
+
+        .section-header {
+            margin-bottom: 6rem;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 4rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--grid-line-light);
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            line-height: 1;
+            color: var(--onyx);
+        }
+
+        .section-header p {
+            font-size: 1.2rem;
+            color: var(--gray-dark);
+            max-width: 600px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .ambr-card {
+            position: relative;
+            aspect-ratio: 2 / 3;
+            background-color: var(--onyx);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            border: 1px solid var(--grid-line-gold);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            transition: transform 0.4s ease;
+        }
+
+        .ambr-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .ambr-card.light {
+            background-color: var(--taupe-dark);
+            border-color: rgba(10,10,10,0.2);
+        }
+
+        .ambr-card.light .text-micro {
+            color: var(--onyx);
+        }
+
+        .ambr-card.light h3, .ambr-card.light p {
+            color: var(--onyx);
+        }
+
+        
+        .card-frame {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            bottom: 1rem;
+            border: 1px solid var(--grid-line-gold);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .ambr-card.light .card-frame {
+            border-color: rgba(10,10,10,0.2);
+        }
+
+        
+        .corner {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--brass);
+            z-index: 2;
+        }
+        .ambr-card.light .corner { background: var(--onyx); }
+
+        .corner-tl { top: 1rem; left: 1rem; }
+        .corner-tr { top: 1rem; right: 1rem; }
+        .corner-bl { bottom: 1rem; left: 1rem; }
+        .corner-br { bottom: 1rem; right: 1rem; }
+
+        
+        .card-geo {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .card-geo svg {
+            width: 100%;
+            height: 100%;
+            stroke: var(--grid-line-gold);
+            stroke-width: 0.5;
+            fill: none;
+        }
+
+        .ambr-card.light .card-geo svg {
+            stroke: rgba(10,10,10,0.15);
+        }
+
+        .card-header, .card-body, .card-footer {
+            position: relative;
+            z-index: 10;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .card-body {
+            text-align: center;
+            margin: auto 0;
+        }
+
+        .card-body h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--off-white);
+        }
+
+        .card-body p {
+            font-size: 0.85rem;
+            color: #999;
+            font-weight: 300;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-top: 1px solid var(--grid-line-gold);
+            padding-top: 1rem;
+        }
+
+        .ambr-card.light .card-footer {
+            border-top-color: rgba(10,10,10,0.15);
+        }
+
+        
+        .architecture-section {
+            padding: 8rem 0;
+            border-top: 1px solid var(--grid-line-dark);
+        }
+
+        .arch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border: 1px solid var(--grid-line-gold);
+        }
+
+        .arch-panel {
+            padding: 4rem;
+            position: relative;
+        }
+
+        .arch-panel:first-child {
+            border-right: 1px solid var(--grid-line-gold);
+        }
+
+        .arch-title {
+            font-family: var(--font-serif);
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--brass);
+        }
+
+        .data-list {
+            list-style: none;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--grid-line-dark);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+
+        .data-label {
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .data-value {
+            color: var(--off-white);
+        }
+
+        .data-value.highlight {
+            color: var(--brass);
+        }
+
+        
+        footer {
+            background-color: var(--onyx);
+            padding: 4rem 2rem 2rem;
+            border-top: 1px solid var(--grid-line-dark);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: 4rem;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .footer-col h4 {
+            font-family: var(--font-mono);
+            color: var(--off-white);
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-col ul {
+            list-style: none;
+        }
+
+        .footer-col li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-col a {
+            color: #666;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-col a:hover {
+            color: var(--brass);
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 2rem;
+            border-top: 1px solid var(--grid-line-dark);
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        
+        @media (max-width: 1024px) {
+            .section-header, .arch-grid {
+                grid-template-columns: 1fr;
+            }
+            .arch-panel:first-child {
+                border-right: none;
+                border-bottom: 1px solid var(--grid-line-gold);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .card-grid { grid-template-columns: 1fr; }
+            .hero-motif-container { width: 400px; height: 400px; }
+        }
+    </style>
+</head>
+<body vid="9">
+
+    <header vid="10">
+        <a href="#" class="logo" vid="11">
+            <div class="logo-mark" vid="12">
+                <svg viewBox="0 0 24 24" vid="13">
+                    <ellipse cx="12" cy="12" rx="10" ry="6" vid="14"></ellipse>
+                    <circle cx="12" cy="12" r="3" vid="15"></circle>
+                    <line x1="12" y1="2" x2="12" y2="22" vid="16"></line>
+                    <line x1="2" y1="12" x2="22" y2="12" vid="17"></line>
+                </svg>
+            </div>
+            Ambr
+        </a>
+        <nav vid="18">
+            <a href="#protocol" vid="19">Protocol</a>
+            <a href="#contracts" vid="20">Ricardian</a>
+            <a href="#audit" vid="21">Audit</a>
+            <a href="#docs" vid="22">Docs</a>
+        </nav>
+    </header>
+
+    <main vid="23">
+        <section class="section-dark hero" vid="24">
+            <div class="grid-bg grid-bg-dark" vid="25"></div>
+            
+            <div class="hero-motif-container" vid="26">
+                <svg class="svg-motif" viewBox="0 0 800 800" vid="27">
+                    <defs vid="28">
+                        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%" vid="29">
+                            <stop offset="0%" stop-color="#c6a87c" stop-opacity="0.8" vid="30"></stop>
+                            <stop offset="50%" stop-color="#e8d9bb" stop-opacity="0.2" vid="31"></stop>
+                            <stop offset="100%" stop-color="#9a7d52" stop-opacity="0.8" vid="32"></stop>
+                        </linearGradient>
+                    </defs>
+                    
+                    <circle cx="400" cy="400" r="350" fill="none" stroke="url(#goldGrad)" stroke-width="0.5" stroke-dasharray="4 4" vid="33"></circle>
+                    <circle cx="400" cy="400" r="250" fill="none" stroke="url(#goldGrad)" stroke-width="1" vid="34"></circle>
+                    
+                    
+                    <g stroke="url(#goldGrad)" stroke-width="0.5" opacity="0.5" vid="35">
+                        <line x1="400" y1="0" x2="400" y2="800" vid="36"></line>
+                        <line x1="0" y1="400" x2="800" y2="400" vid="37"></line>
+                        <line x1="117" y1="117" x2="683" y2="683" vid="38"></line>
+                        <line x1="117" y1="683" x2="683" y2="117" vid="39"></line>
+                    </g>
+
+                    
+                    <ellipse cx="400" cy="400" rx="300" ry="150" fill="none" stroke="url(#goldGrad)" stroke-width="2" transform="rotate(30 400 400)" vid="40"></ellipse>
+                    <ellipse cx="400" cy="400" rx="300" ry="150" fill="none" stroke="url(#goldGrad)" stroke-width="2" transform="rotate(-30 400 400)" vid="41"></ellipse>
+                    
+                    
+                    <circle cx="400" cy="400" r="20" fill="url(#goldGrad)" vid="42"></circle>
+                    <circle cx="400" cy="400" r="80" fill="none" stroke="url(#goldGrad)" stroke-width="1" vid="43"></circle>
+                </svg>
+            </div>
+
+            <div class="hero-content" vid="44">
+                <div class="hero-badge" vid="45">
+                    <div class="badge-dot" vid="46"></div>
+                    <span class="text-micro" style="color: #fff;" vid="47">Ambr Protocol v1.0.4 Live</span>
+                </div>
+                <h1 vid="48">Ricardian Legal<br vid="49">Infrastructure for AI</h1>
+                <p vid="50">Providing delegation authority, commerce contracts, and an immutable compliance audit trail. Minted as cNFTs on-chain. Readable by lawyers, executable by agents.</p>
+                <div class="cta-group" vid="51">
+                    <a href="#" class="btn btn-primary" vid="52">Initialize Contract</a>
+                    <a href="#" class="btn btn-secondary" vid="53">Read Whitepaper</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="protocol" class="section-light cards-section" vid="54">
+            <div class="grid-bg grid-bg-light" vid="55"></div>
+            <div class="container" vid="56">
+                <div class="section-header" vid="57">
+                    <h2 vid="58">The Dual-State Architecture</h2>
+                    <p vid="59">Ambr bridges the gap between legal prose and code. Every contract exists simultaneously as human-readable text and machine-parsable logic, inextricably linked via cryptographic hashes.</p>
+                </div>
+
+                <div class="card-grid" vid="60">
+                    
+                    <div class="ambr-card" vid="61">
+                        <div class="card-frame" vid="62"></div>
+                        <div class="corner corner-tl" vid="63"></div>
+                        <div class="corner corner-tr" vid="64"></div>
+                        <div class="corner corner-bl" vid="65"></div>
+                        <div class="corner corner-br" vid="66"></div>
+                        
+                        <div class="card-geo" vid="67">
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" vid="68">
+                                <ellipse cx="50" cy="50" rx="60" ry="80" vid="69"></ellipse>
+                                <line x1="0" y1="30" x2="100" y2="30" vid="70"></line>
+                                <line x1="0" y1="70" x2="100" y2="70" vid="71"></line>
+                            </svg>
+                        </div>
+
+                        <div class="card-header" vid="72">
+                            <span class="text-micro" vid="73">// COMP.01</span>
+                            <div class="text-micro" style="text-align: right;" vid="74">
+                                REF: DELEGATION<br vid="75">
+                                AUTH: ACTIVE
+                            </div>
+                        </div>
+
+                        <div class="card-body" vid="76">
+                            <h3 vid="77">Delegation Authority</h3>
+                            <p vid="78">Grant AI agents specific, bounded permissions to execute commerce on your behalf, backed by legal framework.</p>
+                        </div>
+
+                        <div class="card-footer" vid="79">
+                            <span class="text-micro" vid="80">REQ.AGENT.PARSE</span>
+                            <span class="text-micro" style="color: #aaa;" vid="81">&gt;_ EXECUTE</span>
+                        </div>
+                    </div>
+
+                    
+                    <div class="ambr-card light" vid="82">
+                        <div class="card-frame" vid="83"></div>
+                        <div class="corner corner-tl" vid="84"></div>
+                        <div class="corner corner-tr" vid="85"></div>
+                        <div class="corner corner-bl" vid="86"></div>
+                        <div class="corner corner-br" vid="87"></div>
+                        
+                        <div class="card-geo" vid="88">
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" vid="89">
+                                <circle cx="50" cy="50" r="45" vid="90"></circle>
+                                <line x1="50" y1="0" x2="50" y2="100" vid="91"></line>
+                                <line x1="0" y1="50" x2="100" y2="50" vid="92"></line>
+                            </svg>
+                        </div>
+
+                        <div class="card-header" vid="93">
+                            <span class="text-micro" vid="94">// COMP.02</span>
+                            <div class="text-micro" style="text-align: right;" vid="95">
+                                REF: RICARDIAN<br vid="96">
+                                FORMAT: cNFT
+                            </div>
+                        </div>
+
+                        <div class="card-body" vid="97">
+                            <h3 vid="98">Commerce Contracts</h3>
+                            <p vid="99">Standardized, legally binding agreements stored immutably on-chain as compressed NFTs to reduce state bloat.</p>
+                        </div>
+
+                        <div class="card-footer" vid="100">
+                            <span class="text-micro" vid="101">MINT.CNFT.0x8F2...</span>
+                            <span class="text-micro" style="color: #555;" vid="102">[ IMMUTABLE ]</span>
+                        </div>
+                    </div>
+
+                    
+                    <div class="ambr-card" vid="103">
+                        <div class="card-frame" vid="104"></div>
+                        <div class="corner corner-tl" vid="105"></div>
+                        <div class="corner corner-tr" vid="106"></div>
+                        <div class="corner corner-bl" vid="107"></div>
+                        <div class="corner corner-br" vid="108"></div>
+                        
+                        <div class="card-geo" vid="109">
+                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" vid="110">
+                                <ellipse cx="50" cy="50" rx="40" ry="90" transform="rotate(45 50 50)" vid="111"></ellipse>
+                                <ellipse cx="50" cy="50" rx="40" ry="90" transform="rotate(-45 50 50)" vid="112"></ellipse>
+                            </svg>
+                        </div>
+
+                        <div class="card-header" vid="113">
+                            <span class="text-micro" vid="114">// COMP.03</span>
+                            <div class="text-micro" style="text-align: right;" vid="115">
+                                REF: AUDIT<br vid="116">
+                                STATE: SYNCED
+                            </div>
+                        </div>
+
+                        <div class="card-body" vid="117">
+                            <h3 vid="118">Compliance Trail</h3>
+                            <p vid="119">Every agent action is cryptographically tied to its authorizing contract, creating a perfect, auditable history.</p>
+                        </div>
+
+                        <div class="card-footer" vid="120">
+                            <span class="text-micro" vid="121">VERIFY.SIGNATURE</span>
+                            <span class="text-micro" style="color: #aaa;" vid="122">SEC. 4.1(B)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contracts" class="section-dark architecture-section" vid="123">
+            <div class="container" vid="124">
+                <div class="arch-grid" vid="125">
+                    <div class="arch-panel" vid="126">
+                        <span class="text-micro" style="display: block; margin-bottom: 2rem; color: #666;" vid="127">// LAYER 01: LEGAL PROSE</span>
+                        <h3 class="arch-title" vid="128">Human<br vid="129">Readable</h3>
+                        <p style="color: #999; margin-bottom: 3rem; font-size: 1.1rem; max-width: 400px;" vid="130">
+                            Structured natural language agreements formatted for jurisdictional compliance and traditional legal review.
+                        </p>
+                        <ul class="data-list" vid="131">
+                            <li class="data-row" vid="132">
+                                <span class="data-label" vid="133">Format</span>
+                                <span class="data-value" vid="134">Markdown / PDF Output</span>
+                            </li>
+                            <li class="data-row" vid="135">
+                                <span class="data-label" vid="136">Jurisdiction</span>
+                                <span class="data-value" vid="137">Delaware, US (Default)</span>
+                            </li>
+                            <li class="data-row" vid="138">
+                                <span class="data-label" vid="139">Cryptographic Tie</span>
+                                <span class="data-value highlight" vid="140">SHA-256 Hash Included</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="arch-panel" vid="141">
+                        <div class="grid-bg grid-bg-dark" style="opacity: 0.5;" vid="142"></div>
+                        <span class="text-micro" style="display: block; margin-bottom: 2rem; color: var(--brass);" vid="143">// LAYER 02: MACHINE LOGIC</span>
+                        <h3 class="arch-title" style="color: var(--off-white);" vid="144">Agent<br vid="145">Parsable</h3>
+                        <p style="color: #999; margin-bottom: 3rem; font-size: 1.1rem; max-width: 400px;" vid="146">
+                            Strict JSON-schema parameters defining execution bounds, spending limits, and authorized counterparties.
+                        </p>
+                        <ul class="data-list" vid="147">
+                            <li class="data-row" vid="148">
+                                <span class="data-label" vid="149">Format</span>
+                                <span class="data-value" vid="150">JSON / Protocol Buffers</span>
+                            </li>
+                            <li class="data-row" vid="151">
+                                <span class="data-label" vid="152">State Storage</span>
+                                <span class="data-value" vid="153">Solana cNFT</span>
+                            </li>
+                            <li class="data-row" vid="154">
+                                <span class="data-label" vid="155">Agent Interface</span>
+                                <span class="data-value highlight" vid="156">REST / GraphQL API</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer vid="157">
+        <div class="footer-grid" vid="158">
+            <div class="footer-col" vid="159">
+                <a href="#" class="logo" style="margin-bottom: 1.5rem; display: inline-flex;" vid="160">
+                    <div class="logo-mark" style="width: 16px; height: 16px;" vid="161">
+                        <svg viewBox="0 0 24 24" vid="162">
+                            <ellipse cx="12" cy="12" rx="10" ry="6" vid="163"></ellipse>
+                            <circle cx="12" cy="12" r="3" vid="164"></circle>
+                            <line x1="12" y1="2" x2="12" y2="22" vid="165"></line>
+                            <line x1="2" y1="12" x2="22" y2="12" vid="166"></line>
+                        </svg>
+                    </div>
+                    Ambr
+                </a>
+                <p style="max-width: 200px; line-height: 1.6;" vid="167">Ricardian Infrastructure for Agentic Commerce.</p>
+            </div>
+            <div class="footer-col" vid="168">
+                <h4 vid="169">Protocol</h4>
+                <ul vid="170">
+                    <li vid="171"><a href="#" vid="172">Architecture</a></li>
+                    <li vid="173"><a href="#" vid="174">cNFT Standard</a></li>
+                    <li vid="175"><a href="#" vid="176">Smart Contracts</a></li>
+                    <li vid="177"><a href="#" vid="178">Security Audits</a></li>
+                </ul>
+            </div>
+            <div class="footer-col" vid="179">
+                <h4 vid="180">Developers</h4>
+                <ul vid="181">
+                    <li vid="182"><a href="#" vid="183">Documentation</a></li>
+                    <li vid="184"><a href="#" vid="185">SDK Reference</a></li>
+                    <li vid="186"><a href="#" vid="187">Agent Integration</a></li>
+                    <li vid="188"><a href="#" vid="189">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer-col" vid="190">
+                <h4 vid="191">Legal</h4>
+                <ul vid="192">
+                    <li vid="193"><a href="#" vid="194">Terms of Service</a></li>
+                    <li vid="195"><a href="#" vid="196">Privacy Policy</a></li>
+                    <li vid="197"><a href="#" vid="198">Jurisdictional Matrix</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom" vid="199">
+            <span vid="200">© 2024 Ambr Protocol Labs. All rights reserved.</span>
+            <span vid="201">SYS.STATUS: <span style="color: var(--brass);" vid="202">OPERATIONAL</span></span>
+        </div>
+    </footer>
+
+
+</body></html>

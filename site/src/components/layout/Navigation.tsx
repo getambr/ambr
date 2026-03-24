@@ -29,17 +29,17 @@ export default function Navigation() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 mix-blend-difference ${
           scrolled
-            ? 'bg-background/80 backdrop-blur-md border-b border-border'
-            : 'bg-transparent'
+            ? 'bg-background/80 backdrop-blur-sm border-b border-white/10'
+            : 'bg-transparent backdrop-blur-[4px] border-b border-white/10'
         }`}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <Image src="/logo.png" alt="" width={32} height={32} className="rounded-sm" />
-              <span className="text-xl font-bold text-amber">Ambr</span>
+              <span className="text-xl font-serif text-amber">Ambr</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-8">
@@ -47,7 +47,7 @@ export default function Navigation() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm transition-colors ${
+                  className={`font-mono text-xs uppercase tracking-wide transition-colors ${
                     pathname === link.href
                       ? 'text-amber font-medium'
                       : 'text-text-secondary hover:text-text-primary'
@@ -58,7 +58,7 @@ export default function Navigation() {
               ))}
               <Link
                 href="/activate"
-                className="rounded-lg bg-amber px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-amber-light"
+                className="rounded-none bg-amber px-4 py-2 font-mono text-xs uppercase tracking-wide font-medium text-background transition-colors hover:bg-amber-light"
               >
                 Get Started
               </Link>

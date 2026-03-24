@@ -20,9 +20,9 @@ export type ButtonProps = ButtonAsButton | ButtonAsLink;
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    'bg-amber text-background hover:bg-amber-light focus-visible:ring-amber',
+    'bg-amber text-background hover:bg-amber-light focus-visible:ring-amber font-mono uppercase tracking-wide text-xs',
   secondary:
-    'border border-amber text-amber hover:bg-amber-glow focus-visible:ring-amber',
+    'border border-amber/40 text-amber hover:border-amber hover:bg-amber-glow focus-visible:ring-amber font-mono uppercase tracking-wide text-xs',
   ghost:
     'text-text-secondary hover:text-text-primary hover:bg-surface-elevated focus-visible:ring-text-secondary',
 };
@@ -40,7 +40,7 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none';
+    'inline-flex items-center justify-center rounded-none font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none';
 
   const classes = `${base} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
 

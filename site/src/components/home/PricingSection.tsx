@@ -46,10 +46,10 @@ export default function PricingSection() {
     <SectionWrapper>
       <ScrollReveal>
         <div className="text-center mb-10">
-          <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+          <p className="text-micro mb-2">
             Pricing
           </p>
-          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
+          <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
             Transparent Fee Structure
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-text-secondary text-sm">
@@ -61,8 +61,15 @@ export default function PricingSection() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {pricingItems.map((item, i) => (
           <ScrollReveal key={item.label} delay={i * 0.08}>
-            <div className="group relative overflow-hidden rounded-xl glass-card p-5 h-full flex flex-col">
+            <div className="group relative overflow-hidden rounded-none bg-surface border border-amber/60 p-6 h-full flex flex-col">
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              {/* Inner frame */}
+              <div className="absolute top-4 left-4 right-4 bottom-4 border border-amber/30 pointer-events-none" />
+              {/* Corner dots */}
+              <div className="absolute top-4 left-4 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
               <p className="text-xs font-mono uppercase tracking-wider text-text-secondary">
                 {item.label}
               </p>

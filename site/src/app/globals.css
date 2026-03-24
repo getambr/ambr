@@ -1,19 +1,22 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #000000;
+  --color-background: #0a0a0a;
   --color-surface: #111111;
   --color-surface-elevated: #1C1C1C;
   --color-border: #2E2E2E;
-  --color-text-primary: #F0F0F5;
-  --color-text-secondary: #9090A0;
-  --color-amber: #F5A623;
-  --color-amber-light: #FFD080;
-  --color-amber-dark: #C47F0A;
-  --color-amber-glow: rgba(245, 166, 35, 0.15);
+  --color-text-primary: #f4f4f0;
+  --color-text-secondary: #999999;
+  --color-taupe: #aba59a;
+  --color-taupe-dark: #8f897e;
+  --color-amber: #c6a87c;
+  --color-amber-light: #e8d9bb;
+  --color-amber-dark: #9a7d52;
+  --color-amber-glow: rgba(198, 168, 124, 0.15);
   --color-success: #34D399;
   --color-error: #F87171;
   --font-sans: var(--font-inter);
+  --font-serif: var(--font-instrument-serif);
   --font-mono: var(--font-jetbrains-mono);
 }
 
@@ -22,7 +25,7 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -36,7 +39,83 @@ html {
   color: var(--color-background);
 }
 
-/* Glass card system — portfolio-grade depth */
+:where(h1, h2, h3, h4) {
+  font-family: "Instrument Serif", "Instrument Serif Fallback", serif !important;
+  font-weight: 400 !important;
+}
+
+/* Micro label — used across cards and sections */
+.text-micro {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-amber);
+}
+
+.text-micro-dark {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #222222;
+}
+
+/* Grid background overlays */
+.grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.grid-bg-dark {
+  background-image:
+    linear-gradient(rgba(198, 168, 124, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(198, 168, 124, 0.12) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+}
+
+.grid-bg-light {
+  background-image:
+    linear-gradient(rgba(10, 10, 10, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 10, 10, 0.1) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+}
+
+/* Section variants */
+.section-dark {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  position: relative;
+}
+
+.section-light {
+  background-color: var(--color-taupe);
+  color: var(--color-background);
+  position: relative;
+}
+
+/* Brass gradient text */
+.brass-gradient-text {
+  background: linear-gradient(135deg, #9a7d52 0%, #d8c29d 40%, #c6a87c 60%, #e8d9bb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(198, 168, 124, 0.3), transparent);
+  margin: 0 auto;
+  max-width: 80rem;
+}
+
+/* Glass card — kept for platform pages (dashboard, reader, activate) */
 .glass-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -56,17 +135,7 @@ html {
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Section divider */
-.section-divider {
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.06), transparent);
-  margin: 0 auto;
-  max-width: 80rem;
-}
-
-@keyframes auroraShift {
-  0% { filter: hue-rotate(0deg); transform: scale(1) translate(0, 0); }
-  33% { transform: scale(1.05) translate(2%, -1%); }
-  66% { filter: hue-rotate(10deg); transform: scale(1.02) translate(-1%, 2%); }
-  100% { filter: hue-rotate(-5deg); transform: scale(1) translate(1%, -1%); }
+@keyframes rotateMotif {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

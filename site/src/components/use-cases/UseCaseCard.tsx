@@ -11,7 +11,7 @@ export default function UseCaseCard({ useCase, index }: UseCaseCardProps) {
   return (
     <ScrollReveal delay={index * 0.1}>
       <div className="rounded-xl border border-border bg-surface p-6 hover:border-amber/20 transition-colors">
-        <h3 className="text-xl font-bold text-text-primary mb-3">
+        <h3 className="text-xl text-text-primary mb-3">
           {useCase.title}
         </h3>
 

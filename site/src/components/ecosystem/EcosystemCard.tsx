@@ -22,9 +22,16 @@ export default function EcosystemCard({ name, description, layer, status, docsUr
 
   return (
     <ScrollReveal delay={index * 0.08}>
-      <div className="glass-card rounded-xl p-6 h-full">
+      <div className="relative bg-background border border-amber/60 p-6 rounded-none h-full">
+        {/* Inner frame */}
+        <div className="absolute top-4 left-4 right-4 bottom-4 border border-amber/30 pointer-events-none" />
+        {/* Corner dots */}
+        <div className="absolute top-4 left-4 w-1.5 h-1.5 bg-amber" />
+        <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-amber" />
+        <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
+        <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-text-primary">{name}</h3>
+          <h3 className="text-lg text-text-primary">{name}</h3>
           <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${s.classes}`}>
             {s.label}
           </span>

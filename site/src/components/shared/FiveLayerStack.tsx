@@ -25,9 +25,9 @@ const layers: Layer[] = [
     description: 'Agent discovery & capability exchange',
     detail: 'Agents advertise capabilities via A2A Agent Cards and MCP Server manifests. Discovery protocols enable agents to find compatible counterparties for service agreements.',
     projects: ['A2A Agent Cards', 'MCP'],
-    color: 'text-violet-400',
-    bgColor: 'bg-violet-500/10',
-    borderColor: 'border-violet-500/30',
+    color: 'text-amber',
+    bgColor: 'bg-amber-glow',
+    borderColor: 'border-amber/60',
   },
   {
     name: 'Agreements',
@@ -36,34 +36,34 @@ const layers: Layer[] = [
     projects: ['Ambr'],
     color: 'text-amber',
     bgColor: 'bg-amber-glow',
-    borderColor: 'border-amber/30',
+    borderColor: 'border-amber/60',
   },
   {
     name: 'Trust',
     description: 'Identity verification & reputation',
     detail: 'ERC-8004 provides on-chain identity and reputation registries. Agents verify counterparty track records before entering agreements, building a web of trust across the agent economy.',
     projects: ['ERC-8004'],
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10',
-    borderColor: 'border-cyan-500/30',
+    color: 'text-amber',
+    bgColor: 'bg-amber-glow',
+    borderColor: 'border-amber/60',
   },
   {
     name: 'Escrow',
     description: 'Conditional payment holding & release',
     detail: 'KAMIYO and x0 Protocol provide escrow services with oracle-verified conditions. Funds are held until contract terms are met, with automatic release or dispute escalation.',
     projects: ['KAMIYO', 'x0 Protocol'],
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/30',
+    color: 'text-amber',
+    bgColor: 'bg-amber-glow',
+    borderColor: 'border-amber/60',
   },
   {
     name: 'Payments',
     description: 'Micropayments & session billing',
     detail: 'x402 V2 enables HTTP-native micropayments. ACP and AP2 provide agent-to-agent payment coordination. Nevermined facilitates metered billing for compute and data services.',
     projects: ['x402 V2', 'ACP', 'AP2'],
-    color: 'text-rose-400',
-    bgColor: 'bg-rose-500/10',
-    borderColor: 'border-rose-500/30',
+    color: 'text-amber',
+    bgColor: 'bg-amber-glow',
+    borderColor: 'border-amber/60',
   },
 ];
 
@@ -83,19 +83,19 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.08 }}
-              className={`rounded-xl border p-4 transition-colors ${
+              className={`rounded-none border p-4 transition-colors ${
                 isHighlighted
-                  ? `${layer.borderColor} ${layer.bgColor} ring-1 ring-amber/20`
-                  : 'border-border bg-surface/80 backdrop-blur-sm hover:bg-surface-elevated/80 hover:border-amber/20'
+                  ? 'border-amber/60 bg-amber-glow ring-1 ring-amber/20'
+                  : 'border-border bg-surface/80 backdrop-blur-sm hover:bg-surface-elevated/80 hover:border-amber/60'
               }`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className={`text-xs font-mono uppercase tracking-wider ${layer.color}`}>
+                    <span className="text-xs font-mono uppercase tracking-wider text-amber">
                       Layer {i + 1}
                     </span>
-                    <h3 className={`text-base font-semibold ${isHighlighted ? layer.color : 'text-text-primary'}`}>
+                    <h3 className={`text-base ${isHighlighted ? 'text-amber' : 'text-text-primary'}`}>
                       {layer.name}
                     </h3>
                   </div>
@@ -108,7 +108,7 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
                   {layer.projects.map((p) => (
                     <span
                       key={p}
-                      className={`rounded-md px-2 py-0.5 text-xs font-medium ${layer.bgColor} ${layer.color}`}
+                      className="rounded-none border border-amber/60 px-2 py-0.5 text-xs font-medium text-amber"
                     >
                       {p}
                     </span>

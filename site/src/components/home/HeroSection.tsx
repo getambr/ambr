@@ -1,13 +1,8 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { motion, useReducedMotion } from 'framer-motion';
 import Button from '@/components/ui/Button';
-
-const UnicornScene = dynamic(() => import('unicornstudio-react/next'), {
-  ssr: false,
-  loading: () => <div className="absolute inset-0" style={{ background: '#000000' }} />,
-});
+import HeroMotif from '@/components/home/HeroMotif';
 
 export default function HeroSection() {
   const prefersReduced = useReducedMotion();
@@ -24,45 +19,19 @@ export default function HeroSection() {
         aria-hidden="true"
       />
 
-      <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
-        {/* Unicorn Studio WebGL background */}
-        {!prefersReduced && (
-          <div className="absolute inset-0 w-full h-full" aria-hidden="true">
-            <UnicornScene
-              projectId="F7h7aFibe1AHHTqGZQFV"
-              sdkUrl="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.0.5/dist/unicornStudio.umd.js"
-              width="100%"
-              height="100%"
-            />
-          </div>
-        )}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Grid background */}
+        <div className="grid-bg grid-bg-dark" />
 
-        {/* Amber radial glow — blends WebGL with site palette */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          aria-hidden="true"
-          style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(245,166,35,0.07) 0%, transparent 65%)',
-            zIndex: 1,
-          }}
-        />
+        {/* Hero motif */}
+        <HeroMotif />
 
         {/* Bottom vignette — fades into next section */}
         <div
           className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
           aria-hidden="true"
           style={{
-            background: 'linear-gradient(to bottom, transparent 0%, #000000 100%)',
-            zIndex: 2,
-          }}
-        />
-
-        {/* Edge vignette — keeps text readable */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          aria-hidden="true"
-          style={{
-            background: 'radial-gradient(ellipse 100% 100% at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%)',
+            background: 'linear-gradient(to bottom, transparent 0%, #0a0a0a 100%)',
             zIndex: 2,
           }}
         />
@@ -74,18 +43,22 @@ export default function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
           >
-            <p className="mb-4 text-sm font-mono uppercase tracking-widest text-amber">
-              The Legal Framework
-            </p>
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-text-primary sm:text-5xl lg:text-6xl">
-              AI Agents Acting in the{' '}
-              <span className="text-amber">Real World</span>
+            {/* Badge */}
+            <div className="mb-6 inline-flex items-center gap-2 border border-amber/40 rounded-full bg-background/50 backdrop-blur px-4 py-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
+              <span className="text-micro text-white">Ambr Protocol v1.0.4 Live</span>
+            </div>
+
+            <h1
+              className="brass-gradient-text leading-[0.95]"
+              style={{ fontSize: 'clamp(3rem, 6vw, 6rem)', letterSpacing: '-0.02em' }}
+            >
+              Ricardian Legal<br />Infrastructure for AI
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-text-secondary leading-relaxed">
-              Companies are deploying AI agents that buy, sign, and negotiate on
-              their behalf. Ambr provides the delegation authority,
-              commerce contracts, and compliance audit trail — Ricardian Contracts
-              that lawyers can read and agents can parse, minted as cNFTs on-chain.
+            <p className="mx-auto mt-6 max-w-[600px] text-lg leading-relaxed font-light" style={{ color: '#aaa' }}>
+              Providing delegation authority, commerce contracts, and an immutable
+              compliance audit trail. Minted as cNFTs on-chain. Readable by lawyers,
+              executable by agents.
             </p>
           </motion.div>
 
@@ -95,11 +68,11 @@ export default function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
           >
-            <Button href="/waitlist" size="lg">
-              Join the Waitlist
+            <Button href="/activate" size="lg">
+              Initialize Contract
             </Button>
-            <Button href="/how-it-works" variant="secondary" size="lg">
-              See How It Works
+            <Button href="/developers" variant="secondary" size="lg">
+              Read Documentation
             </Button>
           </motion.div>
         </div>

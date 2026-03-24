@@ -47,7 +47,7 @@ export default function WaitlistForm() {
 
   if (formState === 'success') {
     return (
-      <div className="rounded-xl border border-success/30 bg-success/10 p-6 text-center">
+      <div className="rounded-none border border-success/30 bg-success/10 p-6 text-center">
         <p className="text-lg font-medium text-success">You&apos;re on the list.</p>
         <p className="mt-2 text-sm text-text-secondary">
           We&apos;ll reach out when early access opens.
@@ -75,7 +75,7 @@ export default function WaitlistForm() {
           type="email"
           autoComplete="email"
           {...register('email')}
-          className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber min-h-[44px]"
+          className="w-full rounded-none border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber min-h-[44px]"
           placeholder="you@company.com"
         />
         {errors.email && (
@@ -93,7 +93,7 @@ export default function WaitlistForm() {
           type="text"
           autoComplete="name"
           {...register('name')}
-          className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber min-h-[44px]"
+          className="w-full rounded-none border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber min-h-[44px]"
           placeholder="Your name"
         />
       </div>
@@ -106,7 +106,7 @@ export default function WaitlistForm() {
         <select
           id="role"
           {...register('role')}
-          className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber min-h-[44px]"
+          className="w-full rounded-none border border-border bg-surface px-4 py-2.5 text-sm text-text-primary focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber min-h-[44px]"
         >
           <option value="">Select a role…</option>
           <option value="agent_developer">Agent Developer</option>
@@ -126,7 +126,7 @@ export default function WaitlistForm() {
           id="message"
           rows={3}
           {...register('message')}
-          className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber"
+          className="w-full rounded-none border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber"
           placeholder="Tell us about your use case…"
         />
       </div>

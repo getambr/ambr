@@ -50,13 +50,13 @@ export default function EarlyAccess() {
     <SectionWrapper>
       <ScrollReveal>
         <div className="text-center mb-10">
-          <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+          <p className="text-micro-dark mb-2">
             Support the Build
           </p>
-          <h2 className="text-3xl font-bold text-text-primary sm:text-4xl lg:text-5xl">
+          <h2 className="text-3xl text-background sm:text-4xl lg:text-5xl">
             Get Started — Pay on Base
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-text-secondary text-sm">
+          <p className="mx-auto mt-4 max-w-2xl text-[#333] text-sm">
             Pay with any supported token on Base L2 (USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC)
             — no intermediaries, no platform fees. On-chain verification, instant API key activation.
           </p>
@@ -67,19 +67,26 @@ export default function EarlyAccess() {
         {tiers.map((tier, i) => (
           <ScrollReveal key={tier.name} delay={i * 0.1}>
             <div
-              className={`group relative overflow-hidden rounded-xl glass-card p-6 h-full flex flex-col ${
+              className={`group relative overflow-hidden rounded-none bg-background border border-amber/60 p-6 h-full flex flex-col ${
                 tier.highlighted
-                  ? 'bg-gradient-to-br from-amber/8 via-transparent to-amber/5'
+                  ? 'bg-gradient-to-br from-amber/10 via-transparent to-amber/5'
                   : ''
               }`}
             >
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              {/* Inner frame */}
+              <div className="absolute top-4 left-4 right-4 bottom-4 border border-amber/30 pointer-events-none" />
+              {/* Corner dots */}
+              <div className="absolute top-4 left-4 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
               {tier.highlighted && (
-                <span className="inline-block self-start text-[10px] font-mono uppercase tracking-widest text-amber bg-amber/10 rounded px-2 py-0.5 mb-3">
+                <span className="inline-block self-start text-[10px] font-mono uppercase tracking-widest text-amber bg-amber/10 px-2 py-0.5 mb-3">
                   Most Popular
                 </span>
               )}
-              <h3 className="text-lg font-semibold text-text-primary">
+              <h3 className="text-lg text-text-primary">
                 {tier.name}
               </h3>
               <div className="mt-2 flex items-baseline gap-1">
@@ -131,14 +138,14 @@ export default function EarlyAccess() {
 
       {/* Builder tier activation */}
       <ScrollReveal delay={0.3}>
-        <div className="mt-10 rounded-xl border border-amber/20 bg-gradient-to-b from-amber/5 to-transparent backdrop-blur-sm p-6 text-center">
+        <div className="mt-10 rounded-none border border-amber/60 bg-gradient-to-b from-amber/5 to-transparent p-6 text-center">
           <p className="text-sm font-semibold text-text-primary mb-1">
             Activate Builder Tier
           </p>
           <p className="text-sm text-text-secondary mb-4">
             Send any supported token on <span className="font-semibold text-text-primary">Base</span> to unlock 250 contract credits and API access.
           </p>
-          <div className="inline-flex items-center gap-3 rounded-lg border border-amber/20 bg-amber-glow px-5 py-3">
+          <div className="inline-flex items-center gap-3 rounded-none border border-amber/60 bg-amber-glow px-5 py-3">
             <svg
               className="w-5 h-5 text-amber flex-shrink-0"
               viewBox="0 0 24 24"

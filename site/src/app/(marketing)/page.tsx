@@ -13,33 +13,15 @@ export default function Home() {
   return (
     <main>
       <HeroSection />
-      <div className="section-divider" />
 
-      {/* All post-hero content wrapped with Aurora background */}
-      <div className="relative">
-        {/* Aurora background — only behind sections, not the hero */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div
-            className="sticky top-0 h-screen w-full"
-            style={{
-              background: `
-                radial-gradient(ellipse 60% 50% at 20% 30%, rgba(245,166,35,0.08) 0%, transparent 70%),
-                radial-gradient(ellipse 50% 60% at 80% 70%, rgba(196,127,10,0.06) 0%, transparent 70%),
-                radial-gradient(ellipse 40% 40% at 50% 50%, rgba(255,208,128,0.04) 0%, transparent 70%)
-              `,
-              animation: 'auroraShift 20s ease-in-out infinite alternate',
-            }}
-          />
-        </div>
-
-      {/* Problem Statement */}
+      {/* Problem Statement — dark */}
       <SectionWrapper>
         <ScrollReveal>
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+            <p className="text-micro mb-2">
               The Problem
             </p>
-            <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+            <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
               AI Agents Are Acting. Nobody&apos;s Keeping Track.
             </h2>
             <p className="mt-6 text-text-secondary leading-relaxed">
@@ -59,10 +41,10 @@ export default function Home() {
       <SectionWrapper>
         <ScrollReveal>
           <div className="text-center mb-10">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+            <p className="text-micro mb-2">
               Dual-Format Contracts
             </p>
-            <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+            <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
               Human-Readable. Machine-Parsable.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
@@ -76,21 +58,26 @@ export default function Home() {
         </ScrollReveal>
       </SectionWrapper>
 
-      <CoreCapabilities />
-      <div className="section-divider" />
-      <PricingSection />
-      <div className="section-divider" />
-      <EcosystemCompatibility />
-      <div className="section-divider" />
+      {/* CoreCapabilities — light section */}
+      <div className="section-light relative">
+        <div className="grid-bg grid-bg-light" />
+        <CoreCapabilities />
+      </div>
 
-      {/* Target Customers */}
+      {/* PricingSection — dark */}
+      <PricingSection />
+
+      {/* EcosystemCompatibility — dark */}
+      <EcosystemCompatibility />
+
+      {/* Target Customers — dark */}
       <SectionWrapper>
         <ScrollReveal>
           <div className="text-center mb-10">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
+            <p className="text-micro mb-2">
               Who It&apos;s For
             </p>
-            <h2 className="text-3xl font-bold text-text-primary sm:text-4xl">
+            <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
               Built for Companies Deploying AI Agents
             </h2>
           </div>
@@ -115,9 +102,16 @@ export default function Home() {
             },
           ].map((item, i) => (
             <ScrollReveal key={item.title} delay={i * 0.1}>
-              <div className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated/80 backdrop-blur-sm p-6 h-full hover:border-amber/30 hover:bg-amber/5 transition-colors">
+              <div className="group relative overflow-hidden rounded-none border border-amber/60 bg-surface p-6 h-full hover:border-amber/50 transition-colors">
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <h3 className="text-lg font-semibold text-text-primary">{item.title}</h3>
+                {/* Inner frame */}
+                <div className="absolute top-4 left-4 right-4 bottom-4 border border-amber/30 pointer-events-none" />
+                {/* Corner dots */}
+                <div className="absolute top-4 left-4 w-1.5 h-1.5 bg-amber" />
+                <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-amber" />
+                <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
+                <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
+                <h3 className="text-lg text-text-primary">{item.title}</h3>
                 <p className="mt-2 text-sm text-text-secondary leading-relaxed">{item.desc}</p>
               </div>
             </ScrollReveal>
@@ -125,9 +119,14 @@ export default function Home() {
         </div>
       </SectionWrapper>
 
-      <EarlyAccess />
-      <HomeCTA />
+      {/* EarlyAccess — light section */}
+      <div className="section-light relative">
+        <div className="grid-bg grid-bg-light" />
+        <EarlyAccess />
       </div>
+
+      {/* HomeCTA — dark */}
+      <HomeCTA />
     </main>
   );
 }
