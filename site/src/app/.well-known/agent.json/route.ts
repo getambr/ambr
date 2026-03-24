@@ -86,6 +86,18 @@ export function buildAgentCard() {
           'Check if contract abc123... is still active',
         ],
       },
+      {
+        id: 'agent_handshake',
+        name: 'Agent Handshake',
+        description:
+          'Initiate a handshake on a contract on behalf of the delegating principal. Requires API key with registered delegation. Principal must approve separately.',
+        tags: ['delegation', 'handshake', 'agent', 'intent'],
+        examples: [
+          'Accept contract amb-2026-0042 on behalf of my principal',
+          'Handshake contract abc123... with intent to accept',
+          'Reject contract amb-2026-0015 and request changes',
+        ],
+      },
     ],
     securitySchemes: {
       apiKey: {

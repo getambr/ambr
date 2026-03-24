@@ -119,6 +119,12 @@ function mapMessageToTool(message: A2AMessage): ToolMapping | null {
     return { tool: 'ambr_get_contract_status', args: idMatch ? { id: idMatch } : {} };
   }
 
+  if (/(?:handshake|accept|reject|request.?changes).+contract/i.test(textParts) || /contract.+(?:handshake|accept|reject)/i.test(textParts)) {
+    const idMatch = extractContractId(textParts);
+    const intent = /reject/i.test(textParts) ? 'reject' : /request.?change/i.test(textParts) ? 'request_changes' : 'accept';
+    return { tool: 'ambr_agent_handshake', args: { contract_id: idMatch || '', intent } };
+  }
+
   if (/(?:create|generate|draft|make|new).+contract/i.test(textParts)) {
     // Try to extract structured params from the text
     return { tool: 'ambr_create_contract', args: extractCreateParams(textParts) };
@@ -143,6 +149,8 @@ function skillIdToToolName(skillId: string): string {
     get_contract: 'ambr_get_contract',
     verify_hash: 'ambr_verify_hash',
     get_status: 'ambr_get_contract_status',
+    agent_handshake: 'ambr_agent_handshake',
+    handshake: 'ambr_agent_handshake',
   };
   return mapping[skillId] || `ambr_${skillId}`;
 }
@@ -269,7 +277,7 @@ async function handleSendMessage(
   }
 
   // Check auth for tools that need it
-  const needsAuth = toolMapping.tool === 'ambr_create_contract';
+  const needsAuth = ['ambr_create_contract', 'ambr_agent_handshake'].includes(toolMapping.tool);
   if (needsAuth && !apiKey) {
     // Return input_required with x402 pricing info so agents can pay per-contract
     const task: Task = {

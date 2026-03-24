@@ -56,6 +56,7 @@ export async function GET() {
       'ambr_get_contract',
       'ambr_get_contract_status',
       'ambr_verify_hash',
+      'ambr_agent_handshake',
     ],
     docs: 'https://ambr.run/developers',
   });

@@ -41,6 +41,8 @@ interface ApiKeyContext {
   email: string;
   credits: number;
   tier: string;
+  principalWallet: string | null;
+  delegationScope: { actions: string[]; templates?: string[] } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +251,52 @@ Returns:
       openWorldHint: false,
     },
   },
+  {
+    name: 'ambr_agent_handshake',
+    description: `Initiate a handshake on a contract on behalf of your delegating principal.
+
+Requires an API key with an active delegation (principal wallet registered via /api/v1/delegations).
+Records the agent's intent to accept, reject, or request changes on the contract.
+The principal must separately approve via wallet signature on the Reader Portal.
+
+Args:
+  - contract_id (string, required): Contract ID (amb-YYYY-NNNN), SHA-256 hash, or UUID
+  - intent (string, required): "accept" | "reject" | "request_changes"
+  - message (string, optional): Note for the counterparty
+  - visibility_preference (string, optional): "private" | "metadata_only" | "public" | "encrypted"
+
+Returns: Handshake status and next steps for principal approval.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        contract_id: {
+          type: 'string',
+          description: 'Contract ID, SHA-256 hash, or UUID',
+        },
+        intent: {
+          type: 'string',
+          enum: ['accept', 'reject', 'request_changes'],
+          description: 'Handshake intent',
+        },
+        message: {
+          type: 'string',
+          description: 'Optional note for counterparty',
+        },
+        visibility_preference: {
+          type: 'string',
+          enum: ['private', 'metadata_only', 'public', 'encrypted'],
+          description: 'Optional visibility preference for negotiation',
+        },
+      },
+      required: ['contract_id', 'intent'],
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -263,7 +311,7 @@ async function validateApiKeyDirect(
 
   const { data, error } = await db
     .from('api_keys')
-    .select('id, email, credits, tier, is_active')
+    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope')
     .eq('key_hash', keyHash)
     .single();
 
@@ -279,6 +327,8 @@ async function validateApiKeyDirect(
     email: data.email,
     credits: data.credits,
     tier: data.tier,
+    principalWallet: data.principal_wallet || null,
+    delegationScope: data.delegation_scope as { actions: string[]; templates?: string[] } | null,
   };
 }
 
@@ -745,6 +795,145 @@ async function handleVerifyHash(
 }
 
 // ---------------------------------------------------------------------------
+// Agent handshake handler
+// ---------------------------------------------------------------------------
+
+async function handleAgentHandshake(
+  args: Record<string, unknown>,
+  apiKey: string | undefined,
+): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
+  if (!apiKey) {
+    return {
+      content: [{ type: 'text', text: 'Error: API key required for agent handshake.' }],
+      isError: true,
+    };
+  }
+
+  const apiCtx = await validateApiKeyDirect(apiKey);
+  if (!apiCtx) {
+    return {
+      content: [{ type: 'text', text: 'Error: Invalid or inactive API key.' }],
+      isError: true,
+    };
+  }
+
+  if (!apiCtx.principalWallet) {
+    return {
+      content: [{
+        type: 'text',
+        text: 'Error: No delegation registered. The principal must first register their wallet at POST /api/v1/delegations with this API key.',
+      }],
+      isError: true,
+    };
+  }
+
+  const scope = apiCtx.delegationScope;
+  if (scope && !scope.actions.includes('handshake')) {
+    return {
+      content: [{ type: 'text', text: 'Error: Delegation scope does not include handshake permission.' }],
+      isError: true,
+    };
+  }
+
+  const contractId = args.contract_id as string;
+  const intent = args.intent as string;
+  const message = (args.message as string) || '';
+  const visibilityPref = args.visibility_preference as string | undefined;
+
+  if (!contractId || !intent) {
+    return {
+      content: [{ type: 'text', text: 'Error: contract_id and intent are required.' }],
+      isError: true,
+    };
+  }
+
+  if (!['accept', 'reject', 'request_changes'].includes(intent)) {
+    return {
+      content: [{ type: 'text', text: 'Error: intent must be accept, reject, or request_changes.' }],
+      isError: true,
+    };
+  }
+
+  const db = getSupabaseAdmin();
+
+  // Find contract
+  const isHash = /^[a-f0-9]{64}$/.test(contractId);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(contractId);
+  const column = isHash ? 'sha256_hash' : isUuid ? 'id' : 'contract_id';
+
+  const { data: contract } = await db
+    .from('contracts')
+    .select('id, contract_id, status, sha256_hash')
+    .eq(column, contractId)
+    .single();
+
+  if (!contract) {
+    return {
+      content: [{ type: 'text', text: `Error: Contract not found: ${contractId}` }],
+      isError: true,
+    };
+  }
+
+  if (!['draft', 'handshake'].includes(contract.status)) {
+    return {
+      content: [{ type: 'text', text: `Error: Contract status is '${contract.status}' — handshake only allowed on draft or handshake contracts.` }],
+      isError: true,
+    };
+  }
+
+  // Upsert handshake
+  const handshakeData: Record<string, unknown> = {
+    contract_id: contract.id,
+    wallet_address: apiCtx.principalWallet.toLowerCase(),
+    intent,
+    message,
+    source: 'agent',
+    agent_api_key_id: apiCtx.keyId,
+    principal_approved: false,
+  };
+  if (visibilityPref) handshakeData.visibility_preference = visibilityPref;
+
+  const { error: hsError } = await db
+    .from('handshakes')
+    .upsert(handshakeData, { onConflict: 'contract_id,wallet_address' });
+
+  if (hsError) {
+    return {
+      content: [{ type: 'text', text: `Error recording handshake: ${hsError.message}` }],
+      isError: true,
+    };
+  }
+
+  // Update contract status to handshake if currently draft and intent is accept
+  if (contract.status === 'draft' && intent === 'accept') {
+    await db.from('contracts').update({ status: 'handshake' }).eq('id', contract.id);
+  }
+
+  const readerUrl = `https://getamber.dev/reader/${contract.sha256_hash}`;
+
+  return {
+    content: [{
+      type: 'text',
+      text: [
+        '# Agent Handshake Recorded',
+        '',
+        `- **Contract:** ${contract.contract_id}`,
+        `- **Intent:** ${intent}`,
+        `- **On behalf of:** ${apiCtx.principalWallet}`,
+        `- **Source:** agent (API key ${apiCtx.email})`,
+        `- **Principal approved:** No (pending)`,
+        '',
+        '## Next Step',
+        `The principal must approve this handshake by connecting their wallet at:`,
+        readerUrl,
+        '',
+        'Once approved, the contract can proceed to signing.',
+      ].join('\n'),
+    }],
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Tool dispatcher
 // ---------------------------------------------------------------------------
 
@@ -764,6 +953,8 @@ async function callTool(
       return handleGetContractStatus(args);
     case 'ambr_verify_hash':
       return handleVerifyHash(args);
+    case 'ambr_agent_handshake':
+      return handleAgentHandshake(args, apiKey);
     default:
       return {
         content: [{ type: 'text', text: `Error: Unknown tool '${name}'.` }],

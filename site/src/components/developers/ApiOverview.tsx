@@ -182,6 +182,53 @@ export default function ApiOverview() {
           </p>
         </div>
       </ScrollReveal>
+
+      <ScrollReveal delay={0.35}>
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">MCP Integration</h3>
+          <p className="text-sm text-text-secondary mb-4">
+            Add Ambr to your AI agent with one config block. Works with Claude Code, Cursor, and any MCP-compatible client.
+            Your agent gets 6 tools: list templates, create contracts, get/verify contracts, check status, and agent handshake.
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-mono text-text-secondary mb-2">Claude Code — settings.json</p>
+              <CodeSnippet code={`{
+  "mcpServers": {
+    "ambr": {
+      "type": "url",
+      "url": "https://getamber.dev/api/mcp",
+      "headers": {
+        "X-API-Key": "YOUR_API_KEY"
+      }
+    }
+  }
+}`} title="Claude Code MCP Config" />
+            </div>
+
+            <div>
+              <p className="text-xs font-mono text-text-secondary mb-2">Cursor — .cursor/mcp.json</p>
+              <CodeSnippet code={`{
+  "mcpServers": {
+    "ambr": {
+      "url": "https://getamber.dev/api/mcp",
+      "headers": {
+        "X-API-Key": "YOUR_API_KEY"
+      }
+    }
+  }
+}`} title="Cursor MCP Config" />
+            </div>
+          </div>
+
+          <p className="text-xs text-text-secondary mt-3">
+            Get your API key at <a href="/activate" className="text-amber hover:underline">/activate</a>.
+            Tools that modify state (create contract, agent handshake) require a valid key.
+            Read-only tools (list templates, verify hash) work without authentication.
+          </p>
+        </div>
+      </ScrollReveal>
     </div>
   );
 }

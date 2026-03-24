@@ -1,11 +1,18 @@
 import { createHash, randomBytes } from 'crypto';
 import { getSupabaseAdmin } from './supabase-admin';
 
+export interface DelegationScope {
+  actions: ('create' | 'handshake' | 'read')[];
+  templates?: string[];
+}
+
 export interface ApiKeyContext {
   keyId: string;
   email: string;
   credits: number;
   tier: string;
+  principalWallet: string | null;
+  delegationScope: DelegationScope | null;
 }
 
 export async function validateApiKey(request: Request): Promise<ApiKeyContext | null> {
@@ -19,7 +26,7 @@ export async function validateApiKey(request: Request): Promise<ApiKeyContext | 
 
   const { data, error } = await db
     .from('api_keys')
-    .select('id, email, credits, tier, is_active')
+    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope')
     .eq('key_hash', keyHash)
     .single();
 
@@ -36,6 +43,8 @@ export async function validateApiKey(request: Request): Promise<ApiKeyContext | 
     email: data.email,
     credits: data.credits,
     tier: data.tier,
+    principalWallet: data.principal_wallet || null,
+    delegationScope: data.delegation_scope as DelegationScope | null,
   };
 }
 
