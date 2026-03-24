@@ -17,7 +17,7 @@ export default function ArchitecturePanel() {
     <ScrollReveal>
       <div className="grid grid-cols-1 lg:grid-cols-2 border border-amber/60">
         {/* Human Readable */}
-        <div className="p-8 lg:p-12 lg:border-r border-amber/60">
+        <div className="p-8 lg:p-12 lg:border-r border-amber/60 bg-background">
           <p className="text-micro block mb-8" style={{ color: '#666' }}>
             // LAYER 01: LEGAL PROSE
           </p>
@@ -44,7 +44,7 @@ export default function ArchitecturePanel() {
         </div>
 
         {/* Agent Parsable */}
-        <div className="relative p-8 lg:p-12 border-t lg:border-t-0 border-amber/60">
+        <div className="relative p-8 lg:p-12 border-t lg:border-t-0 border-amber/60 bg-surface">
           <div className="grid-bg grid-bg-dark opacity-50" />
           <div className="relative z-10">
             <p className="text-micro block mb-8">

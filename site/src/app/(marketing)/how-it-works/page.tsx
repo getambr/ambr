@@ -1,10 +1,8 @@
 import { Metadata } from 'next';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import ScrollReveal from '@/components/ui/ScrollReveal';
-import FiveLayerStack from '@/components/shared/FiveLayerStack';
-import ContractDemo from '@/components/shared/ContractDemo';
+import ArchitecturePanel from '@/components/home/ArchitecturePanel';
 import CnftLifecycle from '@/components/how-it-works/CnftLifecycle';
-import AmendmentChain from '@/components/how-it-works/AmendmentChain';
 import ReaderPortal from '@/components/how-it-works/ReaderPortal';
 import Button from '@/components/ui/Button';
 
@@ -28,96 +26,39 @@ export default function HowItWorksPage() {
       {/* Hero */}
       <SectionWrapper variant="dark">
         <ScrollReveal>
-          <div className="text-center max-w-3xl mx-auto">
+          <div className="max-w-3xl">
             <p className="text-micro mb-4">How It Works</p>
-            <h1 className="text-4xl text-text-primary sm:text-5xl lg:text-6xl">
-              The Legal Framework, Explained
+            <h1 className="text-4xl text-text-primary sm:text-5xl lg:text-6xl mb-6">
+              The Legal Framework,<br />Explained
             </h1>
-            <p className="mt-6 text-lg text-[#aaa] font-light">
-              From delegation authority to commerce contracts, mutual signing,
-              and privacy-first verification — here&apos;s how Ambr provides the
-              legal framework for AI agents acting in the real world.
+            <p className="text-lg text-[#999] font-light max-w-xl leading-relaxed">
+              Every Ambr contract exists simultaneously as human-readable legal prose
+              and machine-parsable JSON — linked by SHA-256 hash, signed by ECDSA wallets,
+              minted as cNFTs on Base L2.
+            </p>
+            <p className="text-amber font-mono text-sm mt-6 tracking-wide">
+              Code is law. Law is Readable.
             </p>
           </div>
         </ScrollReveal>
       </SectionWrapper>
 
-      {/* Five Layer Stack */}
+      {/* Dual-Format Architecture */}
       <SectionWrapper variant="dark">
         <ScrollReveal>
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8 mb-12 pb-8 border-b border-amber/60">
-            <div>
-              <p className="text-micro mb-2">Architecture</p>
-              <h2 className="text-3xl text-text-primary lg:text-5xl">
-                The Five-Layer Stack
-              </h2>
-            </div>
-            <p className="text-[#999] text-lg max-w-xl self-end">
-              Ambr sits at Layer 2 — the agreement layer that connects agent
-              discovery with trust, escrow, and payments.
-            </p>
+          <div className="mb-12">
+            <p className="text-micro mb-2">Architecture</p>
+            <h2 className="text-3xl text-text-primary lg:text-5xl">
+              The Dual-State Contract
+            </h2>
           </div>
         </ScrollReveal>
-        <ScrollReveal delay={0.1}>
-          <FiveLayerStack variant="detailed" />
-        </ScrollReveal>
+        <ArchitecturePanel />
       </SectionWrapper>
 
-      {/* Wallet-as-Identity */}
-      <SectionWrapper variant="dark">
-        <ScrollReveal>
-          <div className="relative border border-amber/60 bg-surface p-8 max-w-3xl">
-            <div className="absolute top-4 left-4 right-4 bottom-4 border border-amber/30 pointer-events-none" />
-            <div className="absolute top-4 left-4 w-1.5 h-1.5 bg-amber" />
-            <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-amber" />
-            <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
-            <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
-            <div className="relative z-10">
-              <p className="text-micro mb-2">Identity</p>
-              <h2 className="text-2xl text-text-primary mb-3 lg:text-4xl">
-                Wallet-as-Identity Model
-              </h2>
-              <p className="text-[#999] leading-relaxed">
-                Every agent operates from a crypto wallet address. When an agent signs
-                a contract, the <span className="text-amber">Principal Declaration</span> links
-                that wallet to a real-world legal entity — the company or individual
-                who authorized the agent. This creates accountability without
-                sacrificing the speed of autonomous agent interactions.
-              </p>
-            </div>
-          </div>
-        </ScrollReveal>
-      </SectionWrapper>
-
-      {/* Contract Lifecycle — light section break */}
+      {/* Contract Lifecycle — light section */}
       <SectionWrapper variant="light">
         <CnftLifecycle />
-      </SectionWrapper>
-
-      {/* Amendment Chain */}
-      <SectionWrapper variant="dark">
-        <AmendmentChain />
-      </SectionWrapper>
-
-      {/* Contract Demo */}
-      <SectionWrapper variant="dark">
-        <ScrollReveal>
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8 mb-12 pb-8 border-b border-amber/60">
-            <div>
-              <p className="text-micro mb-2">Format</p>
-              <h2 className="text-3xl text-text-primary lg:text-5xl">
-                Dual-Format Contract
-              </h2>
-            </div>
-            <p className="text-[#999] text-lg max-w-xl self-end">
-              Every Ambr contract exists as both human-readable legal text and
-              machine-parsable JSON, linked by a SHA-256 hash.
-            </p>
-          </div>
-        </ScrollReveal>
-        <ScrollReveal delay={0.1}>
-          <ContractDemo variant="how-it-works" />
-        </ScrollReveal>
       </SectionWrapper>
 
       {/* Reader Portal */}
@@ -128,20 +69,28 @@ export default function HowItWorksPage() {
       {/* CTA */}
       <SectionWrapper variant="dark">
         <ScrollReveal>
-          <div className="text-center">
-            <h2 className="text-3xl text-text-primary lg:text-5xl">
-              Ready to Dive Deeper?
-            </h2>
-            <p className="mt-4 text-[#999] max-w-xl mx-auto">
-              Explore the developer documentation or initialize your first contract.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button href="/activate" size="lg">
-                Initialize Contract
-              </Button>
-              <Button href="/developers" variant="secondary" size="lg">
-                Read Documentation
-              </Button>
+          <div className="relative border border-amber/60 bg-surface p-12 text-center max-w-3xl mx-auto">
+            <div className="absolute top-4 left-4 right-4 bottom-4 border border-amber/30 pointer-events-none" />
+            <div className="absolute top-4 left-4 w-1.5 h-1.5 bg-amber" />
+            <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-amber" />
+            <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
+            <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
+            <div className="relative z-10">
+              <h2 className="text-3xl text-text-primary lg:text-4xl mb-4">
+                Ready to Build?
+              </h2>
+              <p className="text-[#999] max-w-md mx-auto mb-8">
+                Initialize your first contract or explore the developer documentation
+                and MCP integration guides.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button href="/activate" size="lg">
+                  Initialize Contract
+                </Button>
+                <Button href="/developers" variant="secondary" size="lg">
+                  Read Documentation
+                </Button>
+              </div>
             </div>
           </div>
         </ScrollReveal>

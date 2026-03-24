@@ -58,7 +58,7 @@ export default function EcosystemCompatibility() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {ecosystemProjects.map((project, i) => (
           <ScrollReveal key={project.name} delay={i * 0.08}>
-            <div className="border border-amber/60 bg-surface p-6">
+            <div className="border border-amber/60 bg-surface p-6 h-full flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base text-text-primary">{project.name}</h3>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusColors[project.status]}`}>
@@ -66,7 +66,7 @@ export default function EcosystemCompatibility() {
                 </span>
               </div>
               <p className="text-micro !text-[#666] mb-2">{project.layer} Layer</p>
-              <p className="text-sm text-[#999]">{project.description}</p>
+              <p className="text-sm text-[#999] flex-1">{project.description}</p>
             </div>
           </ScrollReveal>
         ))}

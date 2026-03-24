@@ -43,11 +43,11 @@ export default function PricingSection() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {pricingItems.map((item, i) => (
           <ScrollReveal key={item.label} delay={i * 0.08}>
-            <div className="border border-amber/60 bg-surface p-8">
+            <div className="border border-amber/60 bg-surface p-8 h-full flex flex-col">
               <span className="text-micro">{item.label}</span>
               <h3 className="text-3xl text-text-primary mt-2">{item.price}</h3>
               <p className="text-xs text-[#999] mt-1">{item.unit}</p>
-              <p className="text-sm text-[#999] mt-4 leading-relaxed">{item.description}</p>
+              <p className="text-sm text-[#999] mt-4 leading-relaxed flex-1">{item.description}</p>
             </div>
           </ScrollReveal>
         ))}
