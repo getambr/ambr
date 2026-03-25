@@ -41,8 +41,8 @@ const layers: Layer[] = [
   {
     name: 'Trust',
     description: 'Identity verification & reputation',
-    detail: 'ERC-8004 provides on-chain identity and reputation registries. Agents verify counterparty track records before entering agreements, building a web of trust across the agent economy.',
-    projects: ['ERC-8004'],
+    detail: 'Demos ZK Identity enables privacy-preserving attestation — principals prove they are verified entities without revealing identity on-chain. Zero-knowledge proofs with nullifiers prevent double-claiming while maintaining anonymity.',
+    projects: ['Demos ZK Identity'],
     color: 'text-amber',
     bgColor: 'bg-amber-glow',
     borderColor: 'border-amber/60',

@@ -24,9 +24,9 @@ const ecosystemProjects = [
     status: 'planned' as const,
   },
   {
-    name: 'ERC-8004',
+    name: 'Demos ZK Identity',
     layer: 'Trust',
-    description: 'On-chain identity and reputation registries for agent verification before contract signing.',
+    description: 'Privacy-preserving identity attestation via zero-knowledge proofs for anonymous contract signing.',
     status: 'planned' as const,
   },
 ];
