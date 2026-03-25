@@ -6,18 +6,39 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import MobileMenu from './MobileMenu';
 
-const navLinks = [
+const marketingLinks = [
   { href: '/', label: 'Home' },
   { href: '/how-it-works', label: 'How It Works' },
-  { href: '/templates', label: 'Templates' },
-  { href: '/developers', label: 'Developers' },
-  { href: '/reader', label: 'Reader' },
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/ecosystem', label: 'Ecosystem' },
 ];
+
+const platformLinks = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/developers', label: 'Developers' },
+  { href: '/templates', label: 'Templates' },
+  { href: '/reader', label: 'Reader' },
+];
+
+function useNavLinks() {
+  const [links, setLinks] = useState([...marketingLinks, ...platformLinks]);
+
+  useEffect(() => {
+    const host = window.location.hostname;
+    if (host.includes('ambr.run')) {
+      setLinks(marketingLinks);
+    } else if (host.includes('getamber.dev')) {
+      setLinks(platformLinks);
+    }
+    // localhost/preview: keep all links
+  }, []);
+
+  return links;
+}
 
 export default function Navigation() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navLinks = useNavLinks();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

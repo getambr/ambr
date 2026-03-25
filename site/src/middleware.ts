@@ -5,7 +5,7 @@ const MARKETING_HOST = 'ambr.run';
 const PLATFORM_HOST = 'getamber.dev';
 
 // Marketing-only paths (redirect to ambr.run if accessed on getamber.dev)
-const MARKETING_PATHS = ['/', '/how-it-works', '/use-cases', '/ecosystem', '/waitlist', '/privacy', '/terms'];
+const MARKETING_PATHS = ['/', '/how-it-works', '/use-cases', '/ecosystem', '/waitlist', '/privacy', '/terms', '/docs'];
 
 // Platform-only paths (redirect to getamber.dev if accessed on ambr.run)
 const PLATFORM_PREFIXES = ['/dashboard', '/reader', '/activate', '/templates', '/developers'];

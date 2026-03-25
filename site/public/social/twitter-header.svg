@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" width="1500" height="500">
+  <defs>
+    <!-- Brass gradient (brand) -->
+    <linearGradient id="brassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9a7d52"/>
+      <stop offset="40%" stop-color="#d8c29d"/>
+      <stop offset="60%" stop-color="#c6a87c"/>
+      <stop offset="100%" stop-color="#e8d9bb"/>
+    </linearGradient>
+
+    <!-- Gold stroke gradient for orbital motif -->
+    <linearGradient id="goldStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c6a87c" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#e8d9bb" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#9a7d52" stop-opacity="0.8"/>
+    </linearGradient>
+
+    <!-- Radial vignette -->
+    <radialGradient id="vignette" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#0a0a0a" stop-opacity="0"/>
+      <stop offset="70%" stop-color="#0a0a0a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.7"/>
+    </radialGradient>
+
+    <!-- Subtle center glow -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="30%">
+      <stop offset="0%" stop-color="#c6a87c" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#c6a87c" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Grid pattern -->
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(198,168,124,0.08)" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1500" height="500" fill="#0a0a0a"/>
+
+  <!-- Grid background -->
+  <rect width="1500" height="500" fill="url(#grid)"/>
+
+  <!-- Center glow -->
+  <rect width="1500" height="500" fill="url(#centerGlow)"/>
+
+  <!-- Orbital motif (centered, scaled for 1500x500 canvas) -->
+  <g transform="translate(750, 250)" opacity="0.22">
+    <!-- Outer rings -->
+    <circle cx="0" cy="0" r="220" fill="none" stroke="url(#goldStroke)" stroke-width="0.5" stroke-dasharray="4 4"/>
+    <circle cx="0" cy="0" r="160" fill="none" stroke="url(#goldStroke)" stroke-width="0.8"/>
+
+    <!-- Cross lines -->
+    <g stroke="url(#goldStroke)" stroke-width="0.4" opacity="0.5">
+      <line x1="0" y1="-250" x2="0" y2="250"/>
+      <line x1="-400" y1="0" x2="400" y2="0"/>
+      <line x1="-180" y1="-180" x2="180" y2="180"/>
+      <line x1="-180" y1="180" x2="180" y2="-180"/>
+    </g>
+
+    <!-- Orbital ellipses -->
+    <ellipse cx="0" cy="0" rx="200" ry="95" fill="none" stroke="url(#goldStroke)" stroke-width="1.2" transform="rotate(30)"/>
+    <ellipse cx="0" cy="0" rx="200" ry="95" fill="none" stroke="url(#goldStroke)" stroke-width="1.2" transform="rotate(-30)"/>
+
+    <!-- Inner detail -->
+    <circle cx="0" cy="0" r="50" fill="none" stroke="url(#goldStroke)" stroke-width="0.6"/>
+    <circle cx="0" cy="0" r="12" fill="url(#goldStroke)" opacity="0.3"/>
+  </g>
+
+  <!-- Secondary orbital hint (left side, very faint) -->
+  <g transform="translate(200, 250)" opacity="0.07">
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#c6a87c" stroke-width="0.5" stroke-dasharray="3 6"/>
+    <ellipse cx="0" cy="0" rx="120" ry="60" fill="none" stroke="#c6a87c" stroke-width="0.5" transform="rotate(20)"/>
+  </g>
+
+  <!-- Secondary orbital hint (right side, very faint) -->
+  <g transform="translate(1300, 250)" opacity="0.07">
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#c6a87c" stroke-width="0.5" stroke-dasharray="3 6"/>
+    <ellipse cx="0" cy="0" rx="120" ry="60" fill="none" stroke="#c6a87c" stroke-width="0.5" transform="rotate(-20)"/>
+  </g>
+
+  <!-- Vignette overlay -->
+  <rect width="1500" height="500" fill="url(#vignette)"/>
+
+  <!-- Thin brass line accents (top and bottom) -->
+  <line x1="400" y1="0" x2="1100" y2="0" stroke="url(#brassGrad)" stroke-width="1" opacity="0.3"/>
+  <line x1="400" y1="500" x2="1100" y2="500" stroke="url(#brassGrad)" stroke-width="1" opacity="0.3"/>
+
+  <!-- "Ambr" title (center) -->
+  <text x="750" y="225" text-anchor="middle" font-family="'Instrument Serif', Georgia, serif" font-size="72" font-weight="400" font-style="normal" fill="url(#brassGrad)" letter-spacing="2">Ambr</text>
+
+  <!-- Subtitle -->
+  <text x="750" y="280" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', 'Consolas', monospace" font-size="16" fill="#f4f4f0" letter-spacing="4" opacity="0.8">RICARDIAN LEGAL INFRASTRUCTURE FOR AI</text>
+
+  <!-- Tagline -->
+  <text x="750" y="340" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', 'Consolas', monospace" font-size="12" fill="#c6a87c" letter-spacing="2" opacity="0.5">Code is law. Law is Readable.</text>
+
+  <!-- Domain (bottom-right) -->
+  <text x="1460" y="478" text-anchor="end" font-family="'JetBrains Mono', 'SF Mono', 'Consolas', monospace" font-size="11" fill="#c6a87c" letter-spacing="1" opacity="0.4">ambr.run</text>
+</svg>

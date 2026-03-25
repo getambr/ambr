@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ambr Twitter Header Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'JetBrains Mono', monospace;
+      color: #888;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 24px;
+      color: #c6a87c;
+      margin-bottom: 8px;
+      font-weight: 400;
+    }
+    .meta {
+      font-size: 12px;
+      margin-bottom: 32px;
+      letter-spacing: 1px;
+    }
+    .preview-container {
+      border: 1px solid rgba(198, 168, 124, 0.15);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    img {
+      display: block;
+      width: 1500px;
+      height: 500px;
+    }
+    .note {
+      margin-top: 24px;
+      font-size: 11px;
+      opacity: 0.5;
+      letter-spacing: 1px;
+    }
+    @media (max-width: 1540px) {
+      img {
+        width: 100%;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Ambr Twitter/X Header</h1>
+  <p class="meta">1500 x 500px</p>
+  <div class="preview-container">
+    <img src="twitter-header.svg" alt="Ambr Twitter Header">
+  </div>
+  <p class="note">Open SVG directly for full resolution export</p>
+</body>
+</html>

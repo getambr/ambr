@@ -5,13 +5,17 @@ import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const navLinks = [
+const marketingLinks = [
   { href: '/', label: 'Home' },
   { href: '/how-it-works', label: 'How It Works' },
-  { href: '/templates', label: 'Templates' },
-  { href: '/developers', label: 'Developers' },
-  { href: '/reader', label: 'Reader' },
+  { href: '/ecosystem', label: 'Ecosystem' },
+];
+
+const platformLinks = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/developers', label: 'Developers' },
+  { href: '/templates', label: 'Templates' },
+  { href: '/reader', label: 'Reader' },
 ];
 
 interface MobileMenuProps {
@@ -74,7 +78,13 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
           </div>
 
           <div className="flex flex-col gap-2 px-4 pt-8">
-            {navLinks.map((link) => (
+            {(() => {
+              const host = typeof window !== 'undefined' ? window.location.hostname : '';
+              const links = host.includes('ambr.run') ? marketingLinks
+                : host.includes('getamber.dev') ? platformLinks
+                : [...marketingLinks, ...platformLinks];
+              return links;
+            })().map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
