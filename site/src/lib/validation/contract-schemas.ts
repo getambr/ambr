@@ -22,8 +22,9 @@ export const activateKeySchema = z.object({
   email: z.email('Valid email required'),
   tx_hash: z
     .string()
-    .regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid transaction hash'),
-  tier: z.enum(['starter', 'builder', 'enterprise']),
+    .regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid transaction hash')
+    .optional(),
+  tier: z.enum(['alpha', 'starter', 'builder', 'enterprise']),
 });
 
 export type ActivateKeyInput = z.input<typeof activateKeySchema>;

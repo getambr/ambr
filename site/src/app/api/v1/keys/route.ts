@@ -44,6 +44,71 @@ export async function POST(request: Request) {
   const { email, tx_hash, tier } = parsed.data;
   const db = getSupabaseAdmin();
 
+  // --- Free Alpha tier: no payment required ---
+  if (tier === 'alpha') {
+    // Check if email already has a free alpha key
+    const { data: existingAlpha } = await db
+      .from('api_keys')
+      .select('id')
+      .eq('email', email)
+      .eq('tier', 'alpha')
+      .single();
+
+    if (existingAlpha) {
+      return NextResponse.json(
+        { error: 'alpha_exists', message: 'A free alpha key already exists for this email.' },
+        { status: 409 },
+      );
+    }
+
+    const { key, hash, prefix } = generateApiKey();
+    const { error: insertError } = await db.from('api_keys').insert({
+      key_hash: hash,
+      key_prefix: prefix,
+      email,
+      tier: 'alpha',
+      credits: 5,
+      is_active: true,
+      payment_method: 'free',
+    });
+
+    if (insertError) {
+      console.error('Alpha key insert error:', insertError);
+      return NextResponse.json(
+        { error: 'db_error', message: 'Failed to create API key' },
+        { status: 500 },
+      );
+    }
+
+    logAudit({
+      event_type: 'alpha_key_claimed',
+      severity: 'info',
+      actor: email,
+      details: { tier: 'alpha', credits: 5 },
+      ip_address: ip,
+    });
+
+    return NextResponse.json(
+      {
+        api_key: key,
+        prefix,
+        tier: 'alpha',
+        credits: 5,
+        message: 'Free alpha key activated. Save this key — it cannot be retrieved again.',
+        docs: 'https://ambr.run/developers',
+      },
+      { status: 201 },
+    );
+  }
+
+  // --- Paid tiers: require tx_hash ---
+  if (!tx_hash) {
+    return NextResponse.json(
+      { error: 'missing_tx_hash', message: 'Transaction hash is required for paid tiers.' },
+      { status: 400 },
+    );
+  }
+
   // Check if tx_hash already used
   const { data: existingTx } = await db
     .from('api_keys')

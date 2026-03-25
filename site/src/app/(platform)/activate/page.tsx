@@ -6,6 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import Button from '@/components/ui/Button';
 
+interface AlphaFormData {
+  email: string;
+}
+
 interface CryptoFormData {
   email: string;
   tx_hash: string;
@@ -43,12 +47,13 @@ function ActivateContent() {
   const searchParams = useSearchParams();
   const stripeTest = searchParams.get('stripe') === 'test';
   const stripeReady = stripeTest || (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_') ?? false);
-  const [tab, setTab] = useState<'crypto' | 'card'>(stripeReady ? 'card' : 'crypto');
+  const [tab, setTab] = useState<'alpha' | 'crypto' | 'card'>('alpha');
   const [status, setStatus] = useState<'idle' | 'loading' | 'polling' | 'success' | 'error'>('idle');
   const [apiKey, setApiKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const alphaForm = useForm<AlphaFormData>();
   const cryptoForm = useForm<CryptoFormData>({ defaultValues: { tier: 'starter' } });
   const stripeForm = useForm<StripeFormData>({ defaultValues: { tier: 'starter' } });
 
@@ -99,6 +104,29 @@ function ActivateContent() {
 
     setErrorMessage('Payment received but key generation is taking longer than expected. Please contact support.');
     setStatus('error');
+  }
+
+  async function onAlphaSubmit(data: AlphaFormData) {
+    setStatus('loading');
+    setErrorMessage('');
+    try {
+      const res = await fetch('/api/v1/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, tier: 'alpha' }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setErrorMessage(result.message || 'Activation failed');
+        setStatus('error');
+        return;
+      }
+      setApiKey(result.api_key);
+      setStatus('success');
+    } catch {
+      setErrorMessage('Network error. Please try again.');
+      setStatus('error');
+    }
   }
 
   async function onCryptoSubmit(data: CryptoFormData) {
@@ -173,10 +201,10 @@ function ActivateContent() {
               Activate
             </p>
             <h1 className="text-3xl text-text-primary sm:text-4xl">
-              Claim Your API Key
+              Get Your API Key
             </h1>
             <p className="mt-4 text-[#aaa] text-sm font-light">
-              Pay with card or crypto to activate your API key instantly.
+              Free alpha access — 5 contracts to test the protocol. No payment required.
             </p>
           </div>
 
@@ -229,33 +257,86 @@ function ActivateContent() {
             </div>
           ) : (
             <>
-              {/* Tab switcher — only show when Stripe is live */}
-              {stripeReady && <div className="flex rounded-none border border-amber/60 bg-surface mb-6 p-1">
+              {/* Tab switcher */}
+              <div className="flex rounded-none border border-amber/60 bg-surface mb-6 p-1">
                 <button
                   type="button"
+                  onClick={() => { setTab('alpha'); setStatus('idle'); setErrorMessage(''); }}
+                  className={`flex-1 rounded-none py-2 text-sm font-mono uppercase tracking-wide text-xs transition-colors ${
+                    tab === 'alpha'
+                      ? 'bg-amber text-background'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  Free Alpha
+                </button>
+                {stripeReady && <button
+                  type="button"
                   onClick={() => { setTab('card'); setStatus('idle'); setErrorMessage(''); }}
-                  className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-none py-2 text-sm font-mono uppercase tracking-wide text-xs transition-colors ${
                     tab === 'card'
                       ? 'bg-amber text-background'
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
-                  Pay with Card
-                </button>
+                  Card
+                </button>}
                 <button
                   type="button"
                   onClick={() => { setTab('crypto'); setStatus('idle'); setErrorMessage(''); }}
-                  className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-none py-2 text-sm font-mono uppercase tracking-wide text-xs transition-colors ${
                     tab === 'crypto'
                       ? 'bg-amber text-background'
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
-                  Pay with Crypto
+                  Crypto
                 </button>
-              </div>}
+              </div>
 
-              {tab === 'card' && stripeReady ? (
+              {tab === 'alpha' ? (
+                <form onSubmit={alphaForm.handleSubmit(onAlphaSubmit)} className="space-y-5">
+                  <div className="rounded-none border border-amber/60 bg-amber-glow relative p-4 text-center">
+                    <p className="text-micro mb-1">Alpha Access</p>
+                    <p className="text-2xl font-serif text-text-primary">5 Free Contracts</p>
+                    <p className="text-xs text-text-secondary mt-2">
+                      Test contract creation, signing, and verification. One key per email.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      {...alphaForm.register('email', { required: 'Email is required' })}
+                      placeholder="you@company.com"
+                      className="w-full rounded-none border border-amber/40 bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-amber focus:border-amber"
+                    />
+                    {alphaForm.formState.errors.email && (
+                      <p className="text-xs text-red-400 mt-1">{alphaForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
+
+                  {status === 'error' && (
+                    <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                      {errorMessage}
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={isLoading} size="lg" className="w-full">
+                    {isLoading ? 'Generating key...' : 'Claim Free Alpha Key'}
+                  </Button>
+
+                  <p className="text-center text-xs text-text-secondary">
+                    No wallet or payment required. Need more contracts?{' '}
+                    <button type="button" onClick={() => setTab('crypto')} className="text-amber hover:underline">
+                      Upgrade to a paid tier
+                    </button>
+                  </p>
+                </form>
+              ) : tab === 'card' && stripeReady ? (
                 <form onSubmit={stripeForm.handleSubmit(onStripeSubmit)} className="space-y-5">
                   {/* Tier selection */}
                   <div>

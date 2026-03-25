@@ -46,7 +46,7 @@ export default function HeroSection() {
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 border border-amber/40 rounded-full bg-background/50 backdrop-blur px-4 py-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
-              <span className="text-micro text-white">Ambr Protocol v1.0.4 Live</span>
+              <span className="text-micro text-white">Alpha v1.0 — Free Contract Access</span>
             </div>
 
             <h1
