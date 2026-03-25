@@ -85,8 +85,8 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
               transition={{ duration: 0.3, delay: i * 0.08 }}
               className={`rounded-none border p-4 transition-colors ${
                 isHighlighted
-                  ? 'border-amber/60 bg-amber-glow ring-1 ring-amber/20'
-                  : 'border-border bg-surface/80 backdrop-blur-sm hover:bg-surface-elevated/80 hover:border-amber/60'
+                  ? 'border-amber bg-amber/10 ring-1 ring-amber/30'
+                  : 'border-amber/30 bg-surface/80 backdrop-blur-sm hover:bg-surface-elevated/80 hover:border-amber/60'
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -95,13 +95,13 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
                     <span className="text-xs font-mono uppercase tracking-wider text-amber">
                       Layer {i + 1}
                     </span>
-                    <h3 className={`text-base ${isHighlighted ? 'text-amber' : 'text-text-primary'}`}>
+                    <h3 className={`text-base ${isHighlighted ? 'text-text-primary font-medium' : 'text-text-primary'}`}>
                       {layer.name}
                     </h3>
                   </div>
-                  <p className="text-sm text-text-secondary">{layer.description}</p>
+                  <p className={`text-sm ${isHighlighted ? 'text-text-primary/80' : 'text-text-secondary'}`}>{layer.description}</p>
                   {isDetailed && (
-                    <p className="mt-2 text-sm text-text-secondary leading-relaxed">{layer.detail}</p>
+                    <p className={`mt-2 text-sm leading-relaxed ${isHighlighted ? 'text-text-primary/70' : 'text-text-secondary'}`}>{layer.detail}</p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5 shrink-0">
