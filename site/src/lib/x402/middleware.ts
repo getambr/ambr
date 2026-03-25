@@ -33,6 +33,8 @@ export async function authenticateRequest(
       email: apiCtx.email,
       credits: apiCtx.credits,
       tier: apiCtx.tier,
+      principalWallet: apiCtx.principalWallet || undefined,
+      agentDailyLimit: apiCtx.agentDailyLimit,
     };
   }
 

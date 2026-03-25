@@ -13,6 +13,7 @@ export interface ApiKeyContext {
   tier: string;
   principalWallet: string | null;
   delegationScope: DelegationScope | null;
+  agentDailyLimit: number;
 }
 
 export async function validateApiKey(request: Request): Promise<ApiKeyContext | null> {
@@ -26,7 +27,7 @@ export async function validateApiKey(request: Request): Promise<ApiKeyContext | 
 
   const { data, error } = await db
     .from('api_keys')
-    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope')
+    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope, agent_daily_limit')
     .eq('key_hash', keyHash)
     .single();
 
@@ -45,6 +46,7 @@ export async function validateApiKey(request: Request): Promise<ApiKeyContext | 
     tier: data.tier,
     principalWallet: data.principal_wallet || null,
     delegationScope: data.delegation_scope as DelegationScope | null,
+    agentDailyLimit: data.agent_daily_limit ?? 10,
   };
 }
 

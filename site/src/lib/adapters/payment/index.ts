@@ -50,4 +50,8 @@ export interface AuthContext {
   tier?: string;
   /** x402 payment tx hash (only for x402 type) */
   txHash?: string;
+  /** Delegated agent wallet (only for api_key type with delegation) */
+  principalWallet?: string;
+  /** Per-agent daily contract limit */
+  agentDailyLimit?: number;
 }

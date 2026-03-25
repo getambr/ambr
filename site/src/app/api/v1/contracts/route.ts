@@ -15,6 +15,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { authenticateRequest, buildPaymentRequired, linkPaymentToContract } from '@/lib/x402/middleware';
 import type { AuthContext } from '@/lib/adapters/payment/index';
 import { corsOptions } from '@/lib/cors';
+import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
 
 export async function GET(request: Request) {
   // Auth — API key for listing (x402 users query by wallet via separate param)
@@ -150,6 +151,26 @@ export async function POST(request: Request) {
     );
   }
 
+  // 4b. Per-agent daily limit (delegated agents only)
+  if (authCtx.type === 'api_key' && authCtx.principalWallet) {
+    const agentCheck = await checkAgentLimit(
+      authCtx.keyId!,
+      authCtx.principalWallet,
+      authCtx.agentDailyLimit ?? 10,
+    );
+    if (!agentCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'agent_limit_exceeded',
+          message: `Agent daily limit reached (${agentCheck.used}/${agentCheck.limit}). Resets at midnight UTC.`,
+          used: agentCheck.used,
+          limit: agentCheck.limit,
+        },
+        { status: 429 },
+      );
+    }
+  }
+
   // 5. Lookup template
   const db = getSupabaseAdmin();
   const { data: template } = await db
@@ -205,6 +226,10 @@ export async function POST(request: Request) {
     }
     if (authCtx.type === 'x402' && authCtx.txHash) {
       await linkPaymentToContract(authCtx.txHash, contract.id);
+    }
+    // Track agent usage for delegated agents
+    if (authCtx.type === 'api_key' && authCtx.principalWallet && authCtx.keyId) {
+      await incrementAgentUsage(authCtx.keyId, authCtx.principalWallet);
     }
 
     const response: Record<string, unknown> = {
