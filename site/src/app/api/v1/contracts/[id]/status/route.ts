@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * GET /api/v1/contracts/[id]/status
@@ -86,3 +87,5 @@ export async function GET(
     reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
   });
 }
+
+export { corsOptions as OPTIONS };

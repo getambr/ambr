@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { corsOptions } from '@/lib/cors';
 
 export async function GET(
   _request: Request,
@@ -65,3 +66,5 @@ export async function GET(
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+export { corsOptions as OPTIONS };

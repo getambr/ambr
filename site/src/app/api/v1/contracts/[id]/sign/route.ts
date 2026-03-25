@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { verifyMessage } from 'ethers';
 import { mintContractNFTAsync } from '@/lib/chain/cnft-mint';
 import { getMetadataUri } from '@/lib/chain/cnft-metadata';
+import { corsOptions } from '@/lib/cors';
 
 export const runtime = 'nodejs';
 
@@ -177,3 +178,5 @@ export async function POST(
     }),
   });
 }
+
+export { corsOptions as OPTIONS };

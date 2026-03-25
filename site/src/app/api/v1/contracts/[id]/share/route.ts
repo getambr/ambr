@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { validateApiKey } from '@/lib/api-auth';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * POST /api/v1/contracts/[id]/share
@@ -95,3 +96,5 @@ export async function POST(
     expires_in_hours: expiresInHours,
   });
 }
+
+export { corsOptions as OPTIONS };

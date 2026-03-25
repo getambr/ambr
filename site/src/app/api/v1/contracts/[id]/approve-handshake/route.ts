@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit } from '@/lib/audit';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * POST /api/v1/contracts/[id]/approve-handshake
@@ -126,3 +127,5 @@ export async function POST(
     sign_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
   });
 }
+
+export { corsOptions as OPTIONS };

@@ -10,6 +10,7 @@ import {
 } from '@/lib/contract-engine';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit } from '@/lib/rate-limit';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * POST /api/v1/contracts/[id]/amend
@@ -178,3 +179,5 @@ export async function POST(
     );
   }
 }
+
+export { corsOptions as OPTIONS };

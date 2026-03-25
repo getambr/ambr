@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { verifyMessage } from 'ethers';
+import { corsOptions } from '@/lib/cors';
 
 export const runtime = 'nodejs';
 
@@ -151,3 +152,5 @@ export async function POST(
     handshakes: handshakes ?? [],
   });
 }
+
+export { corsOptions as OPTIONS };

@@ -6,6 +6,7 @@ import { verifyUSDCPayment } from '@/lib/chain/verify-payment';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { checkVelocity } from '@/lib/velocity';
+import { corsOptions } from '@/lib/cors';
 
 const TIER_CREDITS: Record<string, number> = {
   starter: 50,
@@ -127,3 +128,5 @@ export async function POST(request: Request) {
     { status: 201 },
   );
 }
+
+export { corsOptions as OPTIONS };

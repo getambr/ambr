@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import { getStripe, TIER_PRICES } from '@/lib/stripe';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
+import { corsOptions } from '@/lib/cors';
 
 const schema = z.object({
   email: z.email('Valid email required'),
@@ -79,3 +80,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export { corsOptions as OPTIONS };

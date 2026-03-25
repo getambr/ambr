@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { buildNftMetadata } from '@/lib/chain/cnft-metadata';
+import { corsOptions } from '@/lib/cors';
 
 export async function GET(
   _request: Request,
@@ -33,3 +34,5 @@ export async function GET(
     },
   });
 }
+
+export { corsOptions as OPTIONS };

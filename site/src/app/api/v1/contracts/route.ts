@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { authenticateRequest, buildPaymentRequired, linkPaymentToContract } from '@/lib/x402/middleware';
 import type { AuthContext } from '@/lib/adapters/payment/index';
+import { corsOptions } from '@/lib/cors';
 
 export async function GET(request: Request) {
   // Auth — API key for listing (x402 users query by wallet via separate param)
@@ -232,3 +233,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export { corsOptions as OPTIONS };

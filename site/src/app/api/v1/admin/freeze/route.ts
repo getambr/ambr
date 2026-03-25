@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit } from '@/lib/audit';
 import { getClientIp } from '@/lib/rate-limit';
+import { corsOptions } from '@/lib/cors';
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization');
@@ -94,3 +95,5 @@ export async function POST(request: Request) {
     { status: 400 },
   );
 }
+
+export { corsOptions as OPTIONS };

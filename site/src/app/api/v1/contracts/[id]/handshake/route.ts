@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * POST /api/v1/contracts/[id]/handshake
@@ -199,3 +200,5 @@ export async function GET(
     handshakes: handshakes ?? [],
   });
 }
+
+export { corsOptions as OPTIONS };

@@ -4,6 +4,7 @@ import { validateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit } from '@/lib/audit';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * POST /api/v1/delegations — Register principal wallet to API key.
@@ -134,3 +135,5 @@ export async function DELETE(request: Request) {
 
   return NextResponse.json({ ok: true, message: 'Delegation revoked.' });
 }
+
+export { corsOptions as OPTIONS };

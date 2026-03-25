@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { corsOptions } from '@/lib/cors';
 
 export async function GET() {
   try {
@@ -33,3 +34,5 @@ export async function GET() {
     );
   }
 }
+
+export { corsOptions as OPTIONS };

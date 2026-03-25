@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { corsOptions } from '@/lib/cors';
 
 export async function GET(request: NextRequest) {
   const auth = await validateApiKey(request);
@@ -31,3 +32,5 @@ export async function GET(request: NextRequest) {
     contracts: contracts || [],
   });
 }
+
+export { corsOptions as OPTIONS };

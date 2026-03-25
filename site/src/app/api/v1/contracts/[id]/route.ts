@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { corsOptions } from '@/lib/cors';
 
 /**
  * GET /api/v1/contracts/[id]
@@ -113,3 +114,5 @@ export async function GET(
     _hint: 'Full contract text requires API key (contract creator) or share token. Use POST /api/v1/contracts/{id}/share to generate a share link.',
   });
 }
+
+export { corsOptions as OPTIONS };

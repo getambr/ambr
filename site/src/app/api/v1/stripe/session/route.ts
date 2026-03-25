@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { corsOptions } from '@/lib/cors';
 
 export async function GET(request: Request) {
   const ip = getClientIp(request);
@@ -57,3 +58,5 @@ export async function GET(request: Request) {
     docs: 'https://ambr.run/developers',
   });
 }
+
+export { corsOptions as OPTIONS };
