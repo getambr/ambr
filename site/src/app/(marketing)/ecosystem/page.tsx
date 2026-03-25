@@ -118,12 +118,12 @@ export default function EcosystemPage() {
 
       <SectionWrapper variant="light">
         <ScrollReveal>
-          <div className="border border-amber/60 bg-amber-glow p-8 max-w-3xl mx-auto rounded-none">
-            <p className="text-micro-dark mb-2">Purpose</p>
-            <h2 className="text-3xl text-background mb-3 sm:text-4xl lg:text-5xl">
+          <div className="border border-amber bg-background p-8 max-w-3xl mx-auto rounded-none">
+            <p className="text-micro mb-2">Purpose</p>
+            <h2 className="text-3xl text-text-primary mb-3 sm:text-4xl lg:text-5xl">
               Ambr&apos;s Role: The Agreement Layer
             </h2>
-            <p className="text-[#333] leading-relaxed">
+            <p className="text-text-secondary leading-relaxed">
               Discovery protocols help agents find each other. Trust registries verify
               identity. Escrow holds funds. Payment rails move money. But none of that
               works without a formal agreement defining the terms. That&apos;s what Ambr

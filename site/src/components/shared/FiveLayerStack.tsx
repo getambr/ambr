@@ -85,8 +85,8 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
               transition={{ duration: 0.3, delay: i * 0.08 }}
               className={`rounded-none border p-4 transition-colors ${
                 isHighlighted
-                  ? 'border-amber bg-amber/10 ring-1 ring-amber/30'
-                  : 'border-amber/30 bg-surface/80 backdrop-blur-sm hover:bg-surface-elevated/80 hover:border-amber/60'
+                  ? 'border-amber bg-background ring-1 ring-amber/30'
+                  : 'border-amber/30 bg-background/90 hover:bg-background hover:border-amber/60'
               }`}
             >
               <div className="flex items-start justify-between gap-4">
