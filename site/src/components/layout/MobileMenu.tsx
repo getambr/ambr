@@ -58,9 +58,10 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: '100%' }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="fixed inset-0 z-[60] bg-background flex flex-col"
+          className="fixed inset-0 z-[60] bg-[#0a0a0a] flex flex-col"
         >
-          <div className="flex h-16 items-center justify-between px-4">
+          <div className="absolute inset-0 grid-bg grid-bg-dark opacity-30 pointer-events-none" />
+          <div className="relative z-10 flex h-16 items-center justify-between px-4">
             <div className="flex items-center gap-2">
               <Image src="/logo.png" alt="" width={32} height={32} className="rounded-sm" />
               <span className="text-xl font-serif text-amber">Ambr</span>
@@ -68,7 +69,7 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-text-secondary hover:text-text-primary"
+              className="p-2 text-amber hover:text-amber-light"
               aria-label="Close menu"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -77,7 +78,7 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
             </button>
           </div>
 
-          <div className="flex flex-col gap-2 px-4 pt-8">
+          <div className="relative z-10 flex flex-col gap-2 px-4 pt-8">
             {(() => {
               const host = typeof window !== 'undefined' ? window.location.hostname : '';
               const links = host.includes('ambr.run') ? marketingLinks
@@ -89,10 +90,10 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
                 key={link.href}
                 href={link.href}
                 onClick={onClose}
-                className={`rounded-lg px-4 py-3 text-lg transition-colors ${
+                className={`rounded-none px-4 py-3 text-lg transition-colors ${
                   currentPath === link.href
-                    ? 'bg-amber-glow text-amber font-medium'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface'
+                    ? 'border-l-2 border-amber text-amber font-medium'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                 }`}
               >
                 {link.label}
@@ -101,7 +102,7 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
             <Link
               href="/activate"
               onClick={onClose}
-              className="mt-4 rounded-lg bg-amber px-4 py-3 text-center text-lg font-medium text-background transition-colors hover:bg-amber-light"
+              className="mt-4 rounded-none bg-amber px-4 py-3 text-center font-mono text-sm uppercase tracking-wider font-medium text-background transition-colors hover:bg-amber-light"
             >
               Get Started
             </Link>

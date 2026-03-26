@@ -2,67 +2,70 @@ import ScrollReveal from '@/components/ui/ScrollReveal';
 
 const integrations = [
   {
-    name: 'x402 V2 Protocol',
-    description: 'HTTP-native micropayments on Base L2. Multi-token support: USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC.',
-    category: 'Payments',
-    color: 'text-rose-400',
-  },
-  {
-    name: 'ERC-8004 Standard',
-    description: 'On-chain identity and reputation registries for agent verification before contract signing.',
-    category: 'Trust',
-    color: 'text-cyan-400',
-  },
-  {
-    name: 'IPFS Storage',
-    description: 'Decentralized storage for contract documents. Content-addressed for tamper-proof retrieval.',
-    category: 'Storage',
-    color: 'text-violet-400',
-  },
-  {
-    name: 'Base L2',
-    description: 'cNFT minting and on-chain contract hashes on Base L2.',
-    category: 'Chain',
-    color: 'text-blue-400',
-  },
-  {
-    name: 'MCP Server',
-    description: 'Model Context Protocol server manifest for agent capability discovery and tool registration.',
-    category: 'Discovery',
-    color: 'text-violet-400',
+    name: 'x402 V2',
+    description: 'HTTP-native micropayments on Base L2. Multi-token: USDC, USDbC, DAI, ETH, WETH, cbETH, cbBTC.',
+    category: 'Live',
+    status: 'live' as const,
   },
   {
     name: 'A2A Agent Card',
-    description: 'Live at getamber.dev/.well-known/agent.json — standardized agent capability card for peer discovery in the A2A commerce stack.',
+    description: 'JSON-RPC discovery at getamber.dev/.well-known/agent.json. Agents find and interact with Ambr automatically.',
     category: 'Live',
-    color: 'text-emerald-400',
+    status: 'live' as const,
   },
   {
-    name: 'Nevermined SDK',
-    description: 'Python and TypeScript SDKs for metered billing, session-based payments, and data access control.',
-    category: 'Payments',
-    color: 'text-rose-400',
+    name: 'MCP Server',
+    description: 'Model Context Protocol integration. Add Ambr to Claude, Cursor, or any MCP-compatible agent.',
+    category: 'Live',
+    status: 'live' as const,
+  },
+  {
+    name: 'Base L2',
+    description: 'cNFT minting, SHA-256 hash storage, and counterparty-gated transfers on Base mainnet.',
+    category: 'Live',
+    status: 'live' as const,
+  },
+  {
+    name: 'Stripe Payments',
+    description: 'Card payments for API key activation. Starter, Builder, and Enterprise tiers.',
+    category: 'Live',
+    status: 'live' as const,
+  },
+  {
+    name: 'Demos ZK Identity',
+    description: 'Zero-knowledge identity verification via Demos Network. Prove entity status without revealing identity.',
+    category: 'Planned',
+    status: 'planned' as const,
   },
 ];
 
 export default function IntegrationCards() {
   return (
     <div>
-      <h2 className="text-2xl font-bold text-text-primary mb-2">Supported Integrations</h2>
-      <p className="text-text-secondary mb-6 max-w-2xl">
-        Ambr is designed to work with the emerging AI agent commerce stack.
+      <p className="text-micro mb-2">Integrations</p>
+      <h2 className="text-2xl text-text-primary mb-2 sm:text-3xl lg:text-4xl">Supported Stack</h2>
+      <p className="text-text-secondary mb-8 max-w-2xl">
+        Production integrations powering Ambr&#39;s contract infrastructure.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {integrations.map((item, i) => (
           <ScrollReveal key={item.name} delay={i * 0.06}>
-            <div className="rounded-xl border border-border bg-surface p-5 h-full hover:border-amber/20 transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`text-xs font-mono uppercase tracking-wider ${item.color}`}>
+            <div className="rounded-none border border-amber/60 bg-surface p-5 h-full relative">
+              <div className="absolute top-2 left-2 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-2 right-2 w-1.5 h-1.5 bg-amber" />
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base text-text-primary font-serif">{item.name}</h3>
+                <span className={`text-xs font-mono uppercase tracking-wider px-2 py-0.5 rounded-none border ${
+                  item.status === 'live'
+                    ? 'text-emerald-400 border-emerald-400/30'
+                    : 'text-amber border-amber/30'
+                }`}>
                   {item.category}
                 </span>
               </div>
-              <h3 className="text-base font-semibold text-text-primary">{item.name}</h3>
-              <p className="mt-1 text-sm text-text-secondary leading-relaxed">{item.description}</p>
+              <p className="text-sm text-text-secondary leading-relaxed">{item.description}</p>
             </div>
           </ScrollReveal>
         ))}

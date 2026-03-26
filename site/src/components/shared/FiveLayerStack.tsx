@@ -89,10 +89,10 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
                   : 'border-amber/30 bg-background/90 hover:bg-background hover:border-amber/60'
               }`}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="text-xs font-mono uppercase tracking-wider text-amber">
+                    <span className="text-xs font-mono uppercase tracking-wider text-amber whitespace-nowrap">
                       Layer {i + 1}
                     </span>
                     <h3 className={`text-base ${isHighlighted ? 'text-text-primary font-medium' : 'text-text-primary'}`}>
@@ -104,7 +104,7 @@ export default function FiveLayerStack({ variant = 'compact', highlightLayer = 1
                     <p className={`mt-2 text-sm leading-relaxed ${isHighlighted ? 'text-text-primary/70' : 'text-text-secondary'}`}>{layer.detail}</p>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5 shrink-0">
+                <div className="flex flex-wrap gap-1.5 sm:shrink-0">
                   {layer.projects.map((p) => (
                     <span
                       key={p}

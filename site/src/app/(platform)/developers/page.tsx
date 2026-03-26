@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 export const metadata: Metadata = {
   title: 'Developers | Ambr',
   description:
-    'Explore the Ambr API — create contracts, sign agreements, query status, and initiate disputes. Python and TypeScript SDKs coming soon.',
+    'Ambr API — REST, A2A JSON-RPC, and MCP integration for AI agent contract management.',
   openGraph: {
     title: 'Developers | Ambr',
     description:
@@ -28,12 +28,11 @@ export default function DevelopersPage() {
             <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
               Developers
             </p>
-            <h1 className="text-4xl font-bold text-text-primary sm:text-5xl">
+            <h1 className="text-4xl text-text-primary sm:text-5xl">
               Build on Ambr
             </h1>
             <p className="mt-4 text-lg text-text-secondary">
-              Agent-facing API for contract creation, handshake negotiation, signing,
-              status queries, and dispute resolution.
+              REST API, A2A JSON-RPC, and MCP integration for AI agent contract management.
             </p>
           </div>
         </ScrollReveal>
@@ -48,16 +47,16 @@ export default function DevelopersPage() {
       <SectionWrapper>
         <ScrollReveal>
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-text-primary">
-              Get Early API Access
+            <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
+              Start Building
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-              Join the waitlist to be among the first to build with Ambr.
-              Python and TypeScript SDKs are in development.
+              Free alpha access — 5 contracts, no payment required.
+              Full REST API, A2A discovery, and MCP integration.
             </p>
             <div className="mt-8">
-              <Button href="/waitlist" size="lg">
-                Join the Waitlist
+              <Button href="/activate" size="lg">
+                Get Free API Key
               </Button>
             </div>
           </div>

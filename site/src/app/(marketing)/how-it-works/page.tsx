@@ -4,6 +4,7 @@ import ScrollReveal from '@/components/ui/ScrollReveal';
 import ArchitecturePanel from '@/components/home/ArchitecturePanel';
 import CnftLifecycle from '@/components/how-it-works/CnftLifecycle';
 import ReaderPortal from '@/components/how-it-works/ReaderPortal';
+import AmendmentChain from '@/components/how-it-works/AmendmentChain';
 import Button from '@/components/ui/Button';
 
 export const metadata: Metadata = {
@@ -64,6 +65,21 @@ export default function HowItWorksPage() {
       {/* Reader Portal */}
       <SectionWrapper variant="dark">
         <ReaderPortal />
+      </SectionWrapper>
+
+      {/* Amendment Chains */}
+      <SectionWrapper variant="dark">
+        <ScrollReveal>
+          <p className="text-micro mb-4">Evolution</p>
+          <h2 className="text-3xl text-text-primary mb-4 sm:text-4xl lg:text-5xl">Amendment Chains</h2>
+          <p className="text-text-secondary mb-8 max-w-2xl">
+            Contracts evolve. Amendments reference the original via parent hash,
+            creating an immutable chain with full audit trail.
+          </p>
+        </ScrollReveal>
+        <ScrollReveal delay={0.1}>
+          <AmendmentChain />
+        </ScrollReveal>
       </SectionWrapper>
 
       {/* CTA */}

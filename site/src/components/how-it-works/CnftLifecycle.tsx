@@ -54,9 +54,13 @@ export default function CnftLifecycle() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.3, delay: i * 0.1 }}
-            className="bg-background p-8 flex flex-col"
+            className="bg-background p-8 flex flex-col relative"
           >
-            {/* Icon placeholder — geometric SVG */}
+            <div className="absolute top-2 left-2 w-1.5 h-1.5 bg-amber" />
+            <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber" />
+            <div className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-amber" />
+            <div className="absolute bottom-2 right-2 w-1.5 h-1.5 bg-amber" />
+            {/* Icon — geometric SVG */}
             <svg className="w-10 h-10 mb-6" viewBox="0 0 40 40" fill="none" stroke="#c6a87c" strokeWidth="1">
               {i === 0 && (
                 <>

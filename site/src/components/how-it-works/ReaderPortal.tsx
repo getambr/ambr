@@ -52,8 +52,13 @@ export default function ReaderPortal() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {features.map((f, i) => (
           <ScrollReveal key={f.title} delay={i * 0.08}>
-            <div className="border border-amber/60 bg-surface p-6 h-full flex flex-col">
-              <span className="text-micro mb-3">{f.label}</span>
+            <div className="border border-amber/60 bg-surface p-6 h-full flex flex-col relative">
+              <div className="absolute inset-2 border border-amber/20 pointer-events-none" />
+              <div className="absolute top-2 left-2 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-amber" />
+              <div className="absolute bottom-2 right-2 w-1.5 h-1.5 bg-amber" />
+              <span className="text-micro mb-3 relative z-10">{f.label}</span>
               <h4 className="text-base text-text-primary mb-2">{f.title}</h4>
               <p className="text-sm text-[#999] leading-relaxed flex-1">{f.description}</p>
             </div>
