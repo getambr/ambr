@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 export const metadata: Metadata = {
   title: 'Ecosystem | Ambr',
   description:
-    'Ambr is built for the AI agent commerce stack — compatible with KAMIYO, Nevermined, Demos ZK Identity, x402 V2, and more.',
+    'Ambr is built for the AI agent commerce stack — compatible with KAMIYO, Nevermined, ZK Identity, x402 V2, and more.',
   openGraph: {
     title: 'Ecosystem | Ambr',
     description:
@@ -49,12 +49,11 @@ const ecosystemProjects = [
     status: 'planned' as const,
   },
   {
-    name: 'Demos ZK Identity',
+    name: 'ZK Identity',
     description:
-      'Privacy-preserving identity attestation via zero-knowledge proofs. Principals prove they are verified entities without revealing which one — on-chain, only a nullifier is visible. Powered by Demos Network (testnet live).',
+      'Privacy-preserving identity attestation via Groth16/BN128 zk-SNARKs. Principals prove they are verified entities without revealing which one — on-chain, only a nullifier is visible.',
     layer: 'Trust',
     status: 'planned' as const,
-    docsUrl: 'https://docs.kynesys.xyz/backend/zk-identity/overview',
   },
 ];
 

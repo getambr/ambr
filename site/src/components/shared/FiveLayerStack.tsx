@@ -41,8 +41,8 @@ const layers: Layer[] = [
   {
     name: 'Trust',
     description: 'Identity verification & reputation',
-    detail: 'Demos ZK Identity enables privacy-preserving attestation — principals prove they are verified entities without revealing identity on-chain. Zero-knowledge proofs with nullifiers prevent double-claiming while maintaining anonymity.',
-    projects: ['Demos ZK Identity'],
+    detail: 'ZK Identity enables privacy-preserving attestation — principals prove they are verified entities without revealing identity on-chain. Zero-knowledge proofs with nullifiers prevent double-claiming while maintaining anonymity.',
+    projects: ['ZK Identity'],
     color: 'text-amber',
     bgColor: 'bg-amber-glow',
     borderColor: 'border-amber/60',
