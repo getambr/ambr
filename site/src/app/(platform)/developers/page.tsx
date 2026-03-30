@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import ApiOverview from '@/components/developers/ApiOverview';
@@ -9,14 +10,13 @@ export const metadata: Metadata = {
   title: 'Developers | Ambr',
   description:
     'Ambr API — REST, A2A JSON-RPC, and MCP integration for AI agent contract management.',
-  openGraph: {
+  ...createOgMetadata({
     title: 'Developers | Ambr',
-    description:
-      'Explore the Ambr API for AI agent contract management.',
-    url: 'https://ambr.run/developers',
-    siteName: 'Ambr',
-    type: 'website',
-  },
+    description: 'Ambr API — REST, A2A JSON-RPC, and MCP integration for AI agent contract management.',
+    path: '/developers',
+    label: 'Developers',
+    domain: 'getamber.dev',
+  }),
 };
 
 export default function DevelopersPage() {

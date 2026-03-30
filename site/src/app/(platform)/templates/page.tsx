@@ -1,5 +1,20 @@
+import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import Link from 'next/link';
 import { getSupabase } from '@/lib/supabase';
+
+export const metadata: Metadata = {
+  title: 'Templates | Ambr',
+  description:
+    'Ricardian Contract templates for AI agent delegation, commerce, and authorization.',
+  ...createOgMetadata({
+    title: 'Templates | Ambr',
+    description: 'Ricardian Contract templates for AI agent delegation, commerce, and authorization.',
+    path: '/templates',
+    label: 'Templates',
+    domain: 'getamber.dev',
+  }),
+};
 
 export const dynamic = 'force-dynamic';
 

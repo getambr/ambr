@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Instrument_Serif } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 const inter = Inter({
@@ -40,6 +41,24 @@ export const metadata: Metadata = {
     url: 'https://ambr.run',
     siteName: 'Ambr',
     type: 'website',
+    images: [
+      {
+        url: 'https://ambr.run/api/og?title=The+Legal+Framework+for+AI+Agents&label=AMBR+PROTOCOL&description=Delegation+authority%2C+commerce+contracts%2C+and+compliance+audit+trails.&domain=ambr.run',
+        width: 1200,
+        height: 630,
+        alt: 'Ambr — The Agreement Layer for AI Agents',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@ambr_run',
+    title: 'Ambr | The Legal Framework for AI Agents',
+    description:
+      'Delegation authority, commerce contracts, and compliance audit trails for AI agents acting in the real world.',
+    images: [
+      'https://ambr.run/api/og?title=The+Legal+Framework+for+AI+Agents&label=AMBR+PROTOCOL&description=Delegation+authority%2C+commerce+contracts%2C+and+compliance+audit+trails.&domain=ambr.run',
+    ],
   },
 };
 
@@ -55,6 +74,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <Analytics />
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import UseCaseCard from '@/components/use-cases/UseCaseCard';
@@ -8,14 +9,13 @@ export const metadata: Metadata = {
   title: 'Use Cases | Ambr',
   description:
     'Real-world scenarios: agent delegation authorization, agent-executed procurement, agent-signed service agreements, and compliance audit trails powered by Ambr.',
-  openGraph: {
+  ...createOgMetadata({
     title: 'Use Cases | Ambr',
-    description:
-      'Explore real-world delegation and commerce scenarios powered by Ambr Ricardian Contracts.',
-    url: 'https://ambr.run/use-cases',
-    siteName: 'Ambr',
-    type: 'website',
-  },
+    description: 'Real-world scenarios: agent delegation authorization, agent-executed procurement, agent-signed service agreements, and compliance audit trails powered by Ambr.',
+    path: '/use-cases',
+    label: 'Use Cases',
+    domain: 'ambr.run',
+  }),
 };
 
 export default function UseCasesPage() {

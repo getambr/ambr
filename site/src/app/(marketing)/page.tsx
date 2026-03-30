@@ -1,3 +1,5 @@
+import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import HeroSection from '@/components/home/HeroSection';
 import CoreCapabilities from '@/components/home/CoreCapabilities';
 import ArchitecturePanel from '@/components/home/ArchitecturePanel';
@@ -5,6 +7,18 @@ import PricingSection from '@/components/home/PricingSection';
 import EcosystemCompatibility from '@/components/home/EcosystemCompatibility';
 import HomeCTA from '@/components/home/HomeCTA';
 import SectionWrapper from '@/components/ui/SectionWrapper';
+
+export const metadata: Metadata = {
+  title: 'Ambr | The Legal Framework for AI Agents',
+  description: 'Delegation authority, commerce contracts, and compliance audit trails for AI agents.',
+  ...createOgMetadata({
+    title: 'The Legal Framework for AI Agents',
+    description: 'Delegation authority, commerce contracts, and compliance audit trails.',
+    path: '/',
+    label: 'Ambr Protocol',
+    domain: 'ambr.run',
+  }),
+};
 
 export default function Home() {
   return (

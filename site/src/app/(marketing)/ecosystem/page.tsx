@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import FiveLayerStack from '@/components/shared/FiveLayerStack';
@@ -9,14 +10,13 @@ export const metadata: Metadata = {
   title: 'Ecosystem | Ambr',
   description:
     'Ambr is built for the AI agent commerce stack — compatible with KAMIYO, Nevermined, ZK Identity, x402 V2, and more.',
-  openGraph: {
+  ...createOgMetadata({
     title: 'Ecosystem | Ambr',
-    description:
-      'Explore the ecosystem of projects Ambr is designed to integrate with.',
-    url: 'https://ambr.run/ecosystem',
-    siteName: 'Ambr',
-    type: 'website',
-  },
+    description: 'Ambr is built for the AI agent commerce stack — compatible with KAMIYO, Nevermined, ZK Identity, x402 V2, and more.',
+    path: '/ecosystem',
+    label: 'Ecosystem',
+    domain: 'ambr.run',
+  }),
 };
 
 const ecosystemProjects = [

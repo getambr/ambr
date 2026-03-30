@@ -1,14 +1,17 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Ambr',
-  description: 'Ambr privacy policy — how we handle contract data, personal information, and your rights.',
-  openGraph: {
+  description: 'Privacy Policy for the Ambr Protocol platform.',
+  ...createOgMetadata({
     title: 'Privacy Policy | Ambr',
-    url: 'https://ambr.run/privacy',
-    siteName: 'Ambr',
-  },
+    description: 'Privacy Policy for the Ambr Protocol platform.',
+    path: '/privacy',
+    label: 'Legal',
+    domain: 'ambr.run',
+  }),
 };
 
 export default function PrivacyPage() {

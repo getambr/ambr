@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import WaitlistForm from '@/components/shared/WaitlistForm';
@@ -7,14 +8,13 @@ export const metadata: Metadata = {
   title: 'Join the Waitlist | Ambr',
   description:
     'Sign up for early access to Ambr — the agreement layer for the AI agent economy.',
-  openGraph: {
+  ...createOgMetadata({
     title: 'Join the Waitlist | Ambr',
-    description:
-      'Sign up for early access to Ambr.',
-    url: 'https://ambr.run/waitlist',
-    siteName: 'Ambr',
-    type: 'website',
-  },
+    description: 'Sign up for early access to Ambr — the agreement layer for the AI agent economy.',
+    path: '/waitlist',
+    label: 'Waitlist',
+    domain: 'ambr.run',
+  }),
 };
 
 export default function WaitlistPage() {

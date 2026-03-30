@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import ArchitecturePanel from '@/components/home/ArchitecturePanel';
@@ -11,14 +12,13 @@ export const metadata: Metadata = {
   title: 'How It Works | Ambr',
   description:
     'Learn how Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents acting in the real world.',
-  openGraph: {
+  ...createOgMetadata({
     title: 'How It Works | Ambr',
-    description:
-      'Learn how Ambr provides the legal framework for AI agents — delegation contracts, commerce agreements, and cryptographic audit trails.',
-    url: 'https://ambr.run/how-it-works',
-    siteName: 'Ambr',
-    type: 'website',
-  },
+    description: 'Learn how Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents acting in the real world.',
+    path: '/how-it-works',
+    label: 'How It Works',
+    domain: 'ambr.run',
+  }),
 };
 
 export default function HowItWorksPage() {

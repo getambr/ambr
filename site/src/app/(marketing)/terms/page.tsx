@@ -1,14 +1,17 @@
 import { Metadata } from 'next';
+import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Ambr',
-  description: 'Ambr terms of service — contract generation infrastructure for AI agents.',
-  openGraph: {
+  description: 'Terms of Service for the Ambr Protocol platform.',
+  ...createOgMetadata({
     title: 'Terms of Service | Ambr',
-    url: 'https://ambr.run/terms',
-    siteName: 'Ambr',
-  },
+    description: 'Terms of Service for the Ambr Protocol platform.',
+    path: '/terms',
+    label: 'Legal',
+    domain: 'ambr.run',
+  }),
 };
 
 export default function TermsPage() {
