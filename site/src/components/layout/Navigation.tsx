@@ -20,25 +20,18 @@ const platformLinks = [
   { href: '/reader', label: 'Reader' },
 ];
 
-const platformPaths = ['/docs', '/dashboard', '/developers', '/templates', '/reader', '/activate'];
-
 function useNavLinks() {
-  const pathname = usePathname();
   const [links, setLinks] = useState([...marketingLinks, ...platformLinks]);
 
   useEffect(() => {
     const host = window.location.hostname;
-    const onPlatformRoute = platformPaths.some((p) => pathname.startsWith(p));
-
-    if (onPlatformRoute) {
-      setLinks(platformLinks);
-    } else if (host.includes('ambr.run')) {
+    if (host.includes('ambr.run')) {
       setLinks(marketingLinks);
     } else if (host.includes('getamber.dev')) {
       setLinks(platformLinks);
     }
-    // localhost/preview on marketing routes: keep all links
-  }, [pathname]);
+    // localhost/preview: keep all links
+  }, []);
 
   return links;
 }
