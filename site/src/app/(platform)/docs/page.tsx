@@ -1,6 +1,6 @@
 export default function DocsPage() {
   return (
-    <main className="pt-28 pb-32 px-4 lg:px-6">
+    <main className="pt-28 pb-[60vh] px-4 lg:px-6">
 
       {/* ──────────────────────────────────────────────── */}
       {/* GETTING STARTED                                  */}
