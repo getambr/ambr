@@ -419,6 +419,51 @@ function PricingCard() {
   );
 }
 
+function ZKIdentityVisual() {
+  return (
+    <VisualFrame label="// ZK-SNARK Proof">
+      <svg viewBox="0 0 320 270" fill="none" className="w-full">
+        {/* Prover */}
+        <rect x="20" y="10" width="110" height="40" stroke="#c6a87c" strokeWidth="1" fill="#c6a87c" fillOpacity="0.05" />
+        <text x="75" y="28" textAnchor="middle" fill="#999" fontSize="8" fontFamily="monospace">PROVER</text>
+        <text x="75" y="42" textAnchor="middle" fill="#c6a87c" fontSize="9" fontFamily="monospace">Private Inputs</text>
+
+        {/* Trusted setup */}
+        <rect x="200" y="10" width="110" height="40" stroke="#c6a87c" strokeWidth="0.5" fill="#c6a87c" fillOpacity="0.03" />
+        <text x="255" y="28" textAnchor="middle" fill="#555" fontSize="8" fontFamily="monospace">CIRCUIT</text>
+        <text x="255" y="42" textAnchor="middle" fill="#c6a87c" fontSize="9" fontFamily="monospace">Groth16 / BN128</text>
+
+        {/* Arrow down from both to proof */}
+        <line x1="75" y1="50" x2="75" y2="85" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
+        <line x1="255" y1="50" x2="255" y2="85" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
+        <line x1="75" y1="85" x2="255" y2="85" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
+        <line x1="160" y1="85" x2="160" y2="100" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
+
+        {/* Proof box */}
+        <rect x="80" y="100" width="160" height="35" stroke="#c6a87c" strokeWidth="1.5" fill="#c6a87c" fillOpacity="0.08" />
+        <text x="160" y="116" textAnchor="middle" fill="#f4f4f0" fontSize="10" fontFamily="monospace">π Proof</text>
+        <text x="160" y="129" textAnchor="middle" fill="#c6a87c" fontSize="8" fontFamily="monospace">no personal data</text>
+
+        {/* Arrow to verifier */}
+        <line x1="160" y1="135" x2="160" y2="160" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
+
+        {/* Verifier */}
+        <rect x="80" y="160" width="160" height="35" stroke="#c6a87c" strokeWidth="0.5" fill="#c6a87c" fillOpacity="0.03" />
+        <text x="160" y="176" textAnchor="middle" fill="#999" fontSize="8" fontFamily="monospace">VERIFIER</text>
+        <text x="160" y="189" textAnchor="middle" fill="#c6a87c" fontSize="9" fontFamily="monospace">Merkle Oracle → Base L2</text>
+
+        {/* Arrow to contract */}
+        <line x1="160" y1="195" x2="160" y2="220" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
+
+        {/* Contract record */}
+        <rect x="60" y="220" width="200" height="30" stroke="#c6a87c" strokeWidth="0.5" fill="#c6a87c" fillOpacity="0.05" />
+        <text x="160" y="237" textAnchor="middle" fill="#555" fontSize="8" fontFamily="monospace">identity_verified: true</text>
+        <text x="160" y="248" textAnchor="middle" fill="#c6a87c" fontSize="8" fontFamily="monospace">on-chain alongside cNFT</text>
+      </svg>
+    </VisualFrame>
+  );
+}
+
 const sectionVisuals: Record<string, () => React.ReactNode> = {
   'what-is-ambr': ArchitectureDiagram,
   'get-api-key': ActivateWireframe,
@@ -440,6 +485,7 @@ const sectionVisuals: Record<string, () => React.ReactNode> = {
   'free-alpha': PricingCard,
   'crypto': TokensCard,
   'card': PricingCard,
+  'zk-identity': ZKIdentityVisual,
 };
 
 const sectionCaptions: Record<string, string> = {
@@ -460,6 +506,7 @@ const sectionCaptions: Record<string, string> = {
   'wallet-auth': 'ECDSA signature proves wallet ownership. Backend checks association via signatures, handshakes, or cNFT.',
   'cnft': 'Each contract is minted as an ERC-721 on Base L2 with its SHA-256 hash stored permanently on-chain.',
   'transfers': 'Counterparty-gated: both the holder and counterparty must approve before an NFT can be transferred.',
+  'zk-identity': 'Groth16/BN128 zk-SNARK: prover generates a proof from private inputs, verifier checks it on-chain via Merkle oracle — no personal data on the blockchain.',
   'free-alpha': 'Alpha access is free. Paid tiers unlock more contracts and features when Ambr exits alpha.',
   'crypto': '7 tokens accepted on Base L2: stablecoins (USDC, USDbC, DAI) and volatile assets (ETH, WETH, cbETH, cbBTC).',
   'card': 'Stripe checkout for card payments. Currently in test mode — live payments coming soon.',

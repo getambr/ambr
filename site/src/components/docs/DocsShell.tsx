@@ -11,6 +11,7 @@ const allSectionIds = [
   'endpoints',
   'connect-wallet', 'wallet-auth', 'cnft', 'transfers',
   'free-alpha', 'crypto', 'card',
+  'zk-identity',
 ];
 
 export default function DocsShell({ children }: { children: React.ReactNode }) {
