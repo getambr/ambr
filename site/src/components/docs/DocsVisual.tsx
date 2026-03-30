@@ -456,9 +456,9 @@ function ZKIdentityVisual() {
         <line x1="160" y1="195" x2="160" y2="220" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
 
         {/* Contract record */}
-        <rect x="60" y="220" width="200" height="30" stroke="#c6a87c" strokeWidth="0.5" fill="#c6a87c" fillOpacity="0.05" />
-        <text x="160" y="237" textAnchor="middle" fill="#555" fontSize="8" fontFamily="monospace">identity_verified: true</text>
-        <text x="160" y="248" textAnchor="middle" fill="#c6a87c" fontSize="8" fontFamily="monospace">on-chain alongside cNFT</text>
+        <rect x="60" y="220" width="200" height="40" stroke="#c6a87c" strokeWidth="0.5" fill="#c6a87c" fillOpacity="0.05" />
+        <text x="160" y="238" textAnchor="middle" fill="#555" fontSize="8" fontFamily="monospace">identity_verified: true</text>
+        <text x="160" y="252" textAnchor="middle" fill="#c6a87c" fontSize="8" fontFamily="monospace">on-chain alongside cNFT</text>
       </svg>
     </VisualFrame>
   );
