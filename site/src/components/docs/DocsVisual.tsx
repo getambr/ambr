@@ -422,7 +422,7 @@ function PricingCard() {
 function ZKIdentityVisual() {
   return (
     <VisualFrame label="// ZK-SNARK Proof">
-      <svg viewBox="0 0 320 270" fill="none" className="w-full">
+      <svg viewBox="0 0 320 295" fill="none" className="w-full">
         {/* Prover */}
         <rect x="20" y="10" width="110" height="40" stroke="#c6a87c" strokeWidth="1" fill="#c6a87c" fillOpacity="0.05" />
         <text x="75" y="28" textAnchor="middle" fill="#999" fontSize="8" fontFamily="monospace">PROVER</text>
