@@ -13,24 +13,32 @@ const marketingLinks = [
 ];
 
 const platformLinks = [
+  { href: '/docs', label: 'Docs' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/developers', label: 'Developers' },
   { href: '/templates', label: 'Templates' },
   { href: '/reader', label: 'Reader' },
 ];
 
+const platformPaths = ['/docs', '/dashboard', '/developers', '/templates', '/reader', '/activate'];
+
 function useNavLinks() {
+  const pathname = usePathname();
   const [links, setLinks] = useState([...marketingLinks, ...platformLinks]);
 
   useEffect(() => {
     const host = window.location.hostname;
-    if (host.includes('ambr.run')) {
+    const onPlatformRoute = platformPaths.some((p) => pathname.startsWith(p));
+
+    if (onPlatformRoute) {
+      setLinks(platformLinks);
+    } else if (host.includes('ambr.run')) {
       setLinks(marketingLinks);
     } else if (host.includes('getamber.dev')) {
       setLinks(platformLinks);
     }
-    // localhost/preview: keep all links
-  }, []);
+    // localhost/preview on marketing routes: keep all links
+  }, [pathname]);
 
   return links;
 }
