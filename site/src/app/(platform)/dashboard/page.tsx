@@ -301,7 +301,7 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-text-primary">Wallet</h2>
                   </div>
                   <p className="text-xs text-text-secondary mb-4">
-                    Connect your wallet to view contracts you've signed, handshaked, or paid for.
+                    Connect your wallet to view contracts you&apos;ve signed, handshaked, or paid for.
                   </p>
                   <button
                     onClick={handleWalletConnect}
@@ -528,7 +528,7 @@ export default function DashboardPage() {
                     <div>
                       <h3 className="text-sm font-medium text-text-primary mb-2">1. MCP Server Configuration</h3>
                       <p className="text-xs text-text-secondary mb-2">
-                        Add this to your agent's MCP config (Claude Desktop, Cursor, etc.):
+                        Add this to your agent&apos;s MCP config (Claude Desktop, Cursor, etc.):
                       </p>
                       <pre className="rounded-lg bg-background border border-border p-4 text-xs font-mono text-text-secondary overflow-x-auto">
 {`{
