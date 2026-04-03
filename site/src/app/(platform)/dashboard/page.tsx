@@ -20,7 +20,7 @@ declare global {
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'agents' | 'account' | 'calendar' | 'email' | 'drafts' | 'crm';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'calendar' | 'email' | 'drafts' | 'crm';
 
 interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
 interface ContractRow {
@@ -92,8 +92,9 @@ const NAV_SECTIONS = [
   {
     title: 'Platform',
     items: [
+      { id: 'wallet' as Section, label: 'Wallet & NFTs', icon: Wallet },
       { id: 'agents' as Section, label: 'Agent Setup', icon: Terminal },
-      { id: 'account' as Section, label: 'Account', icon: Wallet },
+      { id: 'account' as Section, label: 'Account', icon: Layers },
     ],
   },
   {
@@ -916,6 +917,156 @@ function Row({ label, value, mono, className }: { label: string; value: string; 
   );
 }
 
+// ─── Wallet & NFTs Section ─────────────────────────────
+function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[]; walletAddress: string | null }) {
+  const [wallet, setWallet] = useState(walletAddress);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState('');
+
+  const nftContracts = contracts.filter(c => c.nft_mint_status === 'minted');
+  const pendingMints = contracts.filter(c => c.nft_mint_status === 'pending');
+
+  async function connectWallet() {
+    if (!window?.ethereum) { setError('No wallet detected. Install MetaMask or another EIP-1193 wallet.'); return; }
+    setConnecting(true); setError('');
+    try {
+      const { BrowserProvider } = await import('ethers');
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      setWallet(address.toLowerCase());
+    } catch (err) {
+      if (!(err as Error).message?.includes('user rejected'))
+        setError('Failed to connect wallet');
+    } finally { setConnecting(false); }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Wallet connection */}
+      <div className="rounded-xl border border-border bg-surface/80 p-6">
+        <p className="text-micro mb-4">Connected Wallet</p>
+        {wallet ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-amber/15 flex items-center justify-center">
+                  <Wallet className="h-4 w-4 text-amber" />
+                </div>
+                <div>
+                  <p className="text-sm font-mono text-text-primary">{wallet.slice(0, 6)}...{wallet.slice(-4)}</p>
+                  <p className="text-xs text-text-secondary">Base L2</p>
+                </div>
+              </div>
+              <button onClick={() => setWallet(null)}
+                className="text-xs text-text-secondary hover:text-text-primary transition-colors">
+                Disconnect
+              </button>
+            </div>
+            <div className="flex items-center gap-4 pt-2 border-t border-border">
+              <div className="text-center flex-1">
+                <p className="text-lg font-bold text-text-primary">{nftContracts.length}</p>
+                <p className="text-[10px] font-mono uppercase tracking-wider text-text-secondary">NFTs Minted</p>
+              </div>
+              <div className="text-center flex-1">
+                <p className="text-lg font-bold text-text-primary">{contracts.filter(c => c.status === 'active').length}</p>
+                <p className="text-[10px] font-mono uppercase tracking-wider text-text-secondary">Active Contracts</p>
+              </div>
+              <div className="text-center flex-1">
+                <p className="text-lg font-bold text-amber">{pendingMints.length}</p>
+                <p className="text-[10px] font-mono uppercase tracking-wider text-text-secondary">Pending Mint</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-text-secondary mb-3">Connect your wallet to view on-chain contract NFTs and link your wallet to your API key for delegation.</p>
+            {error && <p className="text-xs text-error mb-3">{error}</p>}
+            <button onClick={connectWallet} disabled={connecting}
+              className="rounded-lg border border-amber/30 bg-amber/10 px-4 py-2.5 text-sm font-medium text-amber hover:bg-amber/20 disabled:opacity-50 transition-colors">
+              {connecting ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* cNFT Contracts */}
+      <div className="rounded-xl border border-border bg-surface/80 overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text-primary">Contract NFTs</h2>
+          <span className="text-xs text-text-secondary/60">{nftContracts.length} minted</span>
+        </div>
+        {nftContracts.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <Wallet className="h-8 w-8 text-text-secondary/30 mx-auto mb-3" />
+            <p className="text-sm text-text-secondary">No contract NFTs yet</p>
+            <p className="text-xs text-text-secondary/50 mt-1">When contracts are signed and activated, they are minted as ERC-721 NFTs on Base L2.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {nftContracts.map(c => (
+              <div key={c.contract_id} className="px-5 py-3.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono text-amber">{c.contract_id}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono text-emerald-400 border border-emerald-500/30">NFT</span>
+                  </div>
+                  <StatusBadge status={c.status} />
+                </div>
+                <p className="text-xs text-text-secondary/70 mb-2">{c.principal_declaration?.principal_name || 'Unknown'}</p>
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="text-text-secondary">Hash: <span className="font-mono text-text-primary">{c.sha256_hash.slice(0, 16)}...</span></span>
+                  <Link href={`/reader/${c.sha256_hash}`} className="text-amber hover:underline inline-flex items-center gap-1">
+                    Reader <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pending mints */}
+      {pendingMints.length > 0 && (
+        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <RefreshCw className="h-4 w-4 text-yellow-400 animate-spin" />
+            <p className="text-sm font-medium text-yellow-400">Minting in Progress</p>
+          </div>
+          <div className="space-y-2">
+            {pendingMints.map(c => (
+              <div key={c.contract_id} className="flex items-center justify-between text-xs">
+                <span className="font-mono text-text-primary">{c.contract_id}</span>
+                <span className="text-text-secondary">{c.principal_declaration?.principal_name || 'Unknown'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Base L2 info */}
+      <div className="rounded-xl border border-border bg-surface/80 p-5">
+        <p className="text-micro mb-3">On-Chain Details</p>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-text-secondary">Network</span>
+            <span className="text-text-primary">Base L2 (Mainnet)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-text-secondary">Token Standard</span>
+            <span className="text-text-primary">ERC-721</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-text-secondary">Transfer Model</span>
+            <span className="text-text-primary">Counterparty-Gated</span>
+          </div>
+        </div>
+        <p className="text-xs text-text-secondary/50 mt-3">Both holder and counterparty must approve before an NFT can be transferred. SHA-256 hash stored permanently on-chain.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ─────────────────────────────────────
 export default function DashboardPage() {
   const [apiKey, setApiKey] = useState('');
@@ -1080,6 +1231,7 @@ export default function DashboardPage() {
                       onRevoked={() => { fetchWithApiKey(apiKey); setSection('contracts'); }}
                     />
                   )}
+                  {section === 'wallet' && <WalletSection contracts={data.contracts} walletAddress={data.wallet} />}
                   {section === 'agents' && <AgentSetup apiKeyPrefix={data.user?.key_prefix || 'amb_***'} />}
                   {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} onSignOut={handleSignOut} />}
 
