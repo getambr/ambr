@@ -4,22 +4,22 @@ import Button from '@/components/ui/Button';
 
 const pricingItems = [
   {
-    label: 'Per-Contract',
-    price: '$0.50–$5.00',
+    label: 'Delegation Contracts',
+    price: '$0.50',
     unit: 'per contract',
-    description: 'Create delegation authority or commerce contracts — each minted as a single NFT on Base L2 with counterparty-gated transfers and SHA-256 hash stored permanently on-chain.',
+    description: 'General and limited-service agent authorization — defines action scopes, spending caps, and revocation terms. Minted as cNFT on Base L2.',
   },
   {
-    label: 'x402 Pay-per-Contract',
-    price: 'From $0.50',
+    label: 'Commerce Contracts',
+    price: '$1.00',
     unit: 'per contract',
-    description: 'HTTP-native x402 payments — agents pay per contract via multi-token support (USDC, EURC, and more) with no subscription required.',
+    description: 'API access agreements, compute SLAs, and task execution contracts between agents or principals. x402 or API key payment.',
   },
   {
-    label: 'API Access',
-    price: 'Usage-based',
-    unit: 'pricing',
-    description: 'Platforms embedding Ambr\'s contract layer into their agent workflows via REST or MCP.',
+    label: 'Fleet Authorization',
+    price: '$2.50',
+    unit: 'per contract',
+    description: 'Multi-agent fleet delegation with shared budget pools, escalation thresholds, and sub-delegation rules.',
   },
 ];
 
