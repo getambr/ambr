@@ -76,6 +76,9 @@ export async function generateContract(
   // Enrich machine-readable layer with oversight metadata
   const machineReadable = input.machineReadable as Record<string, unknown>;
 
+  // Schema version — tracks which template version generated this contract
+  machineReadable.schema_version = '1.0.0';
+
   // EU AI Act Article 14 compliance: document the oversight method
   machineReadable.compliance = {
     ...(machineReadable.compliance as Record<string, unknown> || {}),

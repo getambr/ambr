@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ambr.run
 
-## Getting Started
+Ricardian contract infrastructure for AI agent commerce. Dual-format contracts (human-readable + machine-parsable JSON), hashed with SHA-256, and minted as cNFTs on Base L2.
 
-First, run the development server:
+## Architecture
+
+- **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind CSS
+- **Database**: Supabase (Postgres + Row Level Security)
+- **Blockchain**: Base L2 via Ethers.js v6 — cNFT minting with counterparty-gated transfers
+- **Payments**: x402 HTTP-native per-contract payments (multi-token: USDC, EURC)
+- **Agent Protocol**: A2A discovery + MCP server integration
+- **Identity**: Pluggable adapter system — Wallet (ECDSA), ZK Identity (Demos Network), QES (Evrotrust)
+
+## Contract Templates
+
+| Template | Type | Price |
+|----------|------|-------|
+| `d1-general-auth` | Delegation | $0.50 |
+| `d2-limited-service` | Delegation | $0.50 |
+| `d3-fleet-auth` | Fleet Delegation | $2.50 |
+| `c1-api-access` | Commerce | $1.00 |
+| `c2-compute-sla` | Commerce | $1.00 |
+| `c3-task-execution` | Commerce | $1.00 |
+
+## API
+
+Full REST API at `getamber.dev/api/v1/`:
+
+- `POST /contracts` — Create contract from template
+- `POST /contracts/:id/sign` — Sign with ECDSA wallet
+- `POST /contracts/:id/handshake` — Accept/reject/request changes
+- `POST /contracts/:id/revoke` — Cascade revocation
+- `GET /templates` — List available templates
+- `POST /identity/verify` — Verify ZK identity proof
+
+## Legal Research
+
+Contract schemas reference established legal frameworks:
+
+- **UETA Section 14** (US) — Electronic agent authority
+- **eIDAS Article 25** (EU) — Electronic signature recognition
+- **Singapore Electronic Transactions Act** — Default governing law
+- **EU AI Act Article 14** — Human oversight method embedded in every contract via `human_oversight_method: "pre-authorized delegation"`
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # Start dev server
+npm run verify   # tsc + lint + test + build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Links
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Marketing**: [ambr.run](https://ambr.run)
+- **Platform**: [getamber.dev](https://getamber.dev)
+- **Documentation**: [getamber.dev/docs](https://getamber.dev/docs)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Corporate
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+OMRA Corp. (Delaware C-Corp)
