@@ -109,65 +109,167 @@ const NAV_SECTIONS = [
   },
 ];
 
-function Sidebar({ active, onNav, isAdmin, mobileOpen, onClose }: {
+function DesktopSidebar({ active, onNav, isAdmin }: {
   active: Section; onNav: (s: Section) => void; isAdmin: boolean;
-  mobileOpen: boolean; onClose: () => void;
 }) {
-  const nav = (
-    <nav className="flex flex-col gap-5 py-5 px-3">
-      {NAV_SECTIONS.map(section => {
-        if (section.admin && !isAdmin) return null;
-        return (
-          <div key={section.title}>
-            <div className="flex items-center gap-2 mb-1.5 px-2">
-              <p className="text-micro">{section.title}</p>
-              {section.admin && <Lock className="h-3 w-3 text-amber/40" />}
+  return (
+    <aside className="hidden lg:block fixed top-16 left-0 w-56 h-[calc(100vh-4rem)] border-r border-border bg-background overflow-y-auto z-30">
+      <nav className="flex flex-col gap-5 py-5 px-3">
+        {NAV_SECTIONS.map(section => {
+          if (section.admin && !isAdmin) return null;
+          return (
+            <div key={section.title}>
+              <div className="flex items-center gap-2 mb-1.5 px-2">
+                <p className="text-micro">{section.title}</p>
+                {section.admin && <Lock className="h-3 w-3 text-amber/40" />}
+              </div>
+              {section.items.map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onNav(item.id)}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                      active === item.id
+                        ? 'bg-amber/10 text-amber border-l-2 border-amber'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
-            {section.items.map(item => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => { onNav(item.id); onClose(); }}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    active === item.id
-                      ? 'bg-amber/10 text-amber border-l-2 border-amber'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        );
-      })}
-    </nav>
+          );
+        })}
+      </nav>
+    </aside>
   );
+}
+
+// ─── Mobile Bottom Nav ─────────────────────────────────
+const MOBILE_TABS = [
+  { id: 'overview' as Section, label: 'Pipeline', icon: BarChart3 },
+  { id: 'contracts' as Section, label: 'Contracts', icon: FileText },
+  { id: 'create' as Section, label: 'Create', icon: Plus, accent: true },
+  { id: 'wallet' as Section, label: 'Wallet', icon: Wallet },
+  { id: '_more' as const, label: 'More', icon: Menu },
+];
+
+const MORE_ITEMS = [
+  { id: 'agents' as Section, label: 'Agent Setup', icon: Terminal },
+  { id: 'account' as Section, label: 'Account', icon: Layers },
+];
+
+const MORE_ADMIN_ITEMS = [
+  { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
+  { id: 'email' as Section, label: 'Email Triage', icon: Mail },
+  { id: 'drafts' as Section, label: 'Draft Queue', icon: Send },
+  { id: 'crm' as Section, label: 'Outreach CRM', icon: Users },
+];
+
+function MobileBottomNav({ active, onNav, isAdmin }: {
+  active: Section; onNav: (s: Section) => void; isAdmin: boolean;
+}) {
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <>
-      <aside className="hidden lg:block fixed top-16 left-0 w-56 h-[calc(100vh-4rem)] border-r border-border bg-background overflow-y-auto z-30">
-        {nav}
-      </aside>
+      {/* More bottom sheet */}
       <AnimatePresence>
-        {mobileOpen && (
+        {moreOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="lg:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-            <motion.aside initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="lg:hidden fixed top-0 left-0 z-50 w-56 h-full border-r border-border bg-background">
-              <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-                <p className="text-micro">Dashboard</p>
-                <button onClick={onClose}><X className="h-5 w-5 text-text-secondary" /></button>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
+              onClick={() => setMoreOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-surface"
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-border" />
               </div>
-              {nav}
-            </motion.aside>
+              <nav className="px-4 pb-8 pt-2">
+                <p className="text-micro mb-3 px-1">Platform</p>
+                {MORE_ITEMS.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button key={item.id} onClick={() => { onNav(item.id); setMoreOpen(false); }}
+                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors mb-1 ${
+                        active === item.id ? 'bg-amber/10 text-amber' : 'text-text-secondary hover:bg-surface-elevated'
+                      }`}>
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+
+                {isAdmin && (
+                  <>
+                    <div className="flex items-center gap-2 mt-4 mb-2 px-1">
+                      <p className="text-micro">Team</p>
+                      <Lock className="h-3 w-3 text-amber/40" />
+                    </div>
+                    {MORE_ADMIN_ITEMS.map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <button key={item.id} onClick={() => { onNav(item.id); setMoreOpen(false); }}
+                          className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors mb-1 ${
+                            active === item.id ? 'bg-amber/10 text-amber' : 'text-text-secondary hover:bg-surface-elevated'
+                          }`}>
+                          <Icon className="h-5 w-5" />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </nav>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      {/* Bottom tab bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur-lg pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center justify-around h-16">
+          {MOBILE_TABS.map(tab => {
+            const Icon = tab.icon;
+            const isMore = tab.id === '_more';
+            const isActive = isMore ? moreOpen : active === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (isMore) { setMoreOpen(!moreOpen); }
+                  else { setMoreOpen(false); onNav(tab.id as Section); }
+                }}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
+                  tab.accent
+                    ? 'text-amber'
+                    : isActive ? 'text-amber' : 'text-text-secondary/60'
+                }`}
+              >
+                {tab.accent ? (
+                  <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-amber/15 border border-amber/30 -mt-1">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                ) : (
+                  <Icon className="h-5 w-5" />
+                )}
+                <span className={`text-[10px] font-mono uppercase tracking-wider ${tab.accent ? '' : ''}`}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }
@@ -1075,7 +1177,7 @@ export default function DashboardPage() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
   const [section, setSection] = useState<Section>('overview');
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // mobileOpen removed — replaced by bottom tab bar
   const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null);
 
   const isLoggedIn = data?.authMethod != null;
@@ -1185,16 +1287,10 @@ export default function DashboardPage() {
         {/* Dashboard */}
         {isLoggedIn && (
           <>
-            <Sidebar active={section} onNav={setSection} isAdmin={isAdmin}
-              mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+            <DesktopSidebar active={section} onNav={setSection} isAdmin={isAdmin} />
+            <MobileBottomNav active={section} onNav={setSection} isAdmin={isAdmin} />
 
-            {/* Mobile menu button */}
-            <button onClick={() => setMobileOpen(true)}
-              className="lg:hidden fixed top-20 left-4 z-30 rounded-lg border border-border bg-surface p-2 text-text-secondary">
-              <Menu className="h-5 w-5" />
-            </button>
-
-            <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24">
+            <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 pb-20 lg:pb-6">
               {/* Top bar */}
               <div className="flex items-center justify-between mb-6 rounded-xl border border-border/50 bg-surface/80 px-4 py-2.5">
                 <div className="flex items-center gap-3">
