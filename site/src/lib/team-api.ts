@@ -69,3 +69,10 @@ export function getSuggestedSlots(duration = 60, days = 7) {
 export function approveDraft(draftId: string, editedBody?: string) {
   return opsPost<{ ok: boolean }>('approve_draft', { draftId, ...(editedBody ? { editedBody } : {}) })
 }
+
+export function createEvent(event: {
+  title: string; start: string; end: string;
+  description?: string; location?: string; guests?: string;
+}) {
+  return opsPost<{ ok: boolean; eventId?: string }>('create_event', event)
+}

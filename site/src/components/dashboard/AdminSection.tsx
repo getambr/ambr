@@ -60,7 +60,7 @@ export function AdminSection({ activeSection }: { activeSection: DashboardSectio
   if (activeSection === 'calendar') {
     return (
       <motion.div variants={item} initial="hidden" animate="show">
-        <CalendarWidget events={data.calendar} slots={data.slots} loading={loading} />
+        <CalendarWidget events={data.calendar} slots={data.slots} loading={loading} onRefresh={fetchAll} />
       </motion.div>
     )
   }
