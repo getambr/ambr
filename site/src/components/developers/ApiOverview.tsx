@@ -142,7 +142,7 @@ const endpoints = [
   }
 );
 // response.api_key → 'ambr_live_...'
-// response.tier → 'starter' | 'pro' | 'enterprise'`,
+// response.tier → 'developer' | 'startup' | 'scale' | 'enterprise'`,
   },
 ];
 

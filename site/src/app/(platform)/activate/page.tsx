@@ -13,18 +13,18 @@ interface AlphaFormData {
 interface CryptoFormData {
   email: string;
   tx_hash: string;
-  tier: 'starter' | 'builder' | 'enterprise';
+  tier: 'startup' | 'scale' | 'enterprise';
 }
 
 interface StripeFormData {
   email: string;
-  tier: 'starter' | 'builder' | 'enterprise';
+  tier: 'startup' | 'scale' | 'enterprise';
 }
 
 const tiers = [
-  { value: 'starter' as const, label: 'Starter — $29', credits: '50 contracts' },
-  { value: 'builder' as const, label: 'Builder — $99', credits: '250 contracts' },
-  { value: 'enterprise' as const, label: 'Enterprise — $299', credits: 'Unlimited' },
+  { value: 'startup' as const, label: 'Startup', price: '$49/mo', credits: '200 contracts/mo', overage: '$0.35/contract overage' },
+  { value: 'scale' as const, label: 'Scale', price: '$199/mo', credits: '1,000 contracts/mo', overage: '$0.25/contract overage' },
+  { value: 'enterprise' as const, label: 'Enterprise', price: 'Custom', credits: 'Unlimited contracts', overage: 'Custom SLA + support' },
 ];
 
 export default function ActivatePage() {
@@ -47,15 +47,15 @@ function ActivateContent() {
   const searchParams = useSearchParams();
   const stripeTest = searchParams.get('stripe') === 'test';
   const stripeReady = stripeTest || (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_') ?? false);
-  const [tab, setTab] = useState<'alpha' | 'crypto' | 'card'>('alpha');
+  const [tab, setTab] = useState<'developer' | 'crypto' | 'card'>('developer');
   const [status, setStatus] = useState<'idle' | 'loading' | 'polling' | 'success' | 'error'>('idle');
   const [apiKey, setApiKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
 
   const alphaForm = useForm<AlphaFormData>();
-  const cryptoForm = useForm<CryptoFormData>({ defaultValues: { tier: 'starter' } });
-  const stripeForm = useForm<StripeFormData>({ defaultValues: { tier: 'starter' } });
+  const cryptoForm = useForm<CryptoFormData>({ defaultValues: { tier: 'startup' } });
+  const stripeForm = useForm<StripeFormData>({ defaultValues: { tier: 'startup' } });
 
   // Handle Stripe return redirect
   useEffect(() => {
@@ -113,7 +113,7 @@ function ActivateContent() {
       const res = await fetch('/api/v1/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email, tier: 'alpha' }),
+        body: JSON.stringify({ email: data.email, tier: 'developer' }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -204,7 +204,7 @@ function ActivateContent() {
               Get Your API Key
             </h1>
             <p className="mt-4 text-[#aaa] text-sm font-light">
-              Free alpha access — 5 contracts to test the protocol. No payment required.
+              Free developer tier — 25 contracts/month. Or pay per contract via x402.
             </p>
           </div>
 
@@ -261,14 +261,14 @@ function ActivateContent() {
               <div className="flex rounded-none border border-amber/60 bg-surface mb-6 p-1">
                 <button
                   type="button"
-                  onClick={() => { setTab('alpha'); setStatus('idle'); setErrorMessage(''); }}
+                  onClick={() => { setTab('developer'); setStatus('idle'); setErrorMessage(''); }}
                   className={`flex-1 rounded-none py-2 text-sm font-mono uppercase tracking-wide text-xs transition-colors ${
-                    tab === 'alpha'
+                    tab === 'developer'
                       ? 'bg-amber text-background'
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
-                  Free Alpha
+                  Developer
                 </button>
                 {stripeReady && <button
                   type="button"
@@ -294,13 +294,13 @@ function ActivateContent() {
                 </button>
               </div>
 
-              {tab === 'alpha' ? (
+              {tab === 'developer' ? (
                 <form onSubmit={alphaForm.handleSubmit(onAlphaSubmit)} className="space-y-5">
                   <div className="rounded-none border border-amber/60 bg-amber-glow relative p-4 text-center">
-                    <p className="text-micro mb-1">Alpha Access</p>
-                    <p className="text-2xl font-serif text-text-primary">5 Free Contracts</p>
+                    <p className="text-micro mb-1">Developer</p>
+                    <p className="text-2xl font-serif text-text-primary">25 Free Contracts/mo</p>
                     <p className="text-xs text-text-secondary mt-2">
-                      Test contract creation, signing, and verification. One key per email.
+                      Build and test integrations. One key per email. No payment required.
                     </p>
                   </div>
 
@@ -326,13 +326,13 @@ function ActivateContent() {
                   )}
 
                   <Button type="submit" disabled={isLoading} size="lg" className="w-full">
-                    {isLoading ? 'Generating key...' : 'Claim Free Alpha Key'}
+                    {isLoading ? 'Generating key...' : 'Claim Developer Key'}
                   </Button>
 
                   <p className="text-center text-xs text-text-secondary">
-                    No wallet or payment required. Need more contracts?{' '}
+                    No wallet or payment required. Need more capacity?{' '}
                     <button type="button" onClick={() => setTab('crypto')} className="text-amber hover:underline">
-                      Upgrade to a paid tier
+                      Upgrade to Startup or Scale
                     </button>
                   </p>
                 </form>
@@ -355,13 +355,13 @@ function ActivateContent() {
                             {...stripeForm.register('tier', { required: true })}
                             className="accent-amber"
                           />
-                          <div>
-                            <span className="text-sm font-medium text-text-primary">
-                              {t.label}
-                            </span>
-                            <span className="text-xs text-text-secondary ml-2">
-                              ({t.credits})
-                            </span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-text-primary">{t.label}</span>
+                              <span className="text-sm font-mono text-amber">{t.price}</span>
+                            </div>
+                            <p className="text-xs text-text-secondary mt-0.5">{t.credits}</p>
+                            <p className="text-xs text-text-secondary/60">{t.overage}</p>
                           </div>
                         </label>
                       ))}
@@ -428,13 +428,13 @@ function ActivateContent() {
                             {...cryptoForm.register('tier', { required: true })}
                             className="accent-amber"
                           />
-                          <div>
-                            <span className="text-sm font-medium text-text-primary">
-                              {t.label}
-                            </span>
-                            <span className="text-xs text-text-secondary ml-2">
-                              ({t.credits})
-                            </span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-text-primary">{t.label}</span>
+                              <span className="text-sm font-mono text-amber">{t.price}</span>
+                            </div>
+                            <p className="text-xs text-text-secondary mt-0.5">{t.credits}</p>
+                            <p className="text-xs text-text-secondary/60">{t.overage}</p>
                           </div>
                         </label>
                       ))}

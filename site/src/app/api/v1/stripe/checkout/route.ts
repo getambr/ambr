@@ -7,7 +7,7 @@ import { corsOptions } from '@/lib/cors';
 
 const schema = z.object({
   email: z.email('Valid email required'),
-  tier: z.enum(['starter', 'builder', 'enterprise']),
+  tier: z.enum(['startup', 'scale', 'enterprise']),
 });
 
 export async function POST(request: Request) {

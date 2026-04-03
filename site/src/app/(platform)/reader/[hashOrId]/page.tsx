@@ -142,9 +142,48 @@ export default async function ReaderPage({ params, searchParams }: Props) {
           Verification confirms technical integrity — not legal certification.
         </p>
 
+        {/* Revocation banner */}
+        {contract.revoked_at && (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              <p className="text-sm font-medium text-red-400">This contract has been revoked</p>
+            </div>
+            <p className="text-xs text-text-secondary">
+              Revoked on {new Date(contract.revoked_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              {contract.revocation_reason && <> — {contract.revocation_reason}</>}
+            </p>
+            <p className="text-xs text-text-secondary/60 mt-1">
+              This contract no longer grants any authority. Actions taken under this contract after revocation are unauthorized.
+            </p>
+          </div>
+        )}
+
+        {/* Expiry banner */}
+        {contract.expiry_date && contract.status !== 'revoked' && (
+          <div className={`rounded-lg border p-4 mb-6 ${
+            new Date(contract.expiry_date) < new Date()
+              ? 'border-red-500/40 bg-red-500/5'
+              : 'border-yellow-500/40 bg-yellow-500/5'
+          }`}>
+            <p className={`text-sm font-medium ${new Date(contract.expiry_date) < new Date() ? 'text-red-400' : 'text-yellow-400'}`}>
+              {new Date(contract.expiry_date) < new Date() ? 'This contract has expired' : 'This contract has an expiry date'}
+            </p>
+            <p className="text-xs text-text-secondary mt-1">
+              {new Date(contract.expiry_date) < new Date() ? 'Expired' : 'Expires'} on {new Date(contract.expiry_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+        )}
+
         {/* Status + type badges */}
         <div className="flex items-center gap-3 mb-6">
-          <span className="rounded-full border border-amber/30 bg-amber-glow px-3 py-1 text-xs font-medium text-amber">
+          <span className={`rounded-full border px-3 py-1 text-xs font-medium ${
+            contract.status === 'revoked'
+              ? 'border-red-500/30 bg-red-500/10 text-red-400'
+              : 'border-amber/30 bg-amber-glow text-amber'
+          }`}>
             {contract.status}
           </span>
           <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-text-secondary">

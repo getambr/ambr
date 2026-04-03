@@ -12,6 +12,7 @@ const marketingLinks = [
 ];
 
 const platformLinks = [
+  { href: '/docs', label: 'Docs' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/developers', label: 'Developers' },
   { href: '/templates', label: 'Templates' },

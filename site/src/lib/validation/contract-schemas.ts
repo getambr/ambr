@@ -24,7 +24,7 @@ export const activateKeySchema = z.object({
     .string()
     .regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid transaction hash')
     .optional(),
-  tier: z.enum(['alpha', 'starter', 'builder', 'enterprise']),
+  tier: z.enum(['developer', 'startup', 'scale', 'enterprise']),
 });
 
 export type ActivateKeyInput = z.input<typeof activateKeySchema>;

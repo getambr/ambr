@@ -17,7 +17,7 @@ export default function DocsPage() {
       </section>
 
       <section id="get-api-key" className="scroll-mt-24 mb-16">
-        <h3 className="font-serif text-xl text-text-primary mb-4">Get a Free Alpha API Key</h3>
+        <h3 className="font-serif text-xl text-text-primary mb-4">Get a Free Developer Key</h3>
         <p className="text-[#999] text-sm leading-relaxed mb-4">
           Go to{' '}
           <a
@@ -26,8 +26,8 @@ export default function DocsPage() {
           >
             getamber.dev/activate
           </a>
-          , enter your email, and receive an API key instantly. The free alpha tier
-          includes 5 contracts with no payment required.
+          , enter your email, and receive an API key instantly. The free developer tier
+          includes 25 contracts per month with no payment required.
         </p>
       </section>
 
@@ -257,7 +257,7 @@ export default function DocsPage() {
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
                 <td className="py-3 pr-4 font-mono text-xs">/v1/keys/free</td>
                 <td className="py-3 pr-4 text-xs">None</td>
-                <td className="py-3 text-xs">Get free alpha key</td>
+                <td className="py-3 text-xs">Activate API key (developer, startup, scale, enterprise)</td>
               </tr>
               <tr className="border-b border-border">
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
@@ -326,20 +326,58 @@ export default function DocsPage() {
       {/* PAYMENT METHODS                                  */}
       {/* ──────────────────────────────────────────────── */}
 
-      <section id="free-alpha" className="scroll-mt-24 mb-16">
+      <section id="pricing" className="scroll-mt-24 mb-16">
         <p className="text-micro mb-3">Payment Methods</p>
-        <h2 className="font-serif text-3xl text-text-primary mb-4">Free Alpha</h2>
-        <p className="text-[#999] text-sm leading-relaxed">
-          The free alpha tier grants 5 contracts with email-only registration. No payment method
-          required. Visit{' '}
-          <a
-            href="https://getamber.dev/activate"
-            className="text-amber underline underline-offset-4"
-          >
-            getamber.dev/activate
-          </a>{' '}
+        <h2 className="font-serif text-3xl text-text-primary mb-4">Pricing</h2>
+
+        <h4 className="font-serif text-lg text-text-primary mb-3 mt-6">x402 Pay-per-Contract (Agent-Native)</h4>
+        <p className="text-[#999] text-sm leading-relaxed mb-4">
+          No account needed. Agents pay per contract directly with crypto on Base L2. Include the transaction hash in the <code className="font-mono text-amber/80">X-Payment</code> header.
+        </p>
+        <div className="overflow-x-auto mb-6">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-amber/30">
+                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Contract Type</th>
+                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Price</th>
+                <th className="text-left py-2 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Use Case</th>
+              </tr>
+            </thead>
+            <tbody className="text-text-secondary">
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Delegation (d-series)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$0.50</td><td className="py-2 text-xs">Agent authority setup</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Commerce (c-series)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$1.00</td><td className="py-2 text-xs">Agent transactions</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Fleet Auth (d3)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$2.50</td><td className="py-2 text-xs">Multi-agent orchestration</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">cNFT Minting</td><td className="py-2 pr-4 font-mono text-xs text-amber">$0.25</td><td className="py-2 text-xs">On-chain record (Base L2)</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Handshake / Sign / Verify</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 text-xs">Lifecycle actions never charged</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Reader Access</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 text-xs">Counterparties always free</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 className="font-serif text-lg text-text-primary mb-3 mt-8">API Key Tiers (Predictable Billing)</h4>
+        <p className="text-[#999] text-sm leading-relaxed mb-4">
+          For teams that prefer monthly billing with included contract limits. Visit{' '}
+          <a href="https://getamber.dev/activate" className="text-amber underline underline-offset-4">getamber.dev/activate</a>{' '}
           to get started.
         </p>
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-amber/30">
+                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Tier</th>
+                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Monthly</th>
+                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Contracts/mo</th>
+                <th className="text-left py-2 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Overage</th>
+              </tr>
+            </thead>
+            <tbody className="text-text-secondary">
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Developer</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 pr-4 text-xs">25</td><td className="py-2 text-xs">N/A</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Startup</td><td className="py-2 pr-4 font-mono text-xs text-amber">$49</td><td className="py-2 pr-4 text-xs">200</td><td className="py-2 text-xs">$0.35/ea</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Scale</td><td className="py-2 pr-4 font-mono text-xs text-amber">$199</td><td className="py-2 pr-4 text-xs">1,000</td><td className="py-2 text-xs">$0.25/ea</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Enterprise</td><td className="py-2 pr-4 font-mono text-xs text-amber">Custom</td><td className="py-2 pr-4 text-xs">Unlimited</td><td className="py-2 text-xs">Custom SLA</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section id="crypto" className="scroll-mt-24 mb-16">
@@ -394,10 +432,10 @@ export default function DocsPage() {
       </section>
 
       <section id="card" className="scroll-mt-24 mb-16">
-        <h3 className="font-serif text-xl text-text-primary mb-4">Card</h3>
+        <h3 className="font-serif text-xl text-text-primary mb-4">Card Payments</h3>
         <p className="text-[#999] text-sm leading-relaxed">
-          Stripe checkout for card payments is coming soon in production. During the alpha period,
-          use the free tier or crypto payments.
+          Stripe checkout for card payments is available for Startup, Scale, and Enterprise tiers.
+          Use the developer tier or x402 crypto payments to get started without a card.
         </p>
       </section>
 

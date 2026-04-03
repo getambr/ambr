@@ -12,7 +12,7 @@ export function getStripe(): Stripe {
 }
 
 export const TIER_PRICES: Record<string, { cents: number; credits: number; label: string }> = {
-  starter: { cents: 2900, credits: 50, label: 'Starter' },
-  builder: { cents: 9900, credits: 250, label: 'Builder' },
-  enterprise: { cents: 29900, credits: -1, label: 'Enterprise' },
+  startup: { cents: 4900, credits: 200, label: 'Startup' },
+  scale: { cents: 19900, credits: 1000, label: 'Scale' },
+  enterprise: { cents: 0, credits: -1, label: 'Enterprise' }, // custom pricing
 };

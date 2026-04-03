@@ -41,6 +41,9 @@ export async function storeContract(params: {
   visibility?: 'private' | 'metadata_only' | 'public' | 'encrypted';
   parentContractHash?: string;
   amendmentType?: 'original' | 'amendment' | 'extension';
+  initialStatus?: string;
+  oversightThresholdUsd?: number | null;
+  principalApprovalRequired?: boolean;
 }) {
   const db = getSupabaseAdmin();
   const { data, error } = await db
@@ -48,7 +51,7 @@ export async function storeContract(params: {
     .insert({
       contract_id: params.contractId,
       template_id: params.templateId,
-      status: 'draft',
+      status: params.initialStatus ?? 'draft',
       human_readable: params.humanReadable,
       machine_readable: params.machineReadable,
       sha256_hash: params.sha256Hash,
@@ -60,6 +63,8 @@ export async function storeContract(params: {
       visibility: params.visibility ?? 'private',
       parent_contract_hash: params.parentContractHash ?? null,
       amendment_type: params.amendmentType ?? 'original',
+      oversight_threshold_usd: params.oversightThresholdUsd ?? null,
+      principal_approval_required: params.principalApprovalRequired ?? false,
     })
     .select('id, contract_id, sha256_hash, status, created_at')
     .single();

@@ -9,9 +9,17 @@ import { checkVelocity } from '@/lib/velocity';
 import { corsOptions } from '@/lib/cors';
 
 const TIER_CREDITS: Record<string, number> = {
-  starter: 50,
-  builder: 250,
-  enterprise: -1, // unlimited
+  developer: 25,
+  startup: 200,
+  scale: 1000,
+  enterprise: -1, // unlimited — custom pricing
+};
+
+const TIER_PRICES_USD: Record<string, number> = {
+  developer: 0,
+  startup: 49,
+  scale: 199,
+  enterprise: 0, // custom
 };
 
 export async function POST(request: Request) {
@@ -44,19 +52,19 @@ export async function POST(request: Request) {
   const { email, tx_hash, tier } = parsed.data;
   const db = getSupabaseAdmin();
 
-  // --- Free Alpha tier: no payment required ---
-  if (tier === 'alpha') {
-    // Check if email already has a free alpha key
-    const { data: existingAlpha } = await db
+  // --- Free Developer tier: no payment required ---
+  if (tier === 'developer') {
+    // Check if email already has a free developer key
+    const { data: existingDev } = await db
       .from('api_keys')
       .select('id')
       .eq('email', email)
-      .eq('tier', 'alpha')
+      .or('tier.eq.developer,tier.eq.alpha')
       .single();
 
-    if (existingAlpha) {
+    if (existingDev) {
       return NextResponse.json(
-        { error: 'alpha_exists', message: 'A free alpha key already exists for this email.' },
+        { error: 'developer_exists', message: 'A free developer key already exists for this email.' },
         { status: 409 },
       );
     }
@@ -66,14 +74,14 @@ export async function POST(request: Request) {
       key_hash: hash,
       key_prefix: prefix,
       email,
-      tier: 'alpha',
-      credits: 5,
+      tier: 'developer',
+      credits: 25,
       is_active: true,
       payment_method: 'free',
     });
 
     if (insertError) {
-      console.error('Alpha key insert error:', insertError);
+      console.error('Developer key insert error:', insertError);
       return NextResponse.json(
         { error: 'db_error', message: 'Failed to create API key' },
         { status: 500 },
@@ -81,10 +89,10 @@ export async function POST(request: Request) {
     }
 
     logAudit({
-      event_type: 'alpha_key_claimed',
+      event_type: 'developer_key_claimed',
       severity: 'info',
       actor: email,
-      details: { tier: 'alpha', credits: 5 },
+      details: { tier: 'developer', credits: 25 },
       ip_address: ip,
     });
 
@@ -92,9 +100,9 @@ export async function POST(request: Request) {
       {
         api_key: key,
         prefix,
-        tier: 'alpha',
-        credits: 5,
-        message: 'Free alpha key activated. Save this key — it cannot be retrieved again.',
+        tier: 'developer',
+        credits: 25,
+        message: 'Free developer key activated — 25 contracts/month. Save this key — it cannot be retrieved again.',
         docs: 'https://ambr.run/developers',
       },
       { status: 201 },
