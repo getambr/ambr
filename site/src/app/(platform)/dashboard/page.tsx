@@ -892,11 +892,59 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 }
 
 // ─── Agent Setup ────────────────────────────────────────
-function AgentSetup({ apiKeyPrefix }: { apiKeyPrefix: string }) {
+// ─── Agent Console ─────────────────────────────────────
+const API_ENDPOINTS = [
+  { method: 'GET', path: '/api/v1/templates', desc: 'List templates', auth: 'none', body: false },
+  { method: 'GET', path: '/api/v1/contracts', desc: 'List your contracts', auth: 'key', body: false },
+  { method: 'POST', path: '/api/v1/contracts', desc: 'Create contract', auth: 'key', body: true,
+    defaultBody: '{\n  "template": "d1-general-auth",\n  "parameters": {\n    "principal_name": "Acme Corp",\n    "agent_name": "ProcureBot AI",\n    "scope": "procurement up to $10,000",\n    "duration": "90 days"\n  },\n  "principal_declaration": {\n    "agent_id": "0x...",\n    "principal_name": "Acme Corp",\n    "principal_type": "company"\n  }\n}' },
+  { method: 'GET', path: '/api/v1/contracts/{id}/status', desc: 'Contract status', auth: 'none', body: false },
+  { method: 'POST', path: '/api/v1/contracts/{id}/revoke', desc: 'Revoke contract', auth: 'key', body: true, defaultBody: '{\n  "reason": "Agent authorization withdrawn"\n}' },
+  { method: 'POST', path: '/api/v1/contracts/{id}/approve', desc: 'Approve (threshold)', auth: 'key', body: true, defaultBody: '{}' },
+  { method: 'POST', path: '/api/v1/keys', desc: 'Activate API key', auth: 'none', body: true, defaultBody: '{\n  "email": "you@company.com",\n  "tier": "developer"\n}' },
+];
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  POST: 'text-amber bg-amber/10 border-amber/30',
+};
+
+function AgentSetup({ apiKeyPrefix, apiKey }: { apiKeyPrefix: string; apiKey: string }) {
+  const [tab, setTab] = useState<'playground' | 'config' | 'pricing'>('playground');
   const [copied, setCopied] = useState('');
+  const [selectedEndpoint, setSelectedEndpoint] = useState(API_ENDPOINTS[0]);
+  const [pathParam, setPathParam] = useState('');
+  const [reqBody, setReqBody] = useState('');
+  const [response, setResponse] = useState<{ status: number; body: string; time: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+
   function copy(text: string, id: string) {
     navigator.clipboard.writeText(text); setCopied(id);
     setTimeout(() => setCopied(''), 2000);
+  }
+
+  async function sendRequest() {
+    setLoading(true); setResponse(null);
+    const start = Date.now();
+    try {
+      let url = selectedEndpoint.path;
+      if (url.includes('{id}') && pathParam) url = url.replace('{id}', pathParam);
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (selectedEndpoint.auth === 'key' && apiKey) headers['X-API-Key'] = apiKey;
+
+      const res = await fetch(url, {
+        method: selectedEndpoint.method,
+        headers,
+        ...(selectedEndpoint.body && reqBody ? { body: reqBody } : {}),
+      });
+      const text = await res.text();
+      let formatted: string;
+      try { formatted = JSON.stringify(JSON.parse(text), null, 2); } catch { formatted = text; }
+      setResponse({ status: res.status, body: formatted, time: Date.now() - start });
+    } catch (err) {
+      setResponse({ status: 0, body: `Network error: ${err}`, time: Date.now() - start });
+    } finally { setLoading(false); }
   }
 
   const mcpConfig = `{
@@ -908,41 +956,190 @@ function AgentSetup({ apiKeyPrefix }: { apiKeyPrefix: string }) {
   }
 }`;
 
-  const curlExample = `curl -X POST https://getamber.dev/api/v1/contracts \\
-  -H "X-API-Key: YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "template_slug": "delegation-d1",
-    "parameters": {
-      "principal_name": "Acme Corp",
-      "agent_name": "ProcureBot AI",
-      "scope": "procurement up to $10,000",
-      "duration": "90 days"
-    }
-  }'`;
-
-  const blocks = [
-    { id: 'mcp', title: '1. MCP Server', desc: 'Add to Claude Desktop, Cursor, or any MCP client:', code: mcpConfig },
-    { id: 'rest', title: '2. REST API', desc: 'Create a contract via curl:', code: curlExample },
-    { id: 'a2a', title: '3. Agent-to-Agent (A2A)', desc: 'Ambr is discoverable at:', code: 'https://getamber.dev/.well-known/agent.json' },
-    { id: 'x402', title: '4. Pay-per-Contract (x402)', desc: 'No API key needed. Include payment tx hash:', code: 'curl -X POST https://getamber.dev/api/v1/contracts \\\n  -H "X-Payment: 0xYOUR_TX_HASH" ...' },
+  const tabs = [
+    { id: 'playground' as const, label: 'API Playground' },
+    { id: 'config' as const, label: 'Config' },
+    { id: 'pricing' as const, label: 'x402 Calculator' },
   ];
 
   return (
     <div className="space-y-5">
-      {blocks.map(b => (
-        <div key={b.id} className="rounded-xl border border-border bg-surface/80 p-5">
-          <h3 className="text-sm font-medium text-text-primary mb-1">{b.title}</h3>
-          <p className="text-xs text-text-secondary mb-3">{b.desc}</p>
-          <div className="relative">
-            <pre className="rounded-lg bg-background border border-border p-4 text-xs font-mono text-text-secondary overflow-x-auto">{b.code}</pre>
-            <button onClick={() => copy(b.code, b.id)}
-              className="absolute top-2 right-2 rounded-md border border-border bg-surface-elevated p-1.5 text-text-secondary hover:text-amber transition-colors">
-              {copied === b.id ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+      {/* Tab switcher */}
+      <div className="flex gap-1 rounded-xl border border-border bg-surface/80 p-1">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex-1 rounded-lg py-2 text-xs font-mono uppercase tracking-wider transition-colors ${
+              tab === t.id ? 'bg-amber/15 text-amber border border-amber/30' : 'text-text-secondary hover:text-text-primary'
+            }`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'playground' && (
+        <div className="space-y-4">
+          {/* Endpoint selector */}
+          <div className="rounded-xl border border-border bg-surface/80 p-5">
+            <p className="text-micro mb-3">Endpoint</p>
+            <div className="space-y-1.5">
+              {API_ENDPOINTS.map((ep, i) => (
+                <button key={i} onClick={() => { setSelectedEndpoint(ep); setReqBody(ep.defaultBody || ''); setResponse(null); setPathParam(''); }}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                    selectedEndpoint === ep ? 'bg-amber/5 border border-amber/20' : 'hover:bg-surface-elevated border border-transparent'
+                  }`}>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${METHOD_COLORS[ep.method]}`}>{ep.method}</span>
+                  <span className="text-xs font-mono text-text-primary flex-1">{ep.path}</span>
+                  <span className="text-[10px] text-text-secondary hidden sm:block">{ep.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Request builder */}
+          <div className="rounded-xl border border-border bg-surface/80 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded border ${METHOD_COLORS[selectedEndpoint.method]}`}>{selectedEndpoint.method}</span>
+              <span className="text-sm font-mono text-text-primary">{selectedEndpoint.path}</span>
+              {selectedEndpoint.auth === 'key' && <span className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber border border-amber/30">API Key</span>}
+            </div>
+
+            {selectedEndpoint.path.includes('{id}') && (
+              <div className="mb-3">
+                <label className="text-xs text-text-secondary mb-1 block">Contract ID or Hash</label>
+                <input type="text" value={pathParam} onChange={e => setPathParam(e.target.value)}
+                  placeholder="amb-2026-0001 or SHA-256 hash"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50" />
+              </div>
+            )}
+
+            {selectedEndpoint.body && (
+              <div className="mb-3">
+                <label className="text-xs text-text-secondary mb-1 block">Request Body (JSON)</label>
+                <textarea value={reqBody} onChange={e => setReqBody(e.target.value)} rows={8}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50 resize-y" />
+              </div>
+            )}
+
+            <button onClick={sendRequest} disabled={loading || (selectedEndpoint.path.includes('{id}') && !pathParam)}
+              className="rounded-lg bg-gradient-to-r from-amber to-amber-dark px-5 py-2.5 text-sm font-medium text-background hover:from-amber-light hover:to-amber transition-all disabled:opacity-50">
+              {loading ? 'Sending...' : 'Send Request'}
             </button>
           </div>
+
+          {/* Response */}
+          {response && (
+            <div className="rounded-xl border border-border bg-surface/80 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-mono font-bold ${response.status >= 200 && response.status < 300 ? 'text-success' : response.status >= 400 ? 'text-error' : 'text-yellow-400'}`}>
+                    {response.status || 'ERR'}
+                  </span>
+                  <span className="text-xs text-text-secondary">{response.time}ms</span>
+                </div>
+                <button onClick={() => copy(response.body, 'response')}
+                  className="rounded-md border border-border bg-surface-elevated p-1.5 text-text-secondary hover:text-amber transition-colors">
+                  {copied === 'response' ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              <pre className="p-4 text-xs font-mono text-text-secondary overflow-x-auto max-h-80 overflow-y-auto">{response.body}</pre>
+            </div>
+          )}
         </div>
-      ))}
+      )}
+
+      {tab === 'config' && (
+        <div className="space-y-5">
+          {[
+            { id: 'mcp', title: 'MCP Server', desc: 'Add to Claude Desktop, Cursor, or any MCP client:', code: mcpConfig },
+            { id: 'a2a', title: 'Agent Discovery (A2A)', desc: 'Ambr is discoverable via:', code: 'https://getamber.dev/.well-known/agent.json' },
+            { id: 'x402', title: 'x402 Pay-per-Contract', desc: 'No API key needed. Include payment tx hash:', code: `curl -X POST https://getamber.dev/api/v1/contracts \\\n  -H "X-Payment: 0xYOUR_TX_HASH" \\\n  -H "Content-Type: application/json" \\\n  -d '{ "template": "d1-general-auth", ... }'` },
+          ].map(b => (
+            <div key={b.id} className="rounded-xl border border-border bg-surface/80 p-5">
+              <h3 className="text-sm font-medium text-text-primary mb-1">{b.title}</h3>
+              <p className="text-xs text-text-secondary mb-3">{b.desc}</p>
+              <div className="relative">
+                <pre className="rounded-lg bg-background border border-border p-4 text-xs font-mono text-text-secondary overflow-x-auto">{b.code}</pre>
+                <button onClick={() => copy(b.code, b.id)}
+                  className="absolute top-2 right-2 rounded-md border border-border bg-surface-elevated p-1.5 text-text-secondary hover:text-amber transition-colors">
+                  {copied === b.id ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'pricing' && <X402Calculator />}
+    </div>
+  );
+}
+
+function X402Calculator() {
+  const [contractType, setContractType] = useState<'delegation' | 'commerce' | 'fleet'>('delegation');
+  const [count, setCount] = useState(10);
+
+  const prices = { delegation: 0.50, commerce: 1.00, fleet: 2.50 };
+  const price = prices[contractType];
+  const total = price * count;
+
+  const tierComparison = [
+    { tier: 'x402 (pay-per-use)', cost: total, note: `${count} contracts` },
+    { tier: 'Developer (free)', cost: 0, note: '25/mo included' },
+    { tier: 'Startup ($49/mo)', cost: 49, note: `200/mo, overage $0.35` },
+    { tier: 'Scale ($199/mo)', cost: 199, note: `1,000/mo, overage $0.25` },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-surface/80 p-5">
+        <p className="text-micro mb-4">x402 Cost Calculator</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs text-text-secondary mb-1.5 block">Contract Type</label>
+            <div className="space-y-1.5">
+              {([['delegation', 'Delegation (d-series)', '$0.50'], ['commerce', 'Commerce (c-series)', '$1.00'], ['fleet', 'Fleet Auth (d3)', '$2.50']] as const).map(([val, label, price]) => (
+                <button key={val} onClick={() => setContractType(val)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors border ${
+                    contractType === val ? 'border-amber/30 bg-amber/5 text-text-primary' : 'border-border text-text-secondary hover:border-amber/20'
+                  }`}>
+                  <span>{label}</span>
+                  <span className="font-mono text-amber">{price}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary mb-1.5 block">Monthly Volume</label>
+            <input type="number" value={count} onChange={e => setCount(Math.max(1, parseInt(e.target.value) || 1))} min={1}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-text-primary focus:outline-none focus:border-amber/50 mb-3" />
+            <div className="rounded-lg bg-amber/5 border border-amber/20 p-4 text-center">
+              <p className="text-xs text-text-secondary mb-1">Estimated Monthly Cost</p>
+              <p className="text-3xl font-bold font-mono text-amber">${total.toFixed(2)}</p>
+              <p className="text-xs text-text-secondary mt-1">{count} x ${price.toFixed(2)}/contract</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface/80 p-5">
+        <p className="text-micro mb-3">Compare with API Key Tiers</p>
+        <div className="space-y-2">
+          {tierComparison.map(t => (
+            <div key={t.tier} className={`flex items-center justify-between rounded-lg px-4 py-3 border ${
+              t.cost <= total && t.tier !== 'x402 (pay-per-use)' ? 'border-success/30 bg-success/5' : 'border-border'
+            }`}>
+              <div>
+                <p className="text-sm text-text-primary">{t.tier}</p>
+                <p className="text-xs text-text-secondary">{t.note}</p>
+              </div>
+              <span className={`font-mono text-sm ${t.cost <= total && t.tier !== 'x402 (pay-per-use)' ? 'text-success' : 'text-text-primary'}`}>
+                ${t.cost.toFixed(2)}{t.tier !== 'x402 (pay-per-use)' ? '/mo' : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-text-secondary/50 mt-3">Tiers that cost less than x402 for your volume are highlighted in green.</p>
+      </div>
     </div>
   );
 }
@@ -1328,7 +1525,7 @@ export default function DashboardPage() {
                     />
                   )}
                   {section === 'wallet' && <WalletSection contracts={data.contracts} walletAddress={data.wallet} />}
-                  {section === 'agents' && <AgentSetup apiKeyPrefix={data.user?.key_prefix || 'amb_***'} />}
+                  {section === 'agents' && <AgentSetup apiKeyPrefix={data.user?.key_prefix || 'amb_***'} apiKey={apiKey} />}
                   {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} onSignOut={handleSignOut} />}
 
                   {/* Admin sections */}
