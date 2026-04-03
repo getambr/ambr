@@ -24,6 +24,7 @@ interface ContractData {
   nft_mint_status: string | null;
   nft_holder_wallet: string | null;
   nft_counterparty_wallet: string | null;
+  require_zk_identity: boolean;
   created_at: string;
 }
 
@@ -184,6 +185,7 @@ export default function ReaderAuthGate({ contractId, contractUuid }: ReaderAuthG
           sha256Hash={contract.sha256_hash}
           status={contract.status}
           existingSignatures={signatures}
+          requireZkIdentity={contract.require_zk_identity}
         />
       )}
 

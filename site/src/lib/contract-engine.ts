@@ -44,6 +44,7 @@ export async function storeContract(params: {
   initialStatus?: string;
   oversightThresholdUsd?: number | null;
   principalApprovalRequired?: boolean;
+  requireZkIdentity?: boolean;
 }) {
   const db = getSupabaseAdmin();
   const { data, error } = await db
@@ -65,6 +66,7 @@ export async function storeContract(params: {
       amendment_type: params.amendmentType ?? 'original',
       oversight_threshold_usd: params.oversightThresholdUsd ?? null,
       principal_approval_required: params.principalApprovalRequired ?? false,
+      require_zk_identity: params.requireZkIdentity ?? false,
     })
     .select('id, contract_id, sha256_hash, status, created_at')
     .single();

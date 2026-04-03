@@ -330,7 +330,7 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
     <div className="space-y-6">
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden group">
+        <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden group min-h-[104px]">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent" />
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-text-secondary">Total Contracts</p>
@@ -339,7 +339,7 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
           <p className="text-2xl font-bold text-text-primary">{total}</p>
         </div>
         {user && (
-          <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden">
+          <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden min-h-[104px]">
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent" />
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-text-secondary">Credits</p>
@@ -349,7 +349,7 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
             {tierInfo && <p className="text-[10px] text-text-secondary/50 mt-0.5">{tierInfo.limit} limit</p>}
           </div>
         )}
-        <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden">
+        <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden min-h-[104px]">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-success/50 to-transparent" />
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-text-secondary">Active</p>
@@ -357,7 +357,7 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
           </div>
           <p className="text-2xl font-bold text-success">{counts.active || 0}</p>
         </div>
-        <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden">
+        <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden min-h-[104px]">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber/50 to-transparent" />
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-text-secondary">On-Chain NFTs</p>
@@ -431,6 +431,7 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [selected, setSelected] = useState<TemplateRow | null>(null);
   const [params, setParams] = useState<Record<string, string>>({});
+  const [requireZkIdentity, setRequireZkIdentity] = useState(false);
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ contract_id: string; sha256_hash: string; reader_url: string } | null>(null);
   const [error, setError] = useState('');
@@ -443,7 +444,7 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
     if (!selected || !apiKey) return;
     setCreating(true); setError(''); setResult(null);
     try {
-      const body: Record<string, unknown> = { template_slug: selected.slug, parameters: params };
+      const body: Record<string, unknown> = { template_slug: selected.slug, parameters: params, ...(requireZkIdentity ? { require_zk_identity: true } : {}) };
       const res = await fetch('/api/v1/contracts', {
         method: 'POST',
         headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
@@ -499,6 +500,27 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
               </div>
             ))}
             {paramFields.length === 0 && <p className="text-xs text-text-secondary">This template has no required parameters.</p>}
+
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={requireZkIdentity}
+                onClick={() => setRequireZkIdentity(v => !v)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                  requireZkIdentity ? 'bg-amber' : 'bg-border'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                  requireZkIdentity ? 'translate-x-[18px]' : 'translate-x-[2px]'
+                } mt-[2px]`} />
+              </button>
+              <div>
+                <p className="text-sm text-text-primary">Require ZK Identity Verification</p>
+                <p className="text-xs text-text-secondary">Signers must verify identity via zero-knowledge proof before signing</p>
+              </div>
+            </div>
+
             <button onClick={handleCreate} disabled={creating}
               className="rounded-lg bg-gradient-to-r from-amber to-amber-dark px-6 py-2.5 text-sm font-medium text-background hover:from-amber-light hover:to-amber transition-all disabled:opacity-50">
               {creating ? 'Creating...' : 'Create Contract'}

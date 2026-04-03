@@ -447,23 +447,35 @@ export default function DocsPage() {
 
       <section id="zk-identity" className="scroll-mt-24 mb-16">
         <p className="text-micro mb-3">Trust Layer</p>
-        <h2 className="font-serif text-3xl text-text-primary mb-4">ZK Identity <span className="font-mono text-sm text-amber/50 ml-2">coming soon</span></h2>
+        <h2 className="font-serif text-3xl text-text-primary mb-4">ZK Identity</h2>
         <p className="text-[#999] text-sm leading-relaxed mb-4">
-          Ambr is integrating zero-knowledge proof identity verification via Groth16/BN128 zk-SNARKs.
-          Counterparties will be able to prove attributes about themselves — jurisdiction, accreditation,
+          Ambr uses zero-knowledge proof identity verification via Groth16/BN128 zk-SNARKs powered by
+          the DemosSDK. Counterparties prove attributes about themselves — jurisdiction, accreditation,
           age, or KYC status — without revealing the underlying data. The verifier receives a
           cryptographic proof, not raw personal information.
         </p>
         <p className="text-[#999] text-sm leading-relaxed mb-4">
-          Proofs are verified on-chain via a Merkle root oracle bridge to Base L2, making identity
-          attestations part of the immutable contract record alongside the cNFT and SHA-256 hash.
-          No personal data touches the chain.
+          Proofs are verified server-side using the identity_with_merkle circuit. Each proof generates
+          a unique nullifier that prevents replay attacks. Identity attestations are stored alongside
+          the contract signature in the immutable record.
         </p>
-        <p className="text-[#999] text-sm leading-relaxed">
-          This replaces ERC-8004 in the Ambr trust layer. Integration is in development and will be
-          available as an optional contract parameter — <code className="font-mono text-amber/70 text-xs">require_zk_identity: true</code> — on
-          supported templates.
+        <p className="text-[#999] text-sm leading-relaxed mb-4">
+          Enable ZK identity verification on any contract by setting <code className="font-mono text-amber/70 text-xs">require_zk_identity: true</code> in
+          the contract creation parameters. When enabled, signers must complete identity verification
+          before their signature is accepted.
         </p>
+        <div className="rounded-lg border border-border bg-surface-elevated p-4">
+          <p className="text-micro mb-2">Usage</p>
+          <pre className="text-xs font-mono text-text-secondary overflow-x-auto">
+{`POST /api/v1/contracts
+{
+  "template": "ai-delegation",
+  "require_zk_identity": true,
+  "parameters": { ... },
+  "principal_declaration": { ... }
+}`}
+          </pre>
+        </div>
       </section>
 
     </main>

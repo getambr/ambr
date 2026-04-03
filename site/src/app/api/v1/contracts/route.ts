@@ -259,6 +259,7 @@ export async function POST(request: Request) {
       initialStatus,
       oversightThresholdUsd,
       principalApprovalRequired: requiresPrincipalApproval,
+      requireZkIdentity: parsed.data.require_zk_identity,
     });
 
     // 9. Post-creation: deduct credits or link payment
@@ -278,6 +279,7 @@ export async function POST(request: Request) {
       sha256_hash: contract.sha256_hash,
       status: contract.status,
       visibility: parsed.data.visibility || 'private',
+      require_zk_identity: parsed.data.require_zk_identity || false,
       payment_method: authCtx.type,
       reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
       sign_url: `https://getamber.dev/api/v1/contracts/${contract.contract_id}/sign`,

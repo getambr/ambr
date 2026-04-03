@@ -4,6 +4,8 @@ import { verifyMessage } from 'ethers';
 import { mintContractNFTAsync } from '@/lib/chain/cnft-mint';
 import { getMetadataUri } from '@/lib/chain/cnft-metadata';
 import { corsOptions } from '@/lib/cors';
+import { DemosIdentityAdapter } from '@/lib/adapters/identity/demos';
+import type { IdentityAttestationPayload } from '@/lib/zk/types';
 
 export const runtime = 'nodejs';
 
@@ -29,10 +31,11 @@ export async function POST(
     );
   }
 
-  const { wallet_address, signature, message } = body as {
+  const { wallet_address, signature, message, identity_attestation } = body as {
     wallet_address?: string;
     signature?: string;
     message?: string;
+    identity_attestation?: IdentityAttestationPayload;
   };
 
   if (!wallet_address || !signature || !message) {
@@ -62,7 +65,7 @@ export async function POST(
 
   const db = getSupabaseAdmin();
 
-  let query = db.from('contracts').select('id, contract_id, status, sha256_hash, visibility');
+  let query = db.from('contracts').select('id, contract_id, status, sha256_hash, visibility, require_zk_identity');
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
   } else if (/^[a-f0-9]{64}$/.test(id)) {
@@ -87,6 +90,43 @@ export async function POST(
     );
   }
 
+  // ZK Identity verification — required when contract has require_zk_identity
+  let identityResult: Record<string, unknown> | null = null;
+  if (contract.require_zk_identity) {
+    if (!identity_attestation) {
+      return NextResponse.json(
+        { error: 'identity_required', message: 'This contract requires ZK identity verification. Provide identity_attestation in the request body.' },
+        { status: 400 },
+      );
+    }
+
+    const adapter = new DemosIdentityAdapter();
+    const result = await adapter.verify(JSON.stringify(identity_attestation), wallet_address);
+    if (!result || !result.verified) {
+      return NextResponse.json(
+        { error: 'identity_verification_failed', message: 'ZK identity proof verification failed. Generate a valid proof via the DemosSDK.' },
+        { status: 400 },
+      );
+    }
+
+    // Check nullifier replay for this contract
+    const { data: existingNullifier } = await db
+      .from('identity_nullifiers')
+      .select('id')
+      .eq('nullifier_hash', identity_attestation.nullifier_hash)
+      .eq('contract_id', contract.id)
+      .single();
+
+    if (existingNullifier) {
+      return NextResponse.json(
+        { error: 'nullifier_replay', message: 'This identity proof has already been used for this contract.' },
+        { status: 409 },
+      );
+    }
+
+    identityResult = result.metadata ?? { provider: 'demos', verified: true };
+  }
+
   const { data: existing } = await db
     .from('signatures')
     .select('id')
@@ -106,6 +146,7 @@ export async function POST(
     signer_wallet: wallet_address.toLowerCase(),
     signature,
     message_hash: contract.sha256_hash,
+    ...(identityResult ? { signer_identity: identityResult } : {}),
   });
 
   if (sigError) {
@@ -113,6 +154,17 @@ export async function POST(
       { error: 'storage_failed', message: 'Failed to store signature' },
       { status: 500 },
     );
+  }
+
+  // Record nullifier to prevent replay
+  if (contract.require_zk_identity && identity_attestation) {
+    await db.from('identity_nullifiers').insert({
+      nullifier_hash: identity_attestation.nullifier_hash,
+      wallet_address: wallet_address.toLowerCase(),
+      contract_id: contract.id,
+      provider: identity_attestation.provider || 'demos',
+      merkle_root: identity_attestation.merkle_root,
+    });
   }
 
   let newStatus = contract.status;
@@ -164,7 +216,11 @@ export async function POST(
     contract_id: contract.id,
     action: 'signed',
     actor: wallet_address.toLowerCase(),
-    details: { signature_prefix: signature.slice(0, 20), new_status: newStatus },
+    details: {
+      signature_prefix: signature.slice(0, 20),
+      new_status: newStatus,
+      ...(identityResult ? { zk_identity_verified: true, provider: 'demos' } : {}),
+    },
   });
 
   return NextResponse.json({
@@ -172,6 +228,7 @@ export async function POST(
     signer: wallet_address.toLowerCase(),
     status: newStatus,
     message: `Contract signed successfully${newStatus !== contract.status ? `. Status: ${contract.status} → ${newStatus}` : ''}`,
+    ...(identityResult ? { zk_identity: { verified: true, provider: 'demos' } } : {}),
     ...(nftMintTriggered && {
       nft_mint_status: 'pending',
       nft_metadata_url: getMetadataUri(contract.sha256_hash),

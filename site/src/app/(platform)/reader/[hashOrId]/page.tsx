@@ -7,6 +7,7 @@ import ExportButtons from './ExportButtons';
 import SignContract from '@/components/reader/SignContract';
 import NftStatus from '@/components/reader/NftStatus';
 import ReaderAuthGate from '@/components/reader/ReaderAuthGate';
+import ZKIdentityBadge from '@/components/reader/ZKIdentityBadge';
 
 interface Props {
   params: Promise<{ hashOrId: string }>;
@@ -76,13 +77,14 @@ export default async function ReaderPage({ params, searchParams }: Props) {
   // Fetch existing signatures for display + signing gate
   const { data: signatures } = await getSupabaseAdmin()
     .from('signatures')
-    .select('signer_wallet, signed_at')
+    .select('signer_wallet, signed_at, signer_identity')
     .eq('contract_id', contract.id)
     .order('created_at', { ascending: true });
 
-  const existingSignatures = (signatures ?? []).map((s: { signer_wallet: string; signed_at: string }) => ({
+  const existingSignatures = (signatures ?? []).map((s: { signer_wallet: string; signed_at: string; signer_identity?: Record<string, unknown> | null }) => ({
     signer_wallet: s.signer_wallet,
     signed_at: s.signed_at,
+    signer_identity: s.signer_identity ?? null,
   }));
 
   return (
@@ -189,6 +191,14 @@ export default async function ReaderPage({ params, searchParams }: Props) {
           <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-text-secondary">
             {contract.amendment_type}
           </span>
+          {contract.require_zk_identity && (
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 flex items-center gap-1">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+              ZK Identity Required
+            </span>
+          )}
           {!authorized && (
             <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-400">
               Metadata Only
@@ -245,6 +255,7 @@ export default async function ReaderPage({ params, searchParams }: Props) {
                   sha256Hash={contract.sha256_hash}
                   status={contract.status}
                   existingSignatures={existingSignatures}
+                  requireZkIdentity={contract.require_zk_identity}
                 />
               </div>
             )}

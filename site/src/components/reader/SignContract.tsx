@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { BrowserProvider } from 'ethers';
+import ZKIdentityBadge from './ZKIdentityBadge';
+import type { IdentityAttestationPayload } from '@/lib/zk/types';
+
+const ZKIdentityVerify = dynamic(() => import('./ZKIdentityVerify'), { ssr: false });
 
 declare global {
   interface Window {
@@ -14,6 +19,7 @@ type SignState = 'idle' | 'connecting' | 'connected' | 'signing' | 'submitting' 
 interface Signature {
   signer_wallet: string;
   signed_at: string;
+  signer_identity?: Record<string, unknown> | null;
 }
 
 interface SignContractProps {
@@ -22,6 +28,7 @@ interface SignContractProps {
   sha256Hash: string;
   status: string;
   existingSignatures: Signature[];
+  requireZkIdentity?: boolean;
 }
 
 export default function SignContract({
@@ -30,6 +37,7 @@ export default function SignContract({
   sha256Hash,
   status,
   existingSignatures,
+  requireZkIdentity,
 }: SignContractProps) {
   const [state, setState] = useState<SignState>('idle');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -37,7 +45,9 @@ export default function SignContract({
   const [result, setResult] = useState<{
     status: string;
     nft_mint_status?: string;
+    zk_identity?: { verified: boolean; provider: string };
   } | null>(null);
+  const [identityAttestation, setIdentityAttestation] = useState<IdentityAttestationPayload | null>(null);
 
   const canSign = ['draft', 'handshake', 'pending_signature'].includes(status);
   const alreadySigned = useCallback(
@@ -105,6 +115,7 @@ export default function SignContract({
           wallet_address: walletAddress,
           signature,
           message,
+          ...(identityAttestation ? { identity_attestation: identityAttestation } : {}),
         }),
       });
 
@@ -138,6 +149,7 @@ export default function SignContract({
               <span className="font-mono">
                 {sig.signer_wallet.slice(0, 6)}...{sig.signer_wallet.slice(-4)}
               </span>
+              {sig.signer_identity && <ZKIdentityBadge compact />}
               <span className="text-stone-600">
                 {new Date(sig.signed_at).toLocaleDateString()}
               </span>
@@ -168,9 +180,25 @@ export default function SignContract({
                 {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
               </span>
             </div>
+
+            {requireZkIdentity && !identityAttestation && (
+              <ZKIdentityVerify
+                walletAddress={walletAddress}
+                contractId={contractId}
+                onVerified={setIdentityAttestation}
+              />
+            )}
+
+            {requireZkIdentity && identityAttestation && (
+              <div className="flex items-center gap-2">
+                <ZKIdentityBadge />
+              </div>
+            )}
+
             <button
               onClick={signContract}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500"
+              disabled={requireZkIdentity && !identityAttestation}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Confirm Signature
             </button>

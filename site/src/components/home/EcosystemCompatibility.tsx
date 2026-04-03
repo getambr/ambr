@@ -27,7 +27,7 @@ const ecosystemProjects = [
     name: 'ZK Identity',
     layer: 'Trust',
     description: 'Privacy-preserving identity attestation via zero-knowledge proofs for anonymous contract signing.',
-    status: 'planned' as const,
+    status: 'live' as const,
   },
 ];
 

@@ -53,7 +53,7 @@ const ecosystemProjects = [
     description:
       'Privacy-preserving identity attestation via Groth16/BN128 zk-SNARKs. Principals prove they are verified entities without revealing which one — on-chain, only a nullifier is visible.',
     layer: 'Trust',
-    status: 'planned' as const,
+    status: 'live' as const,
   },
 ];
 
