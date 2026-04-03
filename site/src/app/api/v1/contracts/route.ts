@@ -191,6 +191,42 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 5b. Oversight threshold check — EU AI Act Article 14
+    // If parent delegation contract has a threshold, and this contract's value exceeds it,
+    // the contract requires principal approval before proceeding.
+    let requiresPrincipalApproval = false;
+    let oversightThresholdUsd: number | null = null;
+
+    if (parsed.data.parent_contract_hash) {
+      const { data: parentContract } = await db
+        .from('contracts')
+        .select('machine_readable, oversight_threshold_usd, status')
+        .eq('sha256_hash', parsed.data.parent_contract_hash)
+        .eq('status', 'active')
+        .single();
+
+      if (parentContract) {
+        // Check explicit threshold on parent delegation
+        const threshold = parentContract.oversight_threshold_usd
+          ?? (parentContract.machine_readable as Record<string, unknown>)?.oversight_threshold_usd;
+
+        if (threshold != null) {
+          oversightThresholdUsd = Number(threshold);
+          // Extract transaction value from parameters
+          const txValue = Number(
+            parsed.data.parameters.value_usd
+            ?? parsed.data.parameters.spending_limit_per_tx
+            ?? parsed.data.parameters.amount
+            ?? 0,
+          );
+
+          if (txValue > oversightThresholdUsd) {
+            requiresPrincipalApproval = true;
+          }
+        }
+      }
+    }
+
     // 6. Generate contract via LLM
     const contractId = await generateContractId();
     const { humanReadable, machineReadable } = await generateContract({
@@ -203,7 +239,9 @@ export async function POST(request: Request) {
     // 7. Hash
     const sha256Hash = hashContract(humanReadable, machineReadable);
 
-    // 8. Store with new fields
+    // 8. Store — status depends on threshold check
+    const initialStatus = requiresPrincipalApproval ? 'awaiting_principal_approval' : 'draft';
+
     const contract = await storeContract({
       contractId,
       templateId: template.id,
@@ -218,6 +256,9 @@ export async function POST(request: Request) {
       visibility: parsed.data.visibility,
       parentContractHash: parsed.data.parent_contract_hash,
       amendmentType: parsed.data.amendment_type,
+      initialStatus,
+      oversightThresholdUsd,
+      principalApprovalRequired: requiresPrincipalApproval,
     });
 
     // 9. Post-creation: deduct credits or link payment
@@ -242,8 +283,17 @@ export async function POST(request: Request) {
       sign_url: `https://getamber.dev/api/v1/contracts/${contract.contract_id}/sign`,
       handshake_url: `https://getamber.dev/api/v1/contracts/${contract.contract_id}/handshake`,
       created_at: contract.created_at,
-      next_step: 'Contract created as draft. Optionally handshake first, then both parties must sign (ECDSA) to activate.',
     };
+
+    if (requiresPrincipalApproval) {
+      response.status = 'awaiting_principal_approval';
+      response.principal_approval_required = true;
+      response.oversight_threshold_usd = oversightThresholdUsd;
+      response.approve_url = `https://getamber.dev/api/v1/contracts/${contract.contract_id}/approve`;
+      response.next_step = `Transaction exceeds oversight threshold ($${oversightThresholdUsd}). Principal must approve before contract can proceed. POST to approve_url with principal wallet signature.`;
+    } else {
+      response.next_step = 'Contract created as draft. Optionally handshake first, then both parties must sign (ECDSA) to activate.';
+    }
 
     if (authCtx.type === 'api_key') {
       response.credits_remaining = authCtx.credits === -1 ? 'unlimited' : authCtx.credits! - 1;

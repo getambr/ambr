@@ -61,8 +61,8 @@ create table if not exists public.api_keys (
   key_hash text unique not null,
   key_prefix text not null,
   email text not null,
-  tier text not null default 'starter'
-    check (tier in ('starter', 'builder', 'enterprise')),
+  tier text not null default 'developer'
+    check (tier in ('alpha', 'developer', 'startup', 'scale', 'enterprise')),
   credits int not null default 50,
   tx_hash text unique,
   tx_from text,
@@ -184,5 +184,8 @@ INSERT INTO public.templates (slug, name, description, category, parameter_schem
   '{"type":"object","required":["requester_name","requester_agent_id","executor_name","executor_agent_id","task_description","deliverables","acceptance_criteria","total_price","currency","deadline","governing_law"],"properties":{"requester_name":{"type":"string","description":"Legal name of the requesting party / principal"},"requester_agent_id":{"type":"string","description":"Wallet address of the requester agent"},"executor_name":{"type":"string","description":"Legal name of the executing party / provider"},"executor_agent_id":{"type":"string","description":"Wallet address of the executor agent"},"task_description":{"type":"string","description":"Detailed description of the task to be performed"},"deliverables":{"type":"array","items":{"type":"string"},"description":"List of specific deliverables expected"},"acceptance_criteria":{"type":"string","description":"How completion and quality will be verified"},"total_price":{"type":"number","description":"Total payment for completed task"},"currency":{"type":"string","default":"USDC"},"payment_model":{"type":"string","enum":["on-completion","milestone","upfront","escrow"],"default":"on-completion","description":"When payment is released"},"milestones":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"amount":{"type":"number"},"deadline":{"type":"string","format":"date"}}},"description":"Milestone breakdown (if payment_model is milestone)"},"deadline":{"type":"string","format":"date","description":"ISO 8601 final deadline"},"revision_rounds":{"type":"integer","default":1,"description":"Number of revision rounds included"},"ip_ownership":{"type":"string","enum":["requester","executor","shared","work-for-hire"],"default":"requester","description":"Who owns intellectual property of the deliverables"},"confidentiality_required":{"type":"boolean","default":false},"governing_law":{"type":"string","default":"Singapore"}}}',
   350
 )
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (slug) DO UPDATE SET
+  description = EXCLUDED.description,
+  parameter_schema = EXCLUDED.parameter_schema,
+  price_cents = EXCLUDED.price_cents;
 `;

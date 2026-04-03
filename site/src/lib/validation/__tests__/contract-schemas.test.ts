@@ -135,13 +135,13 @@ describe('activateKeySchema', () => {
     const result = activateKeySchema.safeParse({
       email: 'user@example.com',
       tx_hash: '0x' + 'a'.repeat(64),
-      tier: 'starter',
+      tier: 'startup',
     });
     expect(result.success).toBe(true);
   });
 
   it('accepts all tier levels', () => {
-    for (const tier of ['starter', 'builder', 'enterprise']) {
+    for (const tier of ['developer', 'startup', 'scale', 'enterprise']) {
       const result = activateKeySchema.safeParse({
         email: 'user@example.com',
         tx_hash: '0x' + 'b'.repeat(64),
@@ -155,7 +155,7 @@ describe('activateKeySchema', () => {
     const result = activateKeySchema.safeParse({
       email: 'not-an-email',
       tx_hash: '0x' + 'a'.repeat(64),
-      tier: 'starter',
+      tier: 'startup',
     });
     expect(result.success).toBe(false);
   });
@@ -172,18 +172,20 @@ describe('activateKeySchema', () => {
       const result = activateKeySchema.safeParse({
         email: 'user@example.com',
         tx_hash,
-        tier: 'starter',
+        tier: 'startup',
       });
       expect(result.success).toBe(false);
     }
   });
 
-  it('rejects invalid tier', () => {
-    const result = activateKeySchema.safeParse({
-      email: 'user@example.com',
-      tx_hash: '0x' + 'a'.repeat(64),
-      tier: 'premium',
-    });
-    expect(result.success).toBe(false);
+  it('rejects old tier names', () => {
+    for (const tier of ['alpha', 'starter', 'builder', 'premium']) {
+      const result = activateKeySchema.safeParse({
+        email: 'user@example.com',
+        tx_hash: '0x' + 'a'.repeat(64),
+        tier,
+      });
+      expect(result.success).toBe(false);
+    }
   });
 });

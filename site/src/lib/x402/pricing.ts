@@ -19,17 +19,18 @@ export async function getTemplatePrice(templateSlug: string): Promise<bigint> {
   const price = priceCache?.get(templateSlug);
   if (price !== undefined) return price;
 
-  // Fallback defaults (cents → USDC 6 decimals: multiply by 10000)
+  // Fallback defaults by category (USDC 6 decimals)
+  // d-series (delegation): $0.50, c-series (commerce): $1.00, d3 fleet: $2.50
   const defaults: Record<string, bigint> = {
-    'd1-general-auth': 2_000000n,
-    'd2-limited-service': 1_500000n,
-    'd3-fleet-auth': 5_000000n,
-    'c1-api-access': 3_000000n,
-    'c2-compute-sla': 4_000000n,
-    'c3-task-execution': 3_500000n,
+    'd1-general-auth': 500000n,       // $0.50
+    'd2-limited-service': 500000n,    // $0.50
+    'd3-fleet-auth': 2_500000n,       // $2.50
+    'c1-api-access': 1_000000n,       // $1.00
+    'c2-compute-sla': 1_000000n,      // $1.00
+    'c3-task-execution': 1_000000n,   // $1.00
   };
 
-  return defaults[templateSlug] ?? 3_000000n; // default $3 if unknown
+  return defaults[templateSlug] ?? 1_000000n; // default $1 if unknown
 }
 
 async function refreshPriceCache(): Promise<void> {

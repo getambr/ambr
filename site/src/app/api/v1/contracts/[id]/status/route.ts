@@ -19,7 +19,7 @@ export async function GET(
   // Lookup contract (lightweight fields only)
   let query = db
     .from('contracts')
-    .select('id, contract_id, status, sha256_hash, amendment_type, parent_contract_hash, created_at, updated_at');
+    .select('id, contract_id, status, sha256_hash, amendment_type, parent_contract_hash, created_at, updated_at, revoked_at, revoked_by, revocation_reason, expiry_date');
 
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
@@ -76,6 +76,10 @@ export async function GET(
     signatures: signatureCount ?? 0,
     created_at: contract.created_at,
     updated_at: contract.updated_at,
+    revoked_at: contract.revoked_at,
+    revoked_by: contract.revoked_by,
+    revocation_reason: contract.revocation_reason,
+    expiry_date: contract.expiry_date,
     parent: parent,
     amendments: (amendments ?? []).map((a) => ({
       contract_id: a.contract_id,

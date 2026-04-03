@@ -23,9 +23,9 @@ const TRANSFER_TOPIC =
 
 // Tier pricing in USD
 const TIER_AMOUNTS: Record<string, number> = {
-  starter: 29,
-  builder: 99,
-  enterprise: 299,
+  startup: 49,
+  scale: 199,
+  enterprise: 500, // minimum for custom enterprise
 };
 
 interface PaymentVerification {

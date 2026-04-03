@@ -73,8 +73,22 @@ export async function generateContract(
     );
   }
 
+  // Enrich machine-readable layer with oversight metadata
+  const machineReadable = input.machineReadable as Record<string, unknown>;
+
+  // EU AI Act Article 14 compliance: document the oversight method
+  machineReadable.compliance = {
+    ...(machineReadable.compliance as Record<string, unknown> || {}),
+    human_oversight_method: params.templateSlug.startsWith('d')
+      ? 'pre-authorized delegation'
+      : 'delegated authority',
+    oversight_framework: 'eu_ai_act_article_14',
+    delegation_chain_auditable: true,
+    revocation_capable: true,
+  };
+
   return {
     humanReadable: input.humanReadable as string,
-    machineReadable: input.machineReadable as Record<string, unknown>,
+    machineReadable,
   };
 }
