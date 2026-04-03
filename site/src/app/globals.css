@@ -99,6 +99,27 @@ html {
   position: relative;
 }
 
+/* Custom scrollbar — thin brass-tinted */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(198, 168, 124, 0.2);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(198, 168, 124, 0.4);
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(198, 168, 124, 0.2) transparent;
+}
+
 /* Brass gradient text */
 .brass-gradient-text {
   background: linear-gradient(135deg, #9a7d52 0%, #d8c29d 40%, #c6a87c 60%, #e8d9bb 100%);
