@@ -10,7 +10,6 @@ import {
 import { CalendarWidget } from '@/components/team/CalendarWidget'
 import { EmailWidget } from '@/components/team/EmailWidget'
 import { DraftQueueWidget } from '@/components/team/DraftQueueWidget'
-import { CRMWidget } from '@/components/team/CRMWidget'
 import type { DashboardSection } from './DashboardSidebar'
 
 interface AdminData {
@@ -77,14 +76,6 @@ export function AdminSection({ activeSection }: { activeSection: DashboardSectio
     return (
       <motion.div variants={item} initial="hidden" animate="show">
         <DraftQueueWidget drafts={data.drafts} loading={loading} onRefresh={fetchAll} />
-      </motion.div>
-    )
-  }
-
-  if (activeSection === 'crm') {
-    return (
-      <motion.div variants={item} initial="hidden" animate="show">
-        <CRMWidget outreach={data.outreach} loading={loading} />
       </motion.div>
     )
   }

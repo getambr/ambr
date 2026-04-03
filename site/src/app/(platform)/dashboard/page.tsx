@@ -21,7 +21,7 @@ declare global {
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'crm';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts';
 
 interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
 export interface ContractRow {
@@ -43,7 +43,7 @@ interface DashboardState {
   authMethod: AuthMethod | null; error: string | null;
 }
 
-const ADMIN_EMAILS = ['ilvers.sermols@gmail.com'];
+const ADMIN_EMAILS = ['ilvers.sermols@gmail.com', 'dainis@ambr.run'];
 const SESSION_KEY = 'ambr_dashboard_session';
 
 function saveSession(method: AuthMethod, apiKey?: string, wallet?: string) {
@@ -106,7 +106,6 @@ const NAV_SECTIONS = [
       { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
       { id: 'email' as Section, label: 'Email Triage', icon: Mail },
       { id: 'drafts' as Section, label: 'Draft Queue', icon: Send },
-      { id: 'crm' as Section, label: 'Outreach CRM', icon: Users },
     ],
   },
 ];
@@ -168,7 +167,6 @@ const MORE_ADMIN_ITEMS = [
   { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
   { id: 'email' as Section, label: 'Email Triage', icon: Mail },
   { id: 'drafts' as Section, label: 'Draft Queue', icon: Send },
-  { id: 'crm' as Section, label: 'Outreach CRM', icon: Users },
 ];
 
 function MobileBottomNav({ active, onNav, isAdmin }: {
@@ -372,12 +370,29 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
       {/* Pipeline funnel */}
       <div className="rounded-xl border border-border bg-surface/80 p-6">
         <p className="text-micro mb-4">Contract Pipeline</p>
-        <div className="flex items-center gap-2 md:gap-4">
+        {/* Mobile: grid without arrows */}
+        <div className="grid grid-cols-4 gap-3 md:hidden">
+          {stages.map((stage) => {
+            const Icon = stage.icon;
+            const count = counts[stage.key] || 0;
+            return (
+              <div key={stage.key} className="text-center">
+                <div className={`mx-auto mb-1.5 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface-elevated ${stage.color}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <p className="text-xl font-bold font-mono text-text-primary">{count}</p>
+                <p className="text-[9px] font-mono uppercase tracking-wider text-text-secondary mt-0.5 leading-tight">{stage.label}</p>
+              </div>
+            );
+          })}
+        </div>
+        {/* Desktop: flex with arrows */}
+        <div className="hidden md:flex items-center gap-4">
           {stages.map((stage, i) => {
             const Icon = stage.icon;
             const count = counts[stage.key] || 0;
             return (
-              <div key={stage.key} className="flex items-center gap-2 md:gap-4 flex-1">
+              <div key={stage.key} className="flex items-center gap-4 flex-1">
                 <div className="flex-1 text-center">
                   <div className={`mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-elevated ${stage.color}`}>
                     <Icon className="h-5 w-5" />
@@ -1513,18 +1528,18 @@ export default function DashboardPage() {
 
             <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 pb-20 lg:pb-6">
               {/* Top bar */}
-              <div className="flex items-center justify-between mb-6 rounded-xl border border-border/50 bg-surface/80 px-4 py-2.5">
-                <div className="flex items-center gap-3">
-                  <Image src="/logo.png" alt="" width={18} height={18} className="rounded-sm" />
-                  <span className="text-sm text-text-secondary">{data.user?.email || (data.wallet ? `${data.wallet.slice(0, 6)}...${data.wallet.slice(-4)}` : '')}</span>
+              <div className="flex items-center justify-between gap-2 mb-6 rounded-xl border border-border/50 bg-surface/80 px-4 py-2.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Image src="/logo.png" alt="" width={18} height={18} className="rounded-sm shrink-0" />
+                  <span className="text-sm text-text-secondary truncate">{data.user?.email || (data.wallet ? `${data.wallet.slice(0, 6)}...${data.wallet.slice(-4)}` : '')}</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 shrink-0">
                   {data.user && (
                     <>
-                      <span className="text-xs font-mono px-2.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30 whitespace-nowrap">
                         {TIER_INFO[data.user.tier]?.label || data.user.tier}
                       </span>
-                      <span className="text-xs font-mono text-text-secondary/60">
+                      <span className="text-xs font-mono text-text-secondary/60 whitespace-nowrap">
                         {data.user.credits === -1 ? '\u221e' : data.user.credits} credits
                       </span>
                     </>
@@ -1554,8 +1569,8 @@ export default function DashboardPage() {
                   {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} onSignOut={handleSignOut} />}
 
                   {/* Admin sections */}
-                  {isAdmin && ['calendar', 'email', 'drafts', 'crm'].includes(section) && (
-                    <AdminSection activeSection={section as 'calendar' | 'email' | 'drafts' | 'crm'} />
+                  {isAdmin && ['calendar', 'email', 'drafts'].includes(section) && (
+                    <AdminSection activeSection={section as 'calendar' | 'email' | 'drafts'} />
                   )}
                 </motion.div>
               </AnimatePresence>
