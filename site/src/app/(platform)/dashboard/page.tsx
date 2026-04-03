@@ -1137,7 +1137,7 @@ export default function DashboardPage() {
       <main className="pt-16">
         {/* Loading skeleton while restoring session */}
         {loading && !isLoggedIn && (
-          <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-8 max-w-5xl pt-20">
+          <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 pt-20">
             <DashboardSkeleton />
           </div>
         )}
@@ -1194,7 +1194,7 @@ export default function DashboardPage() {
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-8 max-w-5xl">
+            <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24">
               {/* Top bar */}
               <div className="flex items-center justify-between mb-6 rounded-xl border border-border/50 bg-surface/80 px-4 py-2.5">
                 <div className="flex items-center gap-3">
