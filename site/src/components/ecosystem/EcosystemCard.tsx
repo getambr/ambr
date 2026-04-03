@@ -8,6 +8,7 @@ interface EcosystemCardProps {
   layer: string;
   status: Status;
   docsUrl?: string;
+  logo?: string;
   index: number;
 }
 
@@ -17,7 +18,7 @@ const statusStyles: Record<Status, { label: string; classes: string }> = {
   live: { label: 'Live', classes: 'text-success bg-success/10' },
 };
 
-export default function EcosystemCard({ name, description, layer, status, docsUrl, index }: EcosystemCardProps) {
+export default function EcosystemCard({ name, description, layer, status, docsUrl, logo, index }: EcosystemCardProps) {
   const s = statusStyles[status];
 
   return (
@@ -31,7 +32,10 @@ export default function EcosystemCard({ name, description, layer, status, docsUr
         <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-amber" />
         <div className="absolute bottom-4 right-4 w-1.5 h-1.5 bg-amber" />
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg text-text-primary">{name}</h3>
+          <div className="flex items-center gap-2">
+            {logo && <img src={logo} alt="" className="h-4 w-4 opacity-70" />}
+            <h3 className="text-lg text-text-primary">{name}</h3>
+          </div>
           <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${s.classes}`}>
             {s.label}
           </span>

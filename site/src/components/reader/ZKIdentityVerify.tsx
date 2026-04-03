@@ -68,9 +68,15 @@ export default function ZKIdentityVerify({
 
   return (
     <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldCheck className="h-4 w-4 text-amber-500" />
-        <h4 className="text-sm font-medium text-amber-400">ZK Identity Verification</h4>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-amber-500" />
+          <h4 className="text-sm font-medium text-amber-400">ZK Identity Verification</h4>
+        </div>
+        <div className="flex items-center gap-1.5 opacity-60">
+          <img src="/demos-logo.svg" alt="Demos" className="h-3.5 w-3.5" />
+          <span className="text-[10px] font-mono text-stone-500">Demos Network</span>
+        </div>
       </div>
 
       <p className="text-xs text-stone-400 mb-4">

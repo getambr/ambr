@@ -447,7 +447,13 @@ export default function DocsPage() {
 
       <section id="zk-identity" className="scroll-mt-24 mb-16">
         <p className="text-micro mb-3">Trust Layer</p>
-        <h2 className="font-serif text-3xl text-text-primary mb-4">ZK Identity</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="font-serif text-3xl text-text-primary">ZK Identity</h2>
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated px-3 py-1">
+            <img src="/demos-logo.svg" alt="Demos" className="h-4 w-4" />
+            <span className="text-xs font-mono text-text-secondary">Demos Network</span>
+          </div>
+        </div>
         <p className="text-[#999] text-sm leading-relaxed mb-4">
           Ambr uses zero-knowledge proof identity verification via Groth16/BN128 zk-SNARKs powered by
           the DemosSDK. Counterparties prove attributes about themselves — jurisdiction, accreditation,
