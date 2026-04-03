@@ -8,9 +8,10 @@ import {
   Layers, FileText, Send as SendIcon, Handshake, PenTool, ShieldCheck,
   Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
   Calendar, Mail, Send, Users, Lock, Copy, Check, ExternalLink,
-  ArrowRight, Clock, Plus, RefreshCw,
+  ArrowRight, Clock, Plus, RefreshCw, TrendingUp,
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
+import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
 
 declare global {
   interface Window {
@@ -20,10 +21,10 @@ declare global {
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'calendar' | 'email' | 'drafts' | 'crm';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'crm';
 
 interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
-interface ContractRow {
+export interface ContractRow {
   contract_id: string; status: string; amendment_type: string; sha256_hash: string;
   created_at: string; updated_at: string | null; template_id: string;
   principal_declaration: { principal_name: string } | null;
@@ -87,6 +88,7 @@ const NAV_SECTIONS = [
       { id: 'overview' as Section, label: 'Pipeline Overview', icon: BarChart3 },
       { id: 'create' as Section, label: 'Create Contract', icon: Plus },
       { id: 'contracts' as Section, label: 'All Contracts', icon: FileText },
+      { id: 'analytics' as Section, label: 'Analytics', icon: TrendingUp },
     ],
   },
   {
@@ -1548,6 +1550,7 @@ export default function DashboardPage() {
                   )}
                   {section === 'wallet' && <WalletSection contracts={data.contracts} walletAddress={data.wallet} />}
                   {section === 'agents' && <AgentSetup apiKeyPrefix={data.user?.key_prefix || 'amb_***'} apiKey={apiKey} />}
+                  {section === 'analytics' && <ContractAnalytics contracts={data.contracts} />}
                   {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} onSignOut={handleSignOut} />}
 
                   {/* Admin sections */}
