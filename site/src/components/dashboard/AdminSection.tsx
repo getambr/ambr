@@ -21,7 +21,13 @@ interface AdminData {
   outreach: { count: number; contacts: OutreachContact[] } | null
 }
 
-export function AdminSection({ activeSection }: { activeSection: DashboardSection }) {
+export function AdminSection({
+  activeSection,
+  currentUserEmail,
+}: {
+  activeSection: DashboardSection
+  currentUserEmail?: string
+}) {
   const [data, setData] = useState<AdminData>({
     calendar: null, slots: null, emails: null,
     unread: null, drafts: null, outreach: null,
@@ -67,7 +73,12 @@ export function AdminSection({ activeSection }: { activeSection: DashboardSectio
   if (activeSection === 'email') {
     return (
       <motion.div variants={item} initial="hidden" animate="show">
-        <EmailWidget emails={data.emails} unread={data.unread} loading={loading} />
+        <EmailWidget
+          emails={data.emails}
+          unread={data.unread}
+          loading={loading}
+          currentUserEmail={currentUserEmail}
+        />
       </motion.div>
     )
   }

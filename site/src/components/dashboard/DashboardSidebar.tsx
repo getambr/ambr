@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  FileText, Layers, Terminal, Wallet, Calendar, Mail, Send, Users,
+  FileText, Layers, Terminal, Wallet, Calendar, Mail, Users,
   ChevronRight, Lock, Menu, X,
 } from 'lucide-react'
 
@@ -38,7 +38,6 @@ const SECTIONS: { title: string; items: SidebarItem[] }[] = [
     items: [
       { id: 'calendar', label: 'Calendar', icon: <Calendar className="h-4 w-4" />, adminOnly: true },
       { id: 'email', label: 'Email Triage', icon: <Mail className="h-4 w-4" />, adminOnly: true },
-      { id: 'drafts', label: 'Draft Queue', icon: <Send className="h-4 w-4" />, adminOnly: true },
       { id: 'crm', label: 'Outreach CRM', icon: <Users className="h-4 w-4" />, adminOnly: true },
     ],
   },

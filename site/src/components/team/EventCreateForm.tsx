@@ -9,6 +9,10 @@ interface EventCreateFormProps {
   selectedDate: Date
   onClose: () => void
   onCreated: () => void
+  initialTitle?: string
+  initialDescription?: string
+  initialLocation?: string
+  initialGuests?: string
 }
 
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -28,13 +32,22 @@ function hourAfter(time: string) {
   return next > 23 ? '23:59' : `${pad(next)}:${pad(m)}`
 }
 
-export function EventCreateForm({ selectedDate, onClose, onCreated }: EventCreateFormProps) {
-  const [title, setTitle] = useState('')
+export function EventCreateForm({
+  selectedDate,
+  onClose,
+  onCreated,
+  initialTitle,
+  initialDescription,
+  initialLocation,
+  initialGuests,
+}: EventCreateFormProps) {
+  const [title, setTitle] = useState(initialTitle || '')
   const [date, setDate] = useState(toDateStr(selectedDate))
   const [startTime, setStartTime] = useState(nextHour())
   const [endTime, setEndTime] = useState(hourAfter(nextHour()))
-  const [location, setLocation] = useState('')
-  const [description, setDescription] = useState('')
+  const [location, setLocation] = useState(initialLocation || '')
+  const [description, setDescription] = useState(initialDescription || '')
+  const [guests, setGuests] = useState(initialGuests || '')
   const [state, setState] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
   const [error, setError] = useState('')
 
@@ -55,13 +68,17 @@ export function EventCreateForm({ selectedDate, onClose, onCreated }: EventCreat
         end,
         ...(location ? { location } : {}),
         ...(description ? { description } : {}),
+        ...(guests ? { guests } : {}),
       })
 
-      if (res.ok) {
+      if ('error' in res) {
+        throw new Error(res.error || 'Failed to create event')
+      }
+      if (res.created) {
         setState('success')
         setTimeout(() => { onCreated(); onClose() }, 800)
       } else {
-        throw new Error('Failed to create event')
+        throw new Error('Unexpected response from calendar API')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event')
@@ -149,6 +166,17 @@ export function EventCreateForm({ selectedDate, onClose, onCreated }: EventCreat
                 value={location}
                 onChange={e => setLocation(e.target.value)}
                 placeholder="Google Meet, office, etc."
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Guests <span className="text-text-secondary/40">(optional, comma-separated)</span></label>
+              <input
+                type="text"
+                value={guests}
+                onChange={e => setGuests(e.target.value)}
+                placeholder="email@example.com, another@example.com"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50"
               />
             </div>

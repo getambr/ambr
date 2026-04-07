@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Layers, FileText, Send as SendIcon, Handshake, PenTool, ShieldCheck,
   Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
-  Calendar, Mail, Send, Users, Lock, Copy, Check, ExternalLink,
+  Calendar, Mail, Users, Lock, Copy, Check, ExternalLink,
   ArrowRight, Clock, Plus, RefreshCw, TrendingUp,
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
@@ -80,6 +80,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ─── Tier Info ──────────────────────────────────────────
+const TIER_INFO: Record<string, { label: string; limit: string; overage: string }> = {
+  developer: { label: 'Developer', limit: '25/mo', overage: 'N/A' },
+  startup: { label: 'Startup', limit: '200/mo', overage: '$0.35/contract' },
+  scale: { label: 'Scale', limit: '1,000/mo', overage: '$0.25/contract' },
+  enterprise: { label: 'Enterprise', limit: 'Unlimited', overage: 'Custom' },
+  alpha: { label: 'Alpha (legacy)', limit: '5 total', overage: 'N/A' },
+};
+
 // ─── Sidebar ────────────────────────────────────────────
 const NAV_SECTIONS = [
   {
@@ -105,17 +114,23 @@ const NAV_SECTIONS = [
     items: [
       { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
       { id: 'email' as Section, label: 'Email Triage', icon: Mail },
-      { id: 'drafts' as Section, label: 'Draft Queue', icon: Send },
     ],
   },
 ];
 
-function DesktopSidebar({ active, onNav, isAdmin }: {
-  active: Section; onNav: (s: Section) => void; isAdmin: boolean;
+function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
+  active: Section;
+  onNav: (s: Section) => void;
+  isAdmin: boolean;
+  user: UserInfo | null;
+  onSignOut: () => void;
 }) {
+  const tierLabel = user?.tier ? (TIER_INFO[user.tier]?.label || user.tier) : null;
+
   return (
-    <aside className="hidden lg:block fixed top-16 left-0 w-56 h-[calc(100vh-4rem)] border-r border-border bg-background overflow-y-auto z-30">
-      <nav className="flex flex-col gap-5 py-5 px-3">
+    <aside className="hidden lg:flex flex-col fixed top-16 left-0 w-56 h-[calc(100vh-4rem)] border-r border-border bg-background z-30">
+      {/* Scrollable nav region */}
+      <nav className="flex-1 flex flex-col gap-5 py-5 px-3 overflow-y-auto">
         {NAV_SECTIONS.map(section => {
           if (section.admin && !isAdmin) return null;
           return (
@@ -145,6 +160,34 @@ function DesktopSidebar({ active, onNav, isAdmin }: {
           );
         })}
       </nav>
+
+      {/* Pinned footer with user card + sign out */}
+      <div className="shrink-0 border-t border-border px-3 py-3 bg-background">
+        {user && (
+          <div className="mb-2 px-2 py-1.5">
+            <p className="text-xs text-text-primary truncate" title={user.email}>
+              {user.email}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {tierLabel && (
+                <span className="text-[10px] font-mono uppercase tracking-wider text-amber">
+                  {tierLabel}
+                </span>
+              )}
+              <span className="text-[10px] font-mono text-text-secondary/50">
+                {user.credits === -1 ? '\u221e' : user.credits} credits
+              </span>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={onSignOut}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-text-secondary hover:text-error hover:bg-error/10 transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
+      </div>
     </aside>
   );
 }
@@ -166,13 +209,17 @@ const MORE_ITEMS = [
 const MORE_ADMIN_ITEMS = [
   { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
   { id: 'email' as Section, label: 'Email Triage', icon: Mail },
-  { id: 'drafts' as Section, label: 'Draft Queue', icon: Send },
 ];
 
-function MobileBottomNav({ active, onNav, isAdmin }: {
-  active: Section; onNav: (s: Section) => void; isAdmin: boolean;
+function MobileBottomNav({ active, onNav, isAdmin, user, onSignOut }: {
+  active: Section;
+  onNav: (s: Section) => void;
+  isAdmin: boolean;
+  user: UserInfo | null;
+  onSignOut: () => void;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const tierLabel = user?.tier ? (TIER_INFO[user.tier]?.label || user.tier) : null;
 
   return (
     <>
@@ -228,6 +275,32 @@ function MobileBottomNav({ active, onNav, isAdmin }: {
                     })}
                   </>
                 )}
+
+                {/* Footer: user card + sign out */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  {user && (
+                    <div className="px-1 mb-2">
+                      <p className="text-xs text-text-primary truncate" title={user.email}>{user.email}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {tierLabel && (
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-amber">
+                            {tierLabel}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-text-secondary/50">
+                          {user.credits === -1 ? '\u221e' : user.credits} credits
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setMoreOpen(false); onSignOut(); }}
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-error hover:bg-error/10 transition-colors"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Sign Out
+                  </button>
+                </div>
               </nav>
             </motion.div>
           </>
@@ -1184,14 +1257,6 @@ function X402Calculator() {
 }
 
 // ─── Account ────────────────────────────────────────────
-const TIER_INFO: Record<string, { label: string; limit: string; overage: string }> = {
-  developer: { label: 'Developer', limit: '25/mo', overage: 'N/A' },
-  startup: { label: 'Startup', limit: '200/mo', overage: '$0.35/contract' },
-  scale: { label: 'Scale', limit: '1,000/mo', overage: '$0.25/contract' },
-  enterprise: { label: 'Enterprise', limit: 'Unlimited', overage: 'Custom' },
-  alpha: { label: 'Alpha (legacy)', limit: '5 total', overage: 'N/A' },
-};
-
 function AccountSection({ user, wallet, authMethod, onSignOut }: {
   user: UserInfo | null; wallet: string | null; authMethod: AuthMethod; onSignOut: () => void;
 }) {
@@ -1523,8 +1588,8 @@ export default function DashboardPage() {
         {/* Dashboard */}
         {isLoggedIn && (
           <>
-            <DesktopSidebar active={section} onNav={setSection} isAdmin={isAdmin} />
-            <MobileBottomNav active={section} onNav={setSection} isAdmin={isAdmin} />
+            <DesktopSidebar active={section} onNav={setSection} isAdmin={isAdmin} user={data.user} onSignOut={handleSignOut} />
+            <MobileBottomNav active={section} onNav={setSection} isAdmin={isAdmin} user={data.user} onSignOut={handleSignOut} />
 
             <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 pb-20 lg:pb-6">
               {/* Top bar */}
@@ -1570,7 +1635,10 @@ export default function DashboardPage() {
 
                   {/* Admin sections */}
                   {isAdmin && ['calendar', 'email', 'drafts'].includes(section) && (
-                    <AdminSection activeSection={section as 'calendar' | 'email' | 'drafts'} />
+                    <AdminSection
+                      activeSection={section as 'calendar' | 'email' | 'drafts'}
+                      currentUserEmail={data.user?.email}
+                    />
                   )}
                 </motion.div>
               </AnimatePresence>

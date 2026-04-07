@@ -28,11 +28,44 @@ export interface CalendarEvent {
 export interface TriagedEmail {
   messageId: string; date: string; from: string; subject: string
   project: string; priority: number; summary: string; status: string
+  to_address?: string
+}
+
+export interface ThreadMessage {
+  messageId: string
+  from: string
+  to: string
+  cc: string
+  date: string
+  body: string
+}
+
+export interface EmailBody {
+  messageId: string
+  from: string
+  to: string
+  cc: string
+  date: string
+  subject: string
+  body: string
+  replyTo: string
+  threadId: string
+  messageCount?: number
+  messages?: ThreadMessage[]
 }
 
 export interface Draft {
   draftId: string; to: string; subject: string; body: string
   project: string; status: string; created: string
+}
+
+export interface DraftReplyResponse {
+  draftId: string
+  to: string
+  subject: string
+  body: string
+  project: string
+  status: string
 }
 
 export interface OutreachContact {
@@ -44,8 +77,28 @@ export function getAmbrCalendar(days = 7) {
   return opsGet<{ count: number; events: CalendarEvent[] }>('calendar', { days: String(days) })
 }
 
-export function getAmbrEmails(limit = 10) {
-  return opsGet<{ count: number; emails: TriagedEmail[] }>('email_log', { limit: String(limit) })
+export function getAmbrEmails(limit = 50, toFilter?: string) {
+  const params: Record<string, string> = { max: String(limit) }
+  if (toFilter) params.to_filter = toFilter
+  return opsGet<{ count: number; emails: TriagedEmail[] }>('email_log', params)
+}
+
+export function getEmailBody(messageId: string) {
+  return opsGet<EmailBody | { error: string }>('email_body', { messageId })
+}
+
+export function draftReply(emailId: string, instructions?: string) {
+  return opsPost<DraftReplyResponse | { error: string }>('draft_reply', {
+    emailId,
+    ...(instructions ? { instructions } : {}),
+  })
+}
+
+export function archiveEmail(messageId: string) {
+  return opsPost<{ archived: true; messageId: string } | { error: string }>(
+    'archive_email',
+    { messageId }
+  )
 }
 
 export function getAmbrUnread() {
@@ -66,13 +119,23 @@ export function getSuggestedSlots(duration = 60, days = 7) {
   )
 }
 
-export function approveDraft(draftId: string, editedBody?: string) {
-  return opsPost<{ ok: boolean }>('approve_draft', { draftId, ...(editedBody ? { editedBody } : {}) })
+export function approveDraft(draftId: string, editedSubject?: string, editedBody?: string) {
+  return opsPost<{ sent: boolean; to: string; subject: string; draftId: string } | { error: string }>(
+    'approve_draft',
+    {
+      draftId,
+      ...(editedSubject ? { editedSubject } : {}),
+      ...(editedBody ? { editedBody } : {}),
+    }
+  )
 }
 
 export function createEvent(event: {
   title: string; start: string; end: string;
   description?: string; location?: string; guests?: string;
 }) {
-  return opsPost<{ ok: boolean; eventId?: string }>('create_event', event)
+  return opsPost<
+    { created: true; id: string; title: string; start: string; end: string }
+    | { error: string }
+  >('create_event', event)
 }
