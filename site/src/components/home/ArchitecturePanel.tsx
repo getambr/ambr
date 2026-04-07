@@ -19,14 +19,14 @@ export default function ArchitecturePanel() {
         {/* Human Readable */}
         <div className="p-8 lg:p-12 lg:border-r border-amber/60 bg-background">
           <p className="text-micro block mb-8" style={{ color: '#666' }}>
-            // LAYER 01: LEGAL PROSE
+            // LAYER 01: WHAT YOUR LAWYERS SEE
           </p>
           <h3 className="text-4xl text-amber mb-6 lg:text-5xl">
             Human<br />Readable
           </h3>
           <p className="text-[#999] mb-10 text-lg max-w-[400px]">
-            Structured natural language agreements formatted for jurisdictional
-            compliance and traditional legal review.
+            Every authorization Ambr issues comes with a plain-language agreement
+            your legal team can actually read — no JSON, no jargon, no surprises.
           </p>
           <ul className="space-y-0">
             {humanData.map((row) => (
@@ -48,14 +48,15 @@ export default function ArchitecturePanel() {
           <div className="grid-bg grid-bg-dark opacity-50" />
           <div className="relative z-10">
             <p className="text-micro block mb-8">
-              // LAYER 02: MACHINE LOGIC
+              // LAYER 02: WHAT YOUR AGENT EXECUTES
             </p>
             <h3 className="text-4xl text-text-primary mb-6 lg:text-5xl">
               Agent<br />Parsable
             </h3>
             <p className="text-[#999] mb-10 text-lg max-w-[400px]">
-              Strict JSON-schema parameters defining execution bounds, spending
-              limits, and authorized counterparties.
+              The same agreement, served as strict JSON: spending limits,
+              authorized counterparties, expiry. Your agent can&apos;t misread it,
+              and it can&apos;t pretend it never saw it.
             </p>
             <ul className="space-y-0">
               {machineData.map((row) => (

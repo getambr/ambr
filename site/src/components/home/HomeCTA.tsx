@@ -33,19 +33,19 @@ export default function HomeCTA() {
             <div className="w-px h-4 bg-amber/30 -mt-2 ml-[7.5px]" />
           </div>
           <h2 className="relative text-3xl text-text-primary sm:text-4xl lg:text-5xl">
-            Ready to Build on Ambr?
+            Your AI will act.<br />Under whose rules?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-text-secondary">
-            Join the waitlist for early access to the legal framework for AI
-            agents acting in the real world — delegation authority, commerce
-            contracts, and compliance audit trails.
+            Free on testnet. No credit card. Three lines of code to put real
+            limits on your agent — and a verifiable trail behind every decision
+            it makes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button href="/waitlist" size="lg">
-              Join the Waitlist
+            <Button href="/activate" size="lg">
+              Get an API key
             </Button>
             <Button href="/developers" variant="secondary" size="lg">
-              Developer Docs
+              Read the docs
             </Button>
           </div>
         </div>

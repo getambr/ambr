@@ -9,11 +9,11 @@ import HomeCTA from '@/components/home/HomeCTA';
 import SectionWrapper from '@/components/ui/SectionWrapper';
 
 export const metadata: Metadata = {
-  title: 'Ambr | The Legal Framework for AI Agents',
-  description: 'Delegation authority, commerce contracts, and compliance audit trails for AI agents.',
+  title: 'Ambr | The permission layer for AI agents',
+  description: 'Set spend limits, authorize actions, and get a cryptographic record of every decision your AI makes.',
   ...createOgMetadata({
-    title: 'The Legal Framework for AI Agents',
-    description: 'Delegation authority, commerce contracts, and compliance audit trails.',
+    title: 'The permission layer for AI agents',
+    description: 'Set spend limits, authorize actions, prove every decision.',
     path: '/',
     label: 'Ambr Protocol',
     domain: 'ambr.run',

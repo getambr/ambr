@@ -46,19 +46,19 @@ export default function HeroSection() {
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 border border-amber/40 rounded-full bg-background/50 backdrop-blur px-4 py-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
-              <span className="text-micro text-white">Alpha v1.0 — Free Contract Access</span>
+              <span className="text-micro text-white">Alpha v1.0 — Free on testnet</span>
             </div>
 
             <h1
               className="brass-gradient-text leading-[0.95]"
               style={{ fontSize: 'clamp(3rem, 6vw, 6rem)', letterSpacing: '-0.02em' }}
             >
-              Ricardian Legal<br />Infrastructure for AI
+              Your AI is about<br />to spend money.
             </h1>
-            <p className="mx-auto mt-6 max-w-[600px] text-lg leading-relaxed font-light" style={{ color: '#aaa' }}>
-              Providing delegation authority, commerce contracts, and an immutable
-              compliance audit trail. Minted as cNFTs on-chain. Readable by lawyers,
-              executable by agents.
+            <p className="mx-auto mt-6 max-w-[640px] text-lg leading-relaxed font-light" style={{ color: '#aaa' }}>
+              Ambr is the permission layer for autonomous agents. Set spend limits,
+              define what actions are authorized, and get a cryptographic record of
+              every decision — in three lines of code.
             </p>
           </motion.div>
 
@@ -69,10 +69,10 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.5 }}
           >
             <Button href="/activate" size="lg">
-              Initialize Contract
+              Get an API key
             </Button>
             <Button href="/developers" variant="secondary" size="lg">
-              Read Documentation
+              See how it works
             </Button>
           </motion.div>
         </div>

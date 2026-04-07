@@ -4,34 +4,34 @@ import AmbrCard from '@/components/ui/AmbrCard';
 
 const capabilities = [
   {
-    title: 'Delegation Contracts',
+    title: 'Authorize',
     description:
-      'Power of Attorney for AI agents. Companies authorize agents to act within defined limits — spending caps, action scopes, counterparty requirements, and liability terms.',
+      'Define exactly what your agent can do. Spend caps, allowed counterparties, action scopes, time windows. One API call sets the boundaries — your agent cannot cross them.',
     variant: 'dark' as const,
     geoPattern: 'ellipse' as const,
-    label: '// COMP.01',
-    meta: 'REF: DELEGATION\nAUTH: ACTIVE',
-    footer: { left: 'REQ.AGENT.PARSE', right: '>_ EXECUTE' },
+    label: '// STEP.01',
+    meta: 'REF: PERMISSION\nAUTH: ACTIVE',
+    footer: { left: 'SET.LIMITS', right: '>_ ENFORCE' },
   },
   {
-    title: 'Commerce Contracts',
+    title: 'Act',
     description:
-      'When agents buy real things or sign real contracts on behalf of companies, Ambr produces dual-format agreements — human-readable for legal teams, machine-parsable for agents.',
+      'When your agent transacts, Ambr issues an agreement both sides can trust — readable by humans, parsable by other agents. No more handshake-by-prompt-injection.',
     variant: 'light' as const,
     geoPattern: 'circle' as const,
-    label: '// COMP.02',
-    meta: 'REF: RICARDIAN\nFORMAT: cNFT',
+    label: '// STEP.02',
+    meta: 'REF: CONTRACT\nFORMAT: cNFT',
     footer: { left: 'MINT.CNFT.0x8F2...', right: '[ IMMUTABLE ]' },
   },
   {
-    title: 'Compliance Audit Trail',
+    title: 'Prove',
     description:
-      'Each contract is minted as a single cNFT with its SHA-256 hash stored permanently on-chain. The Reader Portal lets compliance teams view, verify, audit, and export contracts via wallet-auth or share token.',
+      'Every authorized action is recorded on-chain with a cryptographic hash. When something goes wrong — or right — you can prove exactly who decided what, when, and under whose authority.',
     variant: 'dark' as const,
     geoPattern: 'cross' as const,
-    label: '// COMP.03',
+    label: '// STEP.03',
     meta: 'REF: AUDIT\nSTATE: SYNCED',
-    footer: { left: 'VERIFY.SIGNATURE', right: 'SEC. 4.1(B)' },
+    footer: { left: 'VERIFY.SIGNATURE', right: 'ON-CHAIN' },
   },
 ];
 
@@ -40,11 +40,11 @@ export default function CoreCapabilities() {
     <SectionWrapper>
       <ScrollReveal>
         <p className="text-micro-dark mb-4">
-          Core Capabilities
+          How it works
         </p>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8 mb-16 pb-8 border-b border-amber/60">
-          <h2 className="text-3xl text-background sm:text-4xl lg:text-5xl">What Ambr Does</h2>
-          <p className="text-[#333] text-lg max-w-xl">Power of Attorney for AI agents. Dual-format commerce contracts. Cryptographic audit trails. Everything agents need to transact in the real world with legal clarity.</p>
+          <h2 className="text-3xl text-background sm:text-4xl lg:text-5xl">Three steps. One API.</h2>
+          <p className="text-[#333] text-lg max-w-xl">Authorize what your agent can do. Let it act inside those rules. Prove every decision afterwards. No legal team required to get started — just an API key.</p>
         </div>
       </ScrollReveal>
 
