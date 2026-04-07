@@ -6,7 +6,7 @@ import {
   Sparkles, Send, Check, Loader2, Maximize2, Archive,
 } from 'lucide-react'
 import {
-  getEmailBody, draftReply, approveDraft, archiveEmail,
+  getEmailBody, draftReply, archiveEmail, improveDraft, sendThreadReply,
   type EmailBody, type TriagedEmail,
 } from '@/lib/team-api'
 
@@ -102,6 +102,36 @@ const TIER_1_ALIASES: AliasTab[] = [
   { id: 'security@ambr.run', label: 'Security', match: to => to.includes('security@ambr.run'), p1: true },
 ]
 
+// Personal aliases scoped to their owner. Shared aliases are visible to both founders.
+// NOTE: this is frontend-only soft privacy. Anyone with the OPS_KEY can call the
+// backend directly. The real fix is the server proxy refactor (queued separately).
+const PERSONAL_ALIASES_BY_USER: Record<string, string[]> = {
+  'ilvers.sermols@gmail.com': ['ilvers@ambr.run', 'ilvers.sermols@gmail.com'],
+  'dainis@ambr.run': ['dainis@ambr.run'],
+}
+
+const SHARED_ALIASES = [
+  'hello@ambr.run', 'support@ambr.run',
+  'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
+]
+
+// The Google account that hosts the Apps Script and whose Gmail is being triaged.
+// Legacy emails with no to_address column populated belong to this user only.
+const PRIMARY_OWNER_EMAIL = 'ilvers.sermols@gmail.com'
+
+function getVisibleAliases(currentUserEmail?: string): string[] {
+  if (!currentUserEmail) {
+    // Unknown user: defensive fallback. Show only shared aliases, no personal mail.
+    return SHARED_ALIASES
+  }
+  const personal = PERSONAL_ALIASES_BY_USER[currentUserEmail.toLowerCase()] || []
+  return [...personal, ...SHARED_ALIASES]
+}
+
+function isPrimaryOwner(currentUserEmail?: string): boolean {
+  return currentUserEmail?.toLowerCase() === PRIMARY_OWNER_EMAIL
+}
+
 function aliasLabel(toHeader: string): string {
   const match = toHeader.match(/([a-z0-9._-]+)@ambr\.run/i)
   if (!match) return ''
@@ -157,12 +187,33 @@ export function EmailWidget({
 
   const allEmails = useMemo(() => emails?.emails || [], [emails])
 
+  // Privacy filter: which aliases is this user allowed to see?
+  const visibleAliasIds = useMemo(() => getVisibleAliases(currentUserEmail), [currentUserEmail])
+
+  // Tabs the user can see (always include 'all', plus only the aliases in their permitted set)
+  const visibleTabs = useMemo(
+    () => TIER_1_ALIASES.filter(t => t.id === 'all' || visibleAliasIds.includes(t.id)),
+    [visibleAliasIds]
+  )
+
+  // Emails the user is permitted to see. Empty to_address means legacy untagged
+  // data (rows triaged before the to_address migration) which only the primary
+  // script owner gets to see.
+  const isOwner = useMemo(() => isPrimaryOwner(currentUserEmail), [currentUserEmail])
+  const ownedEmails = useMemo(() => {
+    return allEmails.filter(e => {
+      const to = (e.to_address || '').toLowerCase()
+      if (!to) return isOwner
+      return visibleAliasIds.some(alias => to.includes(alias))
+    })
+  }, [allEmails, visibleAliasIds, isOwner])
+
   const filtered = useMemo(() => {
-    const tab = TIER_1_ALIASES.find(t => t.id === activeTab) || TIER_1_ALIASES[0]
-    return allEmails
+    const tab = visibleTabs.find(t => t.id === activeTab) || visibleTabs[0]
+    return ownedEmails
       .filter(e => !locallyArchived.has(e.messageId))
       .filter(e => tab.match((e.to_address || '').toLowerCase()))
-  }, [allEmails, activeTab, locallyArchived])
+  }, [ownedEmails, activeTab, locallyArchived, visibleTabs])
 
   // Active messageId for body fetching: either inline expansion in list mode,
   // or the email shown in reading/replying/scheduling modes
@@ -206,7 +257,22 @@ export function EmailWidget({
     setMode({ kind: 'list' })
   }
 
+  // Open the reply view with an empty manual draft. NO Kimi call here.
+  // The user can type their own reply, or click Generate / Improve buttons
+  // inside the draft column to opt in to Kimi.
   function startReply(email: TriagedEmail) {
+    const subject = `Re: ${email.subject.replace(/^re:\s*/i, '')}`
+    setMode({
+      kind: 'replying',
+      email,
+      draft: { phase: 'editing', draftId: '', subject, body: '' },
+    })
+  }
+
+  // Explicit Kimi call: draft a fresh reply from scratch using project context.
+  function generateWithAmbr() {
+    if (mode.kind !== 'replying') return
+    const email = mode.email
     setMode({ kind: 'replying', email, draft: { phase: 'loading' } })
     draftReply(email.messageId)
       .then(res => {
@@ -223,6 +289,31 @@ export function EmailWidget({
       .catch(e => {
         setMode({ kind: 'replying', email, draft: { phase: 'error', message: String(e) } })
       })
+  }
+
+  // Take the user's current draft body and ask Kimi to polish it (grammar,
+  // spelling, flow) while preserving the same language and meaning.
+  async function improveWithAmbr() {
+    if (mode.kind !== 'replying' || mode.draft.phase !== 'editing') return
+    const email = mode.email
+    const currentBody = mode.draft.body
+    const currentSubject = mode.draft.subject
+    if (!currentBody.trim()) return
+    setMode({ kind: 'replying', email, draft: { phase: 'loading' } })
+    try {
+      const res = await improveDraft(email.messageId, currentBody)
+      if ('error' in res) {
+        setMode({ kind: 'replying', email, draft: { phase: 'error', message: res.error } })
+      } else {
+        setMode({
+          kind: 'replying',
+          email,
+          draft: { phase: 'editing', draftId: '', subject: currentSubject, body: res.improved },
+        })
+      }
+    } catch (e) {
+      setMode({ kind: 'replying', email, draft: { phase: 'error', message: String(e) } })
+    }
   }
 
   function startSchedule(email: TriagedEmail) {
@@ -255,11 +346,6 @@ export function EmailWidget({
     }
   }
 
-  function updateDraftSubject(subject: string) {
-    if (mode.kind !== 'replying' || mode.draft.phase !== 'editing') return
-    setMode({ ...mode, draft: { ...mode.draft, subject } })
-  }
-
   function updateDraftBody(body: string) {
     if (mode.kind !== 'replying' || mode.draft.phase !== 'editing') return
     setMode({ ...mode, draft: { ...mode.draft, body } })
@@ -269,9 +355,10 @@ export function EmailWidget({
     if (mode.kind !== 'replying' || mode.draft.phase !== 'editing') return
     const { draftId, subject, body } = mode.draft
     const email = mode.email
+    if (!body.trim()) return
     setMode({ kind: 'replying', email, draft: { phase: 'sending', draftId, subject, body } })
     try {
-      const res = await approveDraft(draftId, subject, body)
+      const res = await sendThreadReply(email.messageId, body)
       if ('error' in res) {
         setMode({ kind: 'replying', email, draft: { phase: 'error', message: res.error } })
       } else {
@@ -400,28 +487,48 @@ export function EmailWidget({
                   onClick={() => startReply(mode.email)}
                   className="rounded-lg border border-amber/30 bg-amber/10 px-3 py-1.5 text-xs font-medium text-amber hover:bg-amber/15 transition-colors"
                 >
-                  Retry
+                  Back to draft
                 </button>
               </div>
             )}
 
             {(draftPhase === 'editing' || draftPhase === 'sending') && (
               <>
-                <label className="mb-1 mt-2 block text-[10px] uppercase tracking-wider text-text-secondary">Subject</label>
-                <input
-                  type="text"
-                  value={mode.draft.subject}
-                  onChange={e => updateDraftSubject(e.target.value)}
-                  disabled={draftPhase === 'sending'}
-                  className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-amber/50 disabled:opacity-50"
-                />
+                {/* Static thread context (subject is set automatically by Gmail's reply) */}
+                <p className="mb-2 mt-1 text-[10px] font-mono text-text-secondary/70">
+                  Thread reply: <span className="text-text-secondary">{mode.draft.subject}</span>
+                </p>
 
-                <label className="mb-1 mt-3 block text-[10px] uppercase tracking-wider text-text-secondary">Body</label>
+                {/* AI assist toolbar: opt-in Kimi help */}
+                <div className="mb-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={generateWithAmbr}
+                    disabled={draftPhase === 'sending'}
+                    className="flex items-center gap-1.5 rounded border border-amber/30 bg-amber/10 px-2.5 py-1 text-[10px] font-medium text-amber hover:bg-amber/15 transition-colors disabled:opacity-50"
+                    title="Have Ambr draft a reply from scratch"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Generate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={improveWithAmbr}
+                    disabled={draftPhase === 'sending' || !mode.draft.body.trim()}
+                    className="flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-text-secondary hover:border-amber/30 hover:text-amber transition-colors disabled:opacity-30"
+                    title="Polish grammar and flow while keeping language"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Improve
+                  </button>
+                </div>
+
                 <textarea
                   value={mode.draft.body}
                   onChange={e => updateDraftBody(e.target.value)}
                   disabled={draftPhase === 'sending'}
                   rows={14}
+                  placeholder="Type your reply, or click Generate to have Ambr draft one"
                   className="w-full flex-1 rounded border border-border bg-background p-3 text-xs text-text-primary font-sans leading-relaxed resize-y focus:outline-none focus:border-amber/50 disabled:opacity-50 max-h-[55vh]"
                 />
 
@@ -437,7 +544,7 @@ export function EmailWidget({
                   <button
                     type="button"
                     onClick={sendDraft}
-                    disabled={draftPhase === 'sending'}
+                    disabled={draftPhase === 'sending' || !mode.draft.body.trim()}
                     className="flex items-center gap-1.5 rounded-lg border border-amber/30 bg-amber/15 px-3 py-1.5 text-xs font-medium text-amber hover:bg-amber/25 transition-colors disabled:opacity-50"
                   >
                     <Send className="h-3.5 w-3.5" />
@@ -470,9 +577,9 @@ export function EmailWidget({
         <div className="mb-4 flex items-center gap-2">
           <Mail className="h-4 w-4 text-amber" />
           <span className="text-micro">Email</span>
-          {allEmails.length > 0 && (
+          {ownedEmails.length > 0 && (
             <span className="ml-auto rounded-full bg-amber/10 px-2 py-0.5 text-xs font-mono text-amber">
-              {filtered.length}{filtered.length !== allEmails.length ? ` / ${allEmails.length}` : ''} total
+              {filtered.length}{filtered.length !== ownedEmails.length ? ` / ${ownedEmails.length}` : ''} total
             </span>
           )}
         </div>
@@ -491,9 +598,9 @@ export function EmailWidget({
         )}
 
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {TIER_1_ALIASES.map(tab => {
+          {visibleTabs.map(tab => {
             const isActive = activeTab === tab.id
-            const count = allEmails.filter(e => tab.match((e.to_address || '').toLowerCase())).length
+            const count = ownedEmails.filter(e => tab.match((e.to_address || '').toLowerCase())).length
             const showRedCount = tab.p1 && count > 0
             return (
               <button

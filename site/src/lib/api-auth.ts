@@ -1,6 +1,10 @@
 import { createHash, randomBytes } from 'crypto';
 import { getSupabaseAdmin } from './supabase-admin';
 
+// Re-export ADMIN_EMAILS and isAdmin from the shared (Node-free) module so
+// server-side callers can import everything from one place.
+export { ADMIN_EMAILS, isAdmin } from './admin-emails';
+
 export interface DelegationScope {
   actions: ('create' | 'handshake' | 'read')[];
   templates?: string[];
@@ -57,3 +61,4 @@ export function generateApiKey(): { key: string; hash: string; prefix: string } 
   const prefix = key.slice(0, 8);
   return { key, hash, prefix };
 }
+

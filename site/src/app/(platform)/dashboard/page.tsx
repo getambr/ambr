@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
+import { ADMIN_EMAILS } from '@/lib/admin-emails';
 
 declare global {
   interface Window {
@@ -43,7 +44,6 @@ interface DashboardState {
   authMethod: AuthMethod | null; error: string | null;
 }
 
-const ADMIN_EMAILS = ['ilvers.sermols@gmail.com', 'dainis@ambr.run'];
 const SESSION_KEY = 'ambr_dashboard_session';
 
 function saveSession(method: AuthMethod, apiKey?: string, wallet?: string) {

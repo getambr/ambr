@@ -1,19 +1,39 @@
-const OPS_BASE = 'https://script.google.com/macros/s/AKfycbwUQSw43m_6k1op1UXdbNj5Ou7GYMbwzObRcyBl2DRT9zKzroDWJgMP_idCbzBSfMpa/exec'
-const OPS_KEY = 'is-dash-2026-xK9mP'
+// All ops calls go through the authenticated server-side proxy at /api/ops/*.
+// The proxy validates the user's Ambr API key against ADMIN_EMAILS and forwards
+// the request to Apps Script using the server-only OPS_KEY env var. The OPS_KEY
+// is no longer present in the client bundle.
+
+// Read the user's Ambr API key from localStorage so we can authenticate to /api/ops/*
+function getApiKey(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem('ambr_dashboard_session')
+    if (!raw) return null
+    return JSON.parse(raw).apiKey || null
+  } catch {
+    return null
+  }
+}
 
 export async function opsGet<T = unknown>(action: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(OPS_BASE)
-  url.searchParams.set('action', action)
-  url.searchParams.set('key', OPS_KEY)
+  const apiKey = getApiKey()
+  const url = new URL(`/api/ops/${action}`, window.location.origin)
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
-  const res = await fetch(url.toString())
+  const res = await fetch(url.toString(), {
+    headers: apiKey ? { 'X-API-Key': apiKey } : {},
+  })
   return res.json()
 }
 
 export async function opsPost<T = unknown>(action: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(OPS_BASE, {
+  const apiKey = getApiKey()
+  const res = await fetch(`/api/ops/${action}`, {
     method: 'POST',
-    body: JSON.stringify({ action, key: OPS_KEY, ...body }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { 'X-API-Key': apiKey } : {}),
+    },
+    body: JSON.stringify(body),
   })
   return res.json()
 }
@@ -98,6 +118,20 @@ export function archiveEmail(messageId: string) {
   return opsPost<{ archived: true; messageId: string } | { error: string }>(
     'archive_email',
     { messageId }
+  )
+}
+
+export function improveDraft(emailId: string, currentBody: string) {
+  return opsPost<{ improved: string } | { error: string }>('improve_draft', {
+    emailId,
+    currentBody,
+  })
+}
+
+export function sendThreadReply(emailId: string, body: string) {
+  return opsPost<{ sent: true; to: string; threadId: string } | { error: string }>(
+    'send_thread_reply',
+    { emailId, body }
   )
 }
 
