@@ -22,8 +22,8 @@ interface StripeFormData {
 }
 
 const tiers = [
-  { value: 'startup' as const, label: 'Startup', price: '$49/mo', credits: '200 contracts/mo', overage: '$0.35/contract overage' },
-  { value: 'scale' as const, label: 'Scale', price: '$199/mo', credits: '1,000 contracts/mo', overage: '$0.25/contract overage' },
+  { value: 'startup' as const, label: 'Starter Pack', price: '$49', credits: '200 contracts', overage: 'One-time — credits never expire' },
+  { value: 'scale' as const, label: 'Scale Pack', price: '$199', credits: '1,000 contracts', overage: 'One-time — credits never expire' },
   { value: 'enterprise' as const, label: 'Enterprise', price: 'Custom', credits: 'Unlimited contracts', overage: 'Custom SLA + support' },
 ];
 
@@ -204,7 +204,7 @@ function ActivateContent() {
               Get Your API Key
             </h1>
             <p className="mt-4 text-[#aaa] text-sm font-light">
-              Free developer tier — 25 contracts/month. Or pay per contract via x402.
+              Free developer tier — 25 contracts. Or pay per contract via x402.
             </p>
           </div>
 
@@ -298,7 +298,7 @@ function ActivateContent() {
                 <form onSubmit={alphaForm.handleSubmit(onAlphaSubmit)} className="space-y-5">
                   <div className="rounded-none border border-amber/60 bg-amber-glow relative p-4 text-center">
                     <p className="text-micro mb-1">Developer</p>
-                    <p className="text-2xl font-serif text-text-primary">25 Free Contracts/mo</p>
+                    <p className="text-2xl font-serif text-text-primary">25 Free Contracts</p>
                     <p className="text-xs text-text-secondary mt-2">
                       Build and test integrations. One key per email. No payment required.
                     </p>
@@ -330,9 +330,9 @@ function ActivateContent() {
                   </Button>
 
                   <p className="text-center text-xs text-text-secondary">
-                    No wallet or payment required. Need more capacity?{' '}
+                    No wallet or payment required. Need more?{' '}
                     <button type="button" onClick={() => setTab('crypto')} className="text-amber hover:underline">
-                      Upgrade to Startup or Scale
+                      Buy a pack or pay per contract
                     </button>
                   </p>
                 </form>
