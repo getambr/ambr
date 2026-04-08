@@ -135,6 +135,36 @@ export function sendThreadReply(emailId: string, body: string) {
   >('send_thread_reply', { emailId, body })
 }
 
+// Compose / cold-email path. Sends a brand new email (not a reply) via
+// Resend with the chosen @ambr.run alias as From: and the per-alias signature
+// appended server-side. The user must own the chosen alias (server-enforced
+// in Apps Script via ALIASES_OWNED_BY).
+export function sendNewEmail(to: string, subject: string, body: string, fromAlias: string) {
+  return opsPost<
+    | { sent: true; to: string; from: string; subject: string; resendId: string | null }
+    | { error: string }
+  >('send_new_email', { to, subject, body, fromAlias })
+}
+
+// Generate a cold-email body from scratch using Kimi. The user provides a
+// rough intent + the destination context (subject, recipient), and Kimi
+// drafts a professional outbound email matching the Ambr brand voice.
+export function generateNewDraft(to: string, subject: string, intent: string, fromAlias: string) {
+  return opsPost<{ body: string; subject: string } | { error: string }>(
+    'generate_new_draft',
+    { to, subject, intent, fromAlias }
+  )
+}
+
+// Polish a cold-email draft body via Kimi. Same as improveDraft() but for
+// new emails (no thread context). Preserves language and length.
+export function improveCompose(currentBody: string, subject: string, fromAlias: string) {
+  return opsPost<{ improved: string } | { error: string }>(
+    'improve_compose',
+    { currentBody, subject, fromAlias }
+  )
+}
+
 export function getAmbrUnread() {
   return opsGet<{ unread: Record<string, number> }>('gmail_unread')
 }

@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronLeft, ChevronDown, Mail, CornerUpLeft, CalendarPlus,
-  Sparkles, Send, Check, Loader2, Maximize2, Archive,
+  Sparkles, Send, Check, Loader2, Maximize2, Archive, PenSquare,
 } from 'lucide-react'
 import {
   getEmailBody, draftReply, archiveEmail, improveDraft, sendThreadReply,
+  sendNewEmail, generateNewDraft, improveCompose,
   type EmailBody, type TriagedEmail,
 } from '@/lib/team-api'
 
@@ -92,7 +93,11 @@ type AliasTab = {
 }
 
 const TIER_1_ALIASES: AliasTab[] = [
-  { id: 'all', label: 'All', match: () => true },
+  // "All" only shows emails actually addressed to an @ambr.run alias.
+  // Personal Gmail clutter (Kraken, Namecheap, GitHub notifications, etc.)
+  // is intentionally hidden so the dashboard stays focused on company mail.
+  // To see personal Gmail, use Gmail web UI directly.
+  { id: 'all', label: 'All', match: to => !!to && /@ambr\.run/i.test(to) },
   { id: 'ilvers@ambr.run', label: 'Ilvers', match: to => to.includes('ilvers@ambr.run') },
   { id: 'dainis@ambr.run', label: 'Dainis', match: to => to.includes('dainis@ambr.run') },
   { id: 'hello@ambr.run', label: 'Hello', match: to => to.includes('hello@ambr.run') },
@@ -158,10 +163,6 @@ function computeReplyFromAlias(currentUserEmail: string | undefined, originalToH
   return PERSONAL_ALIAS_BY_USER[sender] || ''
 }
 
-// The Google account that hosts the Apps Script and whose Gmail is being triaged.
-// Legacy emails with no to_address column populated belong to this user only.
-const PRIMARY_OWNER_EMAIL = 'ilvers.sermols@gmail.com'
-
 function getVisibleAliases(currentUserEmail?: string): string[] {
   if (!currentUserEmail) {
     // Unknown user: defensive fallback. Show only shared aliases, no personal mail.
@@ -169,10 +170,6 @@ function getVisibleAliases(currentUserEmail?: string): string[] {
   }
   const personal = PERSONAL_ALIASES_BY_USER[currentUserEmail.toLowerCase()] || []
   return [...personal, ...SHARED_ALIASES]
-}
-
-function isPrimaryOwner(currentUserEmail?: string): boolean {
-  return currentUserEmail?.toLowerCase() === PRIMARY_OWNER_EMAIL
 }
 
 function aliasLabel(toHeader: string): string {
@@ -202,12 +199,24 @@ type DraftState =
   | { phase: 'sending'; draftId: string; subject: string; body: string }
   | { phase: 'error'; message: string }
 
+type ComposeState = {
+  to: string
+  subject: string
+  body: string
+  fromAlias: string
+  intent: string  // optional Kimi prompt
+  phase: 'editing' | 'generating' | 'improving' | 'sending' | 'error'
+  errorMessage?: string
+}
+
 type Mode =
   | { kind: 'list' }
   | { kind: 'reading'; email: TriagedEmail }
   | { kind: 'replying'; email: TriagedEmail; draft: DraftState }
   | { kind: 'scheduling'; email: TriagedEmail }
   | { kind: 'sent'; email: TriagedEmail; sentTo: string }
+  | { kind: 'composing'; compose: ComposeState }
+  | { kind: 'composeSent'; to: string; from: string }
 
 export function EmailWidget({
   emails,
@@ -239,17 +248,18 @@ export function EmailWidget({
     [visibleAliasIds]
   )
 
-  // Emails the user is permitted to see. Empty to_address means legacy untagged
-  // data (rows triaged before the to_address migration) which only the primary
-  // script owner gets to see.
-  const isOwner = useMemo(() => isPrimaryOwner(currentUserEmail), [currentUserEmail])
+  // Emails the user is permitted to see. Must be addressed to an @ambr.run
+  // alias the user owns. Personal Gmail (Kraken, Namecheap, GitHub, etc.) and
+  // legacy untagged rows are intentionally excluded from the dashboard so it
+  // stays focused on company mail. To see personal Gmail, use Gmail web UI.
   const ownedEmails = useMemo(() => {
     return allEmails.filter(e => {
       const to = (e.to_address || '').toLowerCase()
-      if (!to) return isOwner
+      if (!to) return false
+      if (!/@ambr\.run/i.test(to)) return false
       return visibleAliasIds.some(alias => to.includes(alias))
     })
-  }, [allEmails, visibleAliasIds, isOwner])
+  }, [allEmails, visibleAliasIds])
 
   const filtered = useMemo(() => {
     const tab = visibleTabs.find(t => t.id === activeTab) || visibleTabs[0]
@@ -361,6 +371,91 @@ export function EmailWidget({
 
   function startSchedule(email: TriagedEmail) {
     setMode({ kind: 'scheduling', email })
+  }
+
+  // ── Compose new email (cold outreach) ──────────────────
+  // Open the compose form with empty fields. The default From: alias is
+  // the user's personal alias (ilvers@ambr.run or dainis@ambr.run).
+  function startCompose() {
+    const defaultAlias = currentUserEmail
+      ? PERSONAL_ALIAS_BY_USER[currentUserEmail.toLowerCase()] || ''
+      : ''
+    setMode({
+      kind: 'composing',
+      compose: {
+        to: '',
+        subject: '',
+        body: '',
+        fromAlias: defaultAlias,
+        intent: '',
+        phase: 'editing',
+      },
+    })
+  }
+
+  function updateCompose(patch: Partial<ComposeState>) {
+    if (mode.kind !== 'composing') return
+    setMode({ kind: 'composing', compose: { ...mode.compose, ...patch } })
+  }
+
+  // Generate a cold-email body via Kimi based on the user's intent + subject.
+  async function generateComposeBody() {
+    if (mode.kind !== 'composing') return
+    const { to, subject, intent, fromAlias } = mode.compose
+    if (!subject.trim()) {
+      updateCompose({ phase: 'error', errorMessage: 'Subject required for Generate' })
+      return
+    }
+    updateCompose({ phase: 'generating', errorMessage: undefined })
+    try {
+      const res = await generateNewDraft(to, subject, intent, fromAlias)
+      if ('error' in res) {
+        updateCompose({ phase: 'error', errorMessage: res.error })
+      } else {
+        updateCompose({ body: res.body, phase: 'editing' })
+      }
+    } catch (e) {
+      updateCompose({ phase: 'error', errorMessage: String(e) })
+    }
+  }
+
+  // Polish the user's typed body via Kimi.
+  async function improveComposeBody() {
+    if (mode.kind !== 'composing') return
+    const { body, subject, fromAlias } = mode.compose
+    if (!body.trim()) return
+    updateCompose({ phase: 'improving', errorMessage: undefined })
+    try {
+      const res = await improveCompose(body, subject, fromAlias)
+      if ('error' in res) {
+        updateCompose({ phase: 'error', errorMessage: res.error })
+      } else {
+        updateCompose({ body: res.improved, phase: 'editing' })
+      }
+    } catch (e) {
+      updateCompose({ phase: 'error', errorMessage: String(e) })
+    }
+  }
+
+  // Send the cold email via Resend (Apps Script appends signature server-side).
+  async function sendCompose() {
+    if (mode.kind !== 'composing') return
+    const { to, subject, body, fromAlias } = mode.compose
+    if (!to.trim() || !subject.trim() || !body.trim() || !fromAlias) {
+      updateCompose({ phase: 'error', errorMessage: 'To, Subject, Body, and From are all required' })
+      return
+    }
+    updateCompose({ phase: 'sending', errorMessage: undefined })
+    try {
+      const res = await sendNewEmail(to.trim(), subject.trim(), body, fromAlias)
+      if ('error' in res) {
+        updateCompose({ phase: 'error', errorMessage: res.error })
+      } else {
+        setMode({ kind: 'composeSent', to: res.to, from: res.from })
+      }
+    } catch (e) {
+      updateCompose({ phase: 'error', errorMessage: String(e) })
+    }
   }
 
   async function handleArchive(email: TriagedEmail) {
@@ -621,6 +716,36 @@ export function EmailWidget({
     return renderReading(mode.email)
   }
 
+  // ── COMPOSE SENT confirmation ────────────────────────
+  if (mode.kind === 'composeSent') {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Check className="h-5 w-5 text-emerald-400" />
+          <h3 className="text-sm font-semibold text-emerald-400">Email sent</h3>
+        </div>
+        <p className="text-sm text-text-secondary mb-1">
+          Your cold email was delivered via Resend with the {mode.from} signature appended.
+        </p>
+        <p className="text-xs text-text-secondary/70 mb-4">
+          Recipient: <span className="font-mono text-text-secondary">{mode.to}</span> · From: <span className="font-mono text-amber">{mode.from}</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => setMode({ kind: 'list' })}
+          className="rounded-md border border-amber/30 bg-amber/10 px-3 py-1.5 text-xs font-medium text-amber hover:bg-amber/15 transition-colors"
+        >
+          Back to inbox
+        </button>
+      </div>
+    )
+  }
+
+  // ── COMPOSE MODE: write a brand new cold email ───────
+  if (mode.kind === 'composing') {
+    return renderCompose(mode.compose)
+  }
+
   // ── LIST MODE (with inline accordion expansion) ──────
   return renderListMode()
 
@@ -634,8 +759,17 @@ export function EmailWidget({
         <div className="mb-4 flex items-center gap-2">
           <Mail className="h-4 w-4 text-amber" />
           <span className="text-micro">Email</span>
+          <button
+            type="button"
+            onClick={startCompose}
+            className="ml-auto flex items-center gap-1.5 rounded-md border border-amber/30 bg-amber/10 px-2.5 py-1 text-xs font-medium text-amber hover:bg-amber/15 transition-colors"
+            title="Compose a new email from scratch"
+          >
+            <PenSquare className="h-3 w-3" />
+            Compose
+          </button>
           {ownedEmails.length > 0 && (
-            <span className="ml-auto rounded-full bg-amber/10 px-2 py-0.5 text-xs font-mono text-amber">
+            <span className="rounded-full bg-amber/10 px-2 py-0.5 text-xs font-mono text-amber">
               {filtered.length}{filtered.length !== ownedEmails.length ? ` / ${ownedEmails.length}` : ''} total
             </span>
           )}
@@ -783,6 +917,155 @@ export function EmailWidget({
         ) : (
           <p className="text-sm text-text-secondary">No emails for this tab yet.</p>
         )}
+      </div>
+    )
+  }
+
+  // ── COMPOSE FORM ─────────────────────────────────────
+  // Brand new cold email (not a reply). From: dropdown lets the user pick
+  // any alias they own. Kimi Generate drafts a body from a free-text intent;
+  // Improve polishes what's typed. Signature is appended server-side via
+  // sendNewEmail() so the user never sees the duplication.
+  function renderCompose(compose: ComposeState) {
+    const ownedAliases = currentUserEmail
+      ? ALIASES_OWNED_BY[currentUserEmail.toLowerCase()] || []
+      : []
+    const isBusy = compose.phase === 'sending' || compose.phase === 'generating' || compose.phase === 'improving'
+
+    return (
+      <div className="rounded-xl border border-border bg-surface p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMode({ kind: 'list' })}
+            className="flex items-center gap-1 text-text-secondary hover:text-amber transition-colors"
+            disabled={isBusy}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="text-xs font-mono">Back</span>
+          </button>
+          <span className="ml-2 text-xs text-text-secondary">Compose new email</span>
+        </div>
+
+        <div className="space-y-3">
+          {/* From: dropdown */}
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60 w-12">From</label>
+            <select
+              value={compose.fromAlias}
+              onChange={e => updateCompose({ fromAlias: e.target.value })}
+              disabled={isBusy}
+              className="flex-1 rounded border border-amber/30 bg-amber/5 px-2 py-1.5 text-xs font-mono text-amber focus:outline-none focus:border-amber/60 disabled:opacity-50"
+            >
+              {ownedAliases.length === 0 && <option value="">(no aliases — sign in)</option>}
+              {ownedAliases.map(alias => (
+                <option key={alias} value={alias}>{alias}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* To: input */}
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60 w-12">To</label>
+            <input
+              type="email"
+              value={compose.to}
+              onChange={e => updateCompose({ to: e.target.value })}
+              disabled={isBusy}
+              placeholder="recipient@example.com"
+              className="flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50 disabled:opacity-50"
+            />
+          </div>
+
+          {/* Subject input */}
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60 w-12">Subj</label>
+            <input
+              type="text"
+              value={compose.subject}
+              onChange={e => updateCompose({ subject: e.target.value })}
+              disabled={isBusy}
+              placeholder="Intro — Ambr Protocol"
+              className="flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50 disabled:opacity-50"
+            />
+          </div>
+
+          {/* Optional Kimi intent prompt */}
+          <div className="flex items-start gap-2">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60 w-12 mt-1.5">Hint</label>
+            <input
+              type="text"
+              value={compose.intent}
+              onChange={e => updateCompose({ intent: e.target.value })}
+              disabled={isBusy}
+              placeholder="(optional) what the email should convey, used by Generate"
+              className="flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50 disabled:opacity-50"
+            />
+          </div>
+
+          {/* AI assist toolbar */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={generateComposeBody}
+              disabled={isBusy || !compose.subject.trim()}
+              className="flex items-center gap-1.5 rounded border border-amber/30 bg-amber/10 px-2.5 py-1 text-[10px] font-medium text-amber hover:bg-amber/15 transition-colors disabled:opacity-50"
+              title="Have Ambr draft a cold email from scratch"
+            >
+              <Sparkles className="h-3 w-3" />
+              {compose.phase === 'generating' ? 'Generating...' : 'Generate'}
+            </button>
+            <button
+              type="button"
+              onClick={improveComposeBody}
+              disabled={isBusy || !compose.body.trim()}
+              className="flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-text-secondary hover:border-amber/30 hover:text-amber transition-colors disabled:opacity-30"
+              title="Polish grammar and flow while keeping language"
+            >
+              <Sparkles className="h-3 w-3" />
+              {compose.phase === 'improving' ? 'Polishing...' : 'Improve'}
+            </button>
+            <span className="ml-auto text-[10px] text-text-secondary/60">signature appended automatically</span>
+          </div>
+
+          {/* Body textarea */}
+          <textarea
+            value={compose.body}
+            onChange={e => updateCompose({ body: e.target.value })}
+            disabled={isBusy}
+            rows={12}
+            placeholder="Type your email, or click Generate to have Ambr draft one from your subject + hint above"
+            className="w-full rounded border border-border bg-background p-3 text-xs text-text-primary font-sans leading-relaxed resize-y focus:outline-none focus:border-amber/50 disabled:opacity-50 max-h-[55vh]"
+          />
+
+          {/* Error display */}
+          {compose.phase === 'error' && compose.errorMessage && (
+            <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+              {compose.errorMessage}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setMode({ kind: 'list' })}
+              disabled={isBusy}
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-text-secondary hover:border-amber/30 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={sendCompose}
+              disabled={isBusy || !compose.to.trim() || !compose.subject.trim() || !compose.body.trim() || !compose.fromAlias}
+              className="flex items-center gap-1.5 rounded-lg border border-amber/30 bg-amber/15 px-3 py-1.5 text-xs font-medium text-amber hover:bg-amber/25 transition-colors disabled:opacity-50"
+            >
+              {compose.phase === 'sending' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              {compose.phase === 'sending' ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
