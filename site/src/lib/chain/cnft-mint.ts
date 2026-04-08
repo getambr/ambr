@@ -47,7 +47,20 @@ export async function mintContractNFT(params: {
   return { tokenId, txHash: receipt.hash };
 }
 
-export async function mintContractNFTAsync(contractUuid: string): Promise<void> {
+/**
+ * Mint contract NFT(s) on Base L2.
+ *
+ * @param contractUuid - the contracts.id to mint for
+ * @param explicitWallets - optional override for the recipient + counterparty
+ *   wallets. When provided, skips the signature/payer lookup. Use this from
+ *   the amendment-approval flow where wallets come from the proposal record
+ *   rather than the signatures table (amendments don't go through the sign
+ *   route, so they have no signature rows).
+ */
+export async function mintContractNFTAsync(
+  contractUuid: string,
+  explicitWallets?: { recipient: string; counterparty?: string | null },
+): Promise<void> {
   const db = getSupabaseAdmin();
 
   const { data: contract, error } = await db
@@ -61,36 +74,39 @@ export async function mintContractNFTAsync(contractUuid: string): Promise<void> 
     return;
   }
 
-  // Determine holder: payer_wallet (x402) or first signer (API key flow)
-  let recipient = contract.payer_wallet;
-  if (!recipient) {
+  // Determine holder + counterparty. Priority order:
+  //   1. explicitWallets parameter (amendment approval flow)
+  //   2. payer_wallet column (x402 flow)
+  //   3. signatures table lookup (signed contract via API key flow)
+  let recipient: string | null = explicitWallets?.recipient || contract.payer_wallet || null;
+  let counterpartyWallet: string = explicitWallets?.counterparty || ethers.ZeroAddress;
+
+  if (!explicitWallets && !contract.payer_wallet) {
     const { data: sig } = await db
       .from('signatures')
       .select('signer_wallet')
       .eq('contract_id', contractUuid)
-      .order('created_at', { ascending: true })
+      .order('signed_at', { ascending: true })
       .limit(1)
       .single();
-    recipient = sig?.signer_wallet;
+    recipient = sig?.signer_wallet || null;
+
+    const { data: signers } = await db
+      .from('signatures')
+      .select('signer_wallet')
+      .eq('contract_id', contractUuid)
+      .order('signed_at', { ascending: true })
+      .limit(2);
+
+    if (signers && signers.length >= 2) {
+      counterpartyWallet = signers[1].signer_wallet;
+    }
   }
 
   if (!recipient) {
     console.error('cNFT mint: no recipient wallet for', contract.contract_id);
     await db.from('contracts').update({ nft_mint_status: 'failed' }).eq('id', contractUuid);
     return;
-  }
-
-  // Determine counterparty: second signer, or zero address if none
-  let counterpartyWallet = ethers.ZeroAddress;
-  const { data: signers } = await db
-    .from('signatures')
-    .select('signer_wallet')
-    .eq('contract_id', contractUuid)
-    .order('created_at', { ascending: true })
-    .limit(2);
-
-  if (signers && signers.length >= 2) {
-    counterpartyWallet = signers[1].signer_wallet;
   }
 
   const metadataUri = getMetadataUri(contract.sha256_hash);

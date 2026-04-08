@@ -118,7 +118,7 @@ export async function POST(
     .from('signatures')
     .select('signer_wallet')
     .eq('contract_id', original.id)
-    .order('created_at', { ascending: true });
+    .order('signed_at', { ascending: true });
 
   if (!signers || signers.length === 0) {
     return NextResponse.json(

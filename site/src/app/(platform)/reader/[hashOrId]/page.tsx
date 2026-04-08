@@ -79,13 +79,66 @@ export default async function ReaderPage({ params, searchParams }: Props) {
     .from('signatures')
     .select('signer_wallet, signed_at, signer_identity')
     .eq('contract_id', contract.id)
-    .order('created_at', { ascending: true });
+    .order('signed_at', { ascending: true });
 
   const existingSignatures = (signatures ?? []).map((s: { signer_wallet: string; signed_at: string; signer_identity?: Record<string, unknown> | null }) => ({
     signer_wallet: s.signer_wallet,
     signed_at: s.signed_at,
     signer_identity: s.signer_identity ?? null,
   }));
+
+  // Phase 6: Public amendment history. Fetch all amendment proposals for
+  // this contract so the reader can see the negotiation timeline (pending,
+  // approved, rejected, escalated). Public metadata — no auth required.
+  // Each approved proposal links to the resulting amendment contract by
+  // contract_id so the reader can navigate the chain.
+  //
+  // Cast: the auto-generated Supabase types don't know about amendment_proposals
+  // (added after the last `supabase gen types` run). Cast through unknown to a
+  // local interface — safe because we own the schema and the columns are stable.
+  interface AmendmentProposalRow {
+    id: string;
+    proposer_wallet: string;
+    diff_summary: string | null;
+    status: 'pending' | 'approved' | 'rejected' | 'expired' | 'escalated';
+    approval_required_from: string;
+    approved_by_wallet: string | null;
+    approved_at: string | null;
+    rejected_reason: string | null;
+    expires_at: string | null;
+    resulting_contract_id: string | null;
+    created_at: string;
+  }
+
+  const proposalsResult = await getSupabaseAdmin()
+    .from('amendment_proposals')
+    .select(
+      'id, proposer_wallet, diff_summary, status, approval_required_from, ' +
+      'approved_by_wallet, approved_at, rejected_reason, expires_at, ' +
+      'resulting_contract_id, created_at'
+    )
+    .eq('original_contract_id', contract.id)
+    .order('created_at', { ascending: false });
+
+  const amendmentProposals = (proposalsResult.data as unknown as AmendmentProposalRow[] | null) ?? [];
+
+  // Resolve resulting_contract_id (uuid) to contract_id (amb-...) for each
+  // approved proposal so we can link to the resulting amendment by its
+  // public identifier instead of an internal uuid.
+  const resultingContractIds = amendmentProposals
+    .map((p) => p.resulting_contract_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+  let resultingContractMap = new Map<string, string>();
+  if (resultingContractIds.length > 0) {
+    const { data: resultingContracts } = await getSupabaseAdmin()
+      .from('contracts')
+      .select('id, contract_id')
+      .in('id', resultingContractIds);
+    resultingContractMap = new Map(
+      (resultingContracts ?? []).map((c: { id: string; contract_id: string }) => [c.id, c.contract_id]),
+    );
+  }
 
   return (
     <main className="pt-20">
@@ -311,6 +364,100 @@ export default async function ReaderPage({ params, searchParams }: Props) {
             >
               {contract.parent_contract_hash.slice(0, 16)}...
             </a>
+          </div>
+        )}
+
+        {/* Phase 6: Amendment history — public negotiation timeline.
+            Shows every proposal anyone has made on this contract with status,
+            who proposed/approved/rejected, and a link to the resulting
+            amendment contract if approved. Visible to all viewers — this is
+            part of the public audit trail of the contract. */}
+        {amendmentProposals.length > 0 && (
+          <div className="mt-6 rounded-lg border border-border bg-surface p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium text-amber">Amendment history</p>
+              <span className="text-[10px] font-mono text-text-secondary/60">
+                {amendmentProposals.filter((p) => p.status === 'pending').length} pending
+                {' · '}
+                {amendmentProposals.length} total
+              </span>
+            </div>
+            <ol className="space-y-3">
+              {amendmentProposals.map((p) => {
+                const resultingContractId = p.resulting_contract_id
+                  ? resultingContractMap.get(p.resulting_contract_id) ?? null
+                  : null;
+                return (
+                  <li
+                    key={p.id}
+                    className="rounded border border-border/60 bg-background/50 p-3"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="font-mono text-text-secondary">
+                          {p.proposer_wallet.slice(0, 6)}...{p.proposer_wallet.slice(-4)}
+                        </span>
+                        <span className="text-text-secondary/40">→</span>
+                        <span className="font-mono text-text-secondary">
+                          {p.approval_required_from.slice(0, 6)}...{p.approval_required_from.slice(-4)}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${
+                          p.status === 'pending'
+                            ? 'text-amber border-amber/30'
+                            : p.status === 'approved'
+                              ? 'text-emerald-400 border-emerald-500/30'
+                              : p.status === 'rejected'
+                                ? 'text-red-400 border-red-500/30'
+                                : p.status === 'escalated'
+                                  ? 'text-orange-400 border-orange-500/30'
+                                  : 'text-text-secondary border-border'
+                        }`}
+                      >
+                        {p.status}
+                      </span>
+                    </div>
+                    {p.diff_summary && (
+                      <p className="text-xs text-text-secondary mb-1.5">{p.diff_summary}</p>
+                    )}
+                    <p className="text-[10px] font-mono text-text-secondary/60">
+                      Proposed {new Date(p.created_at).toLocaleString()}
+                      {p.approved_at && (
+                        <>
+                          {' · '}Approved {new Date(p.approved_at).toLocaleString()}
+                        </>
+                      )}
+                    </p>
+                    {p.status === 'rejected' && p.rejected_reason && (
+                      <p className="mt-1.5 text-[11px] text-text-secondary/80">
+                        Reason: <span className="text-text-secondary">{p.rejected_reason}</span>
+                      </p>
+                    )}
+                    {p.status === 'escalated' && (
+                      <p className="mt-1.5 text-[11px] text-orange-400">
+                        EU AI Act Article 14 escalation: spending change exceeded the
+                        contract&apos;s oversight threshold. Required direct human
+                        principal approval.
+                      </p>
+                    )}
+                    {p.status === 'approved' && resultingContractId && (
+                      <a
+                        href={`/reader/${resultingContractId}`}
+                        className="mt-2 inline-block text-[11px] font-mono text-amber hover:underline"
+                      >
+                        → resulting amendment: {resultingContractId}
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-3 text-[10px] text-text-secondary/50 italic">
+              Amendment proposals are public metadata. They show the negotiation
+              history of this contract regardless of whether the proposal text
+              itself is visible.
+            </p>
           </div>
         )}
       </div>

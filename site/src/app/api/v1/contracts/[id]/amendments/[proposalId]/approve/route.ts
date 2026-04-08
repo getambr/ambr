@@ -292,6 +292,31 @@ export async function POST(
       })
       .eq('id', proposal.id);
 
+    // Insert signature rows for BOTH parties on the new amendment contract.
+    // Amendments don't go through the regular sign route, so we need to
+    // synthesize the signatures here. The "signature" field is a marker that
+    // documents this came from the amendment approval workflow rather than
+    // a wallet ECDSA sign — the actual cryptographic proof is the api_key
+    // auth on the original /amend POST and this /approve POST, which the
+    // proxy and validateApiKey() already verified.
+    const amendmentMessageHash = `amendment_via_proposal:${proposal.id}`;
+    await db.from('signatures').insert([
+      {
+        contract_id: newContract.id,
+        signer_wallet: proposal.proposer_wallet,
+        signature: `proposed_via_proposal:${proposal.id}`,
+        message_hash: amendmentMessageHash,
+        signature_level: 'simple',
+      },
+      {
+        contract_id: newContract.id,
+        signer_wallet: callerWallet,
+        signature: `approved_via_proposal:${proposal.id}`,
+        message_hash: amendmentMessageHash,
+        signature_level: 'simple',
+      },
+    ]);
+
     // Audit log: both the approval and the resulting contract creation
     await db.from('audit_log').insert([
       {
@@ -319,11 +344,31 @@ export async function POST(
       },
     ]);
 
-    // Fire the paired cNFT mint for the new amendment contract (fire-and-forget).
-    // Uses the Phase 1 paired minting so both parties get a token for the amendment.
-    mintContractNFTAsync(newContract.id).catch((err) =>
-      console.error('cNFT mint (amendment) fire-and-forget error:', err),
-    );
+    // Mint the paired cNFT synchronously (await, NOT fire-and-forget).
+    // We pass explicit wallets from the proposal so the mint function doesn't
+    // need to look them up from the (also synthetic) signatures we just
+    // inserted. Synchronous because Vercel serverless functions terminate
+    // when the response is returned, killing fire-and-forget background work.
+    let mintedTokenId: number | null = null;
+    let mintedCounterpartyTokenId: number | null = null;
+    try {
+      await mintContractNFTAsync(newContract.id, {
+        recipient: proposal.proposer_wallet,
+        counterparty: callerWallet,
+      });
+      // Read back the resulting token IDs for the response
+      const { data: mintedRow } = await db
+        .from('contracts')
+        .select('nft_token_id, nft_counterparty_token_id')
+        .eq('id', newContract.id)
+        .single();
+      mintedTokenId = mintedRow?.nft_token_id ?? null;
+      mintedCounterpartyTokenId = mintedRow?.nft_counterparty_token_id ?? null;
+    } catch (mintErr) {
+      // Don't fail the whole approval — the contract amendment is committed
+      // and visible. The mint can be retried separately. Log so we know.
+      console.error('cNFT mint (amendment) failed during approval:', mintErr);
+    }
 
     return NextResponse.json(
       {
@@ -335,7 +380,9 @@ export async function POST(
         approved_by_wallet: callerWallet,
         approved_at: new Date().toISOString(),
         reader_url: `https://getamber.dev/reader/${sha256Hash}`,
-        nft_mint_queued: true,
+        nft_token_id: mintedTokenId,
+        nft_counterparty_token_id: mintedCounterpartyTokenId,
+        paired_mint_succeeded: mintedCounterpartyTokenId !== null,
       },
       { status: 200 },
     );

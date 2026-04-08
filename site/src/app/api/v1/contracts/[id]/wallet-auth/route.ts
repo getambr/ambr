@@ -120,7 +120,7 @@ export async function POST(
     .from('signatures')
     .select('signer_wallet, signed_at')
     .eq('contract_id', contract.id)
-    .order('created_at', { ascending: true });
+    .order('signed_at', { ascending: true });
 
   const { data: handshakes } = await db
     .from('handshakes')
