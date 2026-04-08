@@ -46,7 +46,7 @@ export async function GET(
     .select(
       'id, proposer_wallet, diff_summary, status, approval_required_from, ' +
       'approved_by_wallet, approved_at, rejected_reason, expires_at, ' +
-      'resulting_contract_id, created_at'
+      'resulting_contract_id, created_at, proposed_visibility'
     )
     .eq('original_contract_id', contract.id)
     .order('created_at', { ascending: false });

@@ -4,6 +4,10 @@ import { validateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { corsOptions } from '@/lib/cors';
+import { getCurrentHolders } from '@/lib/chain/cnft-holders';
+
+const VALID_VISIBILITIES = ['private', 'metadata_only', 'public', 'encrypted'] as const;
+type ContractVisibility = (typeof VALID_VISIBILITIES)[number];
 
 /**
  * POST /api/v1/contracts/[id]/amend
@@ -72,19 +76,22 @@ export async function POST(
     );
   }
 
-  // Optional free-text diff_summary + proposer_wallet from request body
-  // (not part of createContractSchema). Proposer_wallet defaults to a
-  // lookup from the api_keys.principal_wallet if the caller doesn't supply
-  // one explicitly. This matters because the proposal's approval_required_from
-  // is the OTHER wallet in the contract — we need to know who is proposing.
+  // Optional fields beyond createContractSchema:
+  //   diff_summary       — free-text describing the change
+  //   proposer_wallet    — explicit proposer (must match api key principal)
+  //   visibility         — proposed visibility change for the amendment
   const diffSummary = typeof body.diff_summary === 'string' ? body.diff_summary : null;
   const explicitProposerWallet = typeof body.proposer_wallet === 'string'
     ? body.proposer_wallet.toLowerCase()
     : null;
+  const proposedVisibility: ContractVisibility | null =
+    typeof body.visibility === 'string' && (VALID_VISIBILITIES as readonly string[]).includes(body.visibility)
+      ? (body.visibility as ContractVisibility)
+      : null;
 
-  // Lookup original contract
+  // Lookup original contract — needs the cNFT token IDs to query current holders
   const db = getSupabaseAdmin();
-  let query = db.from('contracts').select('id, contract_id, status, sha256_hash, template_id, api_key_id');
+  let query = db.from('contracts').select('id, contract_id, status, sha256_hash, template_id, api_key_id, nft_token_id, nft_counterparty_token_id');
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
   } else if (/^[a-f0-9]{64}$/.test(id)) {
@@ -93,14 +100,27 @@ export async function POST(
     query = query.eq('id', id);
   }
 
-  const { data: original, error: origError } = await query.single();
+  const { data: originalRaw, error: origError } = await query.single();
 
-  if (origError || !original) {
+  if (origError || !originalRaw) {
     return NextResponse.json(
       { error: 'not_found', message: 'Original contract not found' },
       { status: 404 },
     );
   }
+
+  // Cast: Supabase's untyped client resolves .select with concatenated columns
+  // to GenericStringError. We own the schema and know the shape.
+  const original = originalRaw as unknown as {
+    id: string;
+    contract_id: string;
+    status: string;
+    sha256_hash: string;
+    template_id: string;
+    api_key_id: string;
+    nft_token_id: number | null;
+    nft_counterparty_token_id: number | null;
+  };
 
   if (original.status !== 'active') {
     return NextResponse.json(
@@ -112,53 +132,61 @@ export async function POST(
     );
   }
 
-  // Lookup signers of the original contract. Proposer must be one of them.
-  // Counterparty = whoever is NOT the proposer.
-  const { data: signers } = await db
-    .from('signatures')
-    .select('signer_wallet')
-    .eq('contract_id', original.id)
-    .order('signed_at', { ascending: true });
+  // Look up CURRENT cNFT holders (the live source of truth for who is a party)
+  // with the signatures table as a fallback for legacy contracts. Handles
+  // novation: if Alice transferred her token to Carol with Bob's bilateral
+  // consent, Carol is now a recognized proposer/counterparty even though the
+  // signatures table still shows Alice.
+  const holdersResult = await getCurrentHolders({
+    id: original.id,
+    nft_token_id: original.nft_token_id,
+    nft_counterparty_token_id: original.nft_counterparty_token_id,
+  });
 
-  if (!signers || signers.length === 0) {
+  const partyWallets = holdersResult.currentHolders;
+
+  if (partyWallets.length === 0) {
     return NextResponse.json(
-      { error: 'no_signers', message: 'Cannot amend a contract with no signers' },
+      { error: 'no_parties', message: 'Cannot amend a contract with no current parties' },
       { status: 409 },
     );
   }
 
-  const signerWallets = signers.map((s) => (s.signer_wallet || '').toLowerCase());
-
   // Resolve proposer wallet. Priority:
-  //   1. explicit proposer_wallet from request body (must be in signerWallets)
+  //   1. explicit proposer_wallet from request body (must be in partyWallets)
   //   2. apiCtx.principalWallet (set via /api/v1/delegations)
   //   3. reject if we can't identify the proposer
   let proposerWallet: string | null = null;
-  if (explicitProposerWallet && signerWallets.includes(explicitProposerWallet)) {
+  if (explicitProposerWallet && partyWallets.includes(explicitProposerWallet)) {
     proposerWallet = explicitProposerWallet;
-  } else if (apiCtx.principalWallet && signerWallets.includes(apiCtx.principalWallet.toLowerCase())) {
+  } else if (apiCtx.principalWallet && partyWallets.includes(apiCtx.principalWallet.toLowerCase())) {
     proposerWallet = apiCtx.principalWallet.toLowerCase();
   } else {
     return NextResponse.json(
       {
-        error: 'proposer_not_signer',
+        error: 'proposer_not_party',
         message:
-          'Cannot identify proposer. Supply proposer_wallet in the request body, ' +
-          'or link your API key to a signer wallet via POST /api/v1/delegations.',
+          'Cannot identify proposer as a current party to this contract. ' +
+          'Either supply proposer_wallet in the request body matching a current cNFT holder, ' +
+          'or link your API key to that wallet via POST /api/v1/delegations. ' +
+          (holdersResult.fromChain
+            ? 'Current holders were resolved from the cNFT contract on Base.'
+            : 'Holders were resolved from the historical signatures table (no on-chain token IDs available).'),
+        current_holders: partyWallets,
       },
       { status: 403 },
     );
   }
 
-  // Determine counterparty. Takes the first signer wallet that isn't the proposer.
-  const counterpartyWallet = signerWallets.find((w) => w !== proposerWallet);
+  // Determine counterparty. Takes the first current holder that isn't the proposer.
+  const counterpartyWallet = partyWallets.find((w) => w !== proposerWallet);
   if (!counterpartyWallet) {
     return NextResponse.json(
       {
         error: 'single_party_contract',
         message:
-          'Cannot propose a bilateral amendment on a single-signer contract. ' +
-          'Use the amendment flow only for contracts signed by at least two wallets.',
+          'Cannot propose a bilateral amendment on a single-party contract. ' +
+          'Use the amendment flow only for contracts with at least two current cNFT holders.',
       },
       { status: 409 },
     );
@@ -177,6 +205,7 @@ export async function POST(
       status: 'pending',
       approval_required_from: counterpartyWallet,
       expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days
+      proposed_visibility: proposedVisibility,
     })
     .select('id, created_at, expires_at')
     .single();

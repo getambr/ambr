@@ -108,6 +108,7 @@ export default async function ReaderPage({ params, searchParams }: Props) {
     expires_at: string | null;
     resulting_contract_id: string | null;
     created_at: string;
+    proposed_visibility: 'private' | 'metadata_only' | 'public' | 'encrypted' | null;
   }
 
   const proposalsResult = await getSupabaseAdmin()
@@ -115,7 +116,7 @@ export default async function ReaderPage({ params, searchParams }: Props) {
     .select(
       'id, proposer_wallet, diff_summary, status, approval_required_from, ' +
       'approved_by_wallet, approved_at, rejected_reason, expires_at, ' +
-      'resulting_contract_id, created_at'
+      'resulting_contract_id, created_at, proposed_visibility'
     )
     .eq('original_contract_id', contract.id)
     .order('created_at', { ascending: false });
@@ -420,6 +421,11 @@ export default async function ReaderPage({ params, searchParams }: Props) {
                     </div>
                     {p.diff_summary && (
                       <p className="text-xs text-text-secondary mb-1.5">{p.diff_summary}</p>
+                    )}
+                    {p.proposed_visibility && (
+                      <p className="text-[11px] font-mono text-amber/80 mb-1.5">
+                        Requested visibility change → <span className="uppercase">{p.proposed_visibility}</span>
+                      </p>
                     )}
                     <p className="text-[10px] font-mono text-text-secondary/60">
                       Proposed {new Date(p.created_at).toLocaleString()}

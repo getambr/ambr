@@ -95,7 +95,7 @@ export async function POST(
   // Lookup the proposal
   const { data: proposal, error: proposalError } = await db
     .from('amendment_proposals')
-    .select('id, original_contract_id, proposer_wallet, proposed_parameters, status, approval_required_from, expires_at')
+    .select('id, original_contract_id, proposer_wallet, proposed_parameters, status, approval_required_from, expires_at, proposed_visibility')
     .eq('id', proposalId)
     .eq('original_contract_id', original.id)
     .single();
@@ -268,9 +268,27 @@ export async function POST(
       // Preserve oversight threshold from original — subsequent amendments
       // use the same Art 14 gate
       oversightThresholdUsd: original.oversight_threshold_usd,
-      visibility: (original.visibility as 'private' | 'metadata_only' | 'public' | 'encrypted') || 'private',
+      // Q1: honor proposed_visibility from the proposal if the proposer
+      // requested a change; otherwise inherit from the parent contract.
+      // Counterparty saw + approved the change at the /approve step, so
+      // this is the bilateral decision.
+      visibility:
+        ((proposal as unknown as { proposed_visibility: string | null }).proposed_visibility as
+          | 'private'
+          | 'metadata_only'
+          | 'public'
+          | 'encrypted'
+          | null) ??
+        (original.visibility as 'private' | 'metadata_only' | 'public' | 'encrypted') ??
+        'private',
       initialStatus: 'active',
     });
+
+    // Derive for audit log + response
+    const proposedVisibility = (proposal as unknown as { proposed_visibility: string | null })
+      .proposed_visibility;
+    const visibilityChanged =
+      proposedVisibility !== null && proposedVisibility !== original.visibility;
 
     // Consume one credit for the amendment generation
     await decrementCredits(apiCtx.keyId, apiCtx.credits);
@@ -330,6 +348,9 @@ export async function POST(
           art14_checked: true,
           spending_change: art14.spendingChange,
           threshold: art14.threshold,
+          visibility_changed: visibilityChanged,
+          old_visibility: original.visibility,
+          new_visibility: proposedVisibility ?? original.visibility,
         },
       },
       {
@@ -383,6 +404,8 @@ export async function POST(
         nft_token_id: mintedTokenId,
         nft_counterparty_token_id: mintedCounterpartyTokenId,
         paired_mint_succeeded: mintedCounterpartyTokenId !== null,
+        visibility: proposedVisibility ?? original.visibility,
+        visibility_changed: visibilityChanged,
       },
       { status: 200 },
     );

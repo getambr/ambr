@@ -8,7 +8,7 @@ import {
   Layers, FileText, Send as SendIcon, Handshake, PenTool, ShieldCheck,
   Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
   Calendar, Mail, Users, Lock, Copy, Check, ExternalLink,
-  ArrowRight, Clock, Plus, RefreshCw, TrendingUp,
+  ArrowRight, Clock, Plus, RefreshCw, TrendingUp, Eye,
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
@@ -715,6 +715,7 @@ interface AmendmentProposal {
   expires_at: string | null;
   resulting_contract_id: string | null;
   created_at: string;
+  proposed_visibility: 'private' | 'metadata_only' | 'public' | 'encrypted' | null;
 }
 
 function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
@@ -1058,6 +1059,19 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
                 </div>
                 {p.diff_summary && (
                   <p className="text-xs text-text-secondary mb-2">{p.diff_summary}</p>
+                )}
+                {p.proposed_visibility && (
+                  <div className="mb-2">
+                    <span className="inline-flex items-center gap-1.5 rounded border border-amber/30 bg-amber/10 px-2 py-0.5 text-[11px] font-mono text-amber">
+                      <Eye className="h-3 w-3" />
+                      Visibility → {p.proposed_visibility}
+                    </span>
+                    {(p.proposed_visibility === 'private' || p.proposed_visibility === 'metadata_only') && (
+                      <p className="mt-1 text-[10px] text-orange-400/80">
+                        Note: Making a previously public contract private cannot recall cached or distributed copies.
+                      </p>
+                    )}
+                  </div>
                 )}
                 <p className="text-[10px] text-text-secondary/60 font-mono">
                   Proposed {new Date(p.created_at).toLocaleString()}
@@ -1594,7 +1608,19 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {nftContracts.map(c => (
+            {nftContracts.map(c => {
+              // Q2: "Novated" badge — the connected wallet is a current cNFT
+              // holder, but it isn't the original signer stored in
+              // nft_holder_wallet or nft_counterparty_wallet. That means the
+              // token reached this wallet via approveTransfer() + transferFrom,
+              // i.e. a bilateral novation.
+              const walletLc = wallet?.toLowerCase() ?? null;
+              const isOriginalHolder =
+                walletLc != null &&
+                (c.nft_holder_wallet?.toLowerCase() === walletLc ||
+                  c.nft_counterparty_wallet?.toLowerCase() === walletLc);
+              const isNovated = walletLc != null && !isOriginalHolder;
+              return (
               <div key={c.contract_id} className="px-5 py-3.5">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
@@ -1608,6 +1634,14 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
                         PAIRED
                       </span>
                     )}
+                    {isNovated && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded font-mono text-orange-400 border border-orange-500/30"
+                        title="This wallet is a current cNFT holder via a bilateral transfer (novation), not the original signer."
+                      >
+                        NOVATED
+                      </span>
+                    )}
                   </div>
                   <StatusBadge status={c.status} />
                 </div>
@@ -1619,7 +1653,8 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
                   </Link>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

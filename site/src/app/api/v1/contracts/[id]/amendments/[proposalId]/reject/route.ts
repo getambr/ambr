@@ -3,6 +3,7 @@ import { validateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { corsOptions } from '@/lib/cors';
+import { getCurrentHolders } from '@/lib/chain/cnft-holders';
 
 /**
  * POST /api/v1/contracts/[id]/amendments/[proposalId]/reject
@@ -45,8 +46,12 @@ export async function POST(
 
   const db = getSupabaseAdmin();
 
-  // Lookup the original contract for ownership routing
-  let contractQuery = db.from('contracts').select('id, contract_id');
+  // Lookup the original contract for ownership routing.
+  // Select cNFT token IDs too — Q2 novation-aware rejection uses current
+  // on-chain holders (live ownerOf) rather than the signatures snapshot.
+  let contractQuery = db
+    .from('contracts')
+    .select('id, contract_id, nft_token_id, nft_counterparty_token_id');
   if (id.startsWith('amb-')) {
     contractQuery = contractQuery.eq('contract_id', id);
   } else if (/^[a-f0-9]{64}$/.test(id)) {
@@ -66,7 +71,7 @@ export async function POST(
   // Lookup the proposal
   const { data: proposal, error: proposalError } = await db
     .from('amendment_proposals')
-    .select('id, original_contract_id, status, approval_required_from')
+    .select('id, original_contract_id, status, approval_required_from, proposer_wallet')
     .eq('id', proposalId)
     .eq('original_contract_id', original.id)
     .single();
@@ -88,25 +93,57 @@ export async function POST(
     );
   }
 
-  // Authorization: caller must be the counterparty
+  // Authorization: caller must be a CURRENT party to the contract and not
+  // the proposer. "Current party" = live cNFT holder via ownerOf (or the
+  // signatures table for legacy contracts). This handles novation: if the
+  // counterparty at proposal time was Bob but Bob has since transferred
+  // his token to Carol (with the proposer's bilateral consent via
+  // approveTransfer), Carol is now authorized to reject.
+  //
+  // The proposal.approval_required_from field is a SNAPSHOT of who the
+  // counterparty was at proposal-creation time, not the authoritative
+  // source. Authority comes from live chain ownership.
   const body = await request.json().catch(() => ({}));
   const explicitRejecterWallet = typeof body.rejecter_wallet === 'string'
     ? body.rejecter_wallet.toLowerCase()
     : null;
   const rejectedReason = typeof body.reason === 'string' ? body.reason : null;
 
-  const expectedRejecter = proposal.approval_required_from.toLowerCase();
+  const holdersResult = await getCurrentHolders({
+    id: original.id,
+    nft_token_id: original.nft_token_id,
+    nft_counterparty_token_id: original.nft_counterparty_token_id,
+  });
+
+  const partyWallets = holdersResult.currentHolders;
   const callerWallet = explicitRejecterWallet
     || (apiCtx.principalWallet ? apiCtx.principalWallet.toLowerCase() : null);
 
-  if (!callerWallet || callerWallet !== expectedRejecter) {
+  if (!callerWallet || !partyWallets.includes(callerWallet)) {
     return NextResponse.json(
       {
-        error: 'forbidden',
+        error: 'rejecter_not_party',
         message:
-          `This proposal can only be rejected by ${expectedRejecter}. ` +
-          `Supply rejecter_wallet in the request body, or link your API key ` +
-          `to that wallet via POST /api/v1/delegations.`,
+          'Rejection can only be performed by a current party (cNFT holder) of this contract. ' +
+          'Supply rejecter_wallet in the request body matching a current holder, ' +
+          'or link your API key to that wallet via POST /api/v1/delegations. ' +
+          (holdersResult.fromChain
+            ? 'Current holders were resolved from the cNFT contract on Base.'
+            : 'Holders were resolved from the historical signatures table (no on-chain token IDs available).'),
+        current_holders: partyWallets,
+      },
+      { status: 403 },
+    );
+  }
+
+  // Disallow the proposer from rejecting their own proposal. Withdrawing
+  // isn't supported yet — the proposer can just let it expire (30 days).
+  if (callerWallet === proposal.proposer_wallet.toLowerCase()) {
+    return NextResponse.json(
+      {
+        error: 'proposer_cannot_reject',
+        message:
+          'The proposer cannot reject their own proposal. Let it expire, or ask the counterparty to reject it.',
       },
       { status: 403 },
     );
