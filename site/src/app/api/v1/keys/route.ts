@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error('Developer key insert error:', insertError);
       return NextResponse.json(
-        { error: 'db_error', message: 'Failed to create API key' },
+        { error: 'db_error', code: insertError.code ?? 'unknown', message: 'Failed to create API key' },
         { status: 500 },
       );
     }
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
   if (insertError) {
     console.error('API key insert error:', insertError);
     return NextResponse.json(
-      { error: 'db_error', message: 'Failed to create API key' },
+      { error: 'db_error', code: insertError.code ?? 'unknown', message: 'Failed to create API key' },
       { status: 500 },
     );
   }
