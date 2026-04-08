@@ -115,6 +115,49 @@ const SHARED_ALIASES = [
   'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
 ]
 
+// Which @ambr.run aliases each user is allowed to send AS via the dashboard.
+// MUST stay in sync with ALIASES_OWNED_BY in Apps Script Code.gs — the server
+// is the source of truth, this is just a UI hint for the From: chip.
+const ALIASES_OWNED_BY: Record<string, string[]> = {
+  'ilvers.sermols@gmail.com': [
+    'ilvers@ambr.run',
+    'hello@ambr.run', 'support@ambr.run',
+    'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
+  ],
+  'dainis@ambr.run': [
+    'dainis@ambr.run',
+    'hello@ambr.run', 'support@ambr.run',
+    'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
+    'investors@ambr.run', 'sales@ambr.run', 'billing@ambr.run',
+  ],
+}
+
+const PERSONAL_ALIAS_BY_USER: Record<string, string> = {
+  'ilvers.sermols@gmail.com': 'ilvers@ambr.run',
+  'dainis@ambr.run': 'dainis@ambr.run',
+}
+
+// Mirrors the server-side resolveFromAlias() in Apps Script Code.gs. Picks
+// which @ambr.run alias the reply will be sent from. Pure UI hint — actual
+// decision is made server-side from the authenticated user's identity.
+// Returns empty string if user is unknown.
+function computeReplyFromAlias(currentUserEmail: string | undefined, originalToHeader: string | undefined): string {
+  if (!currentUserEmail) return ''
+  const sender = currentUserEmail.toLowerCase()
+  const owned = ALIASES_OWNED_BY[sender] || []
+
+  if (originalToHeader) {
+    const matches = originalToHeader.toLowerCase().match(/[a-z0-9._-]+@ambr\.run/g) || []
+    for (const candidate of matches) {
+      if (owned.includes(candidate)) {
+        return candidate
+      }
+    }
+  }
+
+  return PERSONAL_ALIAS_BY_USER[sender] || ''
+}
+
 // The Google account that hosts the Apps Script and whose Gmail is being triaged.
 // Legacy emails with no to_address column populated belong to this user only.
 const PRIMARY_OWNER_EMAIL = 'ilvers.sermols@gmail.com'
@@ -498,6 +541,20 @@ export function EmailWidget({
                 <p className="mb-2 mt-1 text-[10px] font-mono text-text-secondary/70">
                   Thread reply: <span className="text-text-secondary">{mode.draft.subject}</span>
                 </p>
+
+                {/* From: chip — auto-resolved alias the reply will be sent AS.
+                    Mirrors the server-side resolveFromAlias() decision. */}
+                {(() => {
+                  const fromAlias = computeReplyFromAlias(currentUserEmail, mode.email.to_address)
+                  if (!fromAlias) return null
+                  return (
+                    <div className="mb-2 flex items-center gap-2 rounded border border-amber/20 bg-amber/5 px-2 py-1.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60">From</span>
+                      <span className="text-[11px] font-mono text-amber">{fromAlias}</span>
+                      <span className="ml-auto text-[10px] text-text-secondary/60">signature appended automatically</span>
+                    </div>
+                  )
+                })()}
 
                 {/* AI assist toolbar: opt-in Kimi help */}
                 <div className="mb-2 flex items-center gap-2">

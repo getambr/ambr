@@ -81,10 +81,15 @@ export async function POST(
     // empty body OK
   }
 
+  // Inject the authenticated user's email server-side so Apps Script knows
+  // who is sending. The client cannot spoof this — the proxy gets it from
+  // validateApiKey() which verified the X-API-Key against the database.
+  // Apps Script uses senderEmail to look up the correct From: alias and
+  // signature for outbound mail sent via Resend.
   try {
     const res = await fetch(OPS_BASE, {
       method: 'POST',
-      body: JSON.stringify({ action, key: OPS_KEY, ...body }),
+      body: JSON.stringify({ action, key: OPS_KEY, senderEmail: a.auth.email, ...body }),
       redirect: 'follow',
     })
     const data = await res.json()

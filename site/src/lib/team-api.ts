@@ -129,10 +129,10 @@ export function improveDraft(emailId: string, currentBody: string) {
 }
 
 export function sendThreadReply(emailId: string, body: string) {
-  return opsPost<{ sent: true; to: string; threadId: string } | { error: string }>(
-    'send_thread_reply',
-    { emailId, body }
-  )
+  return opsPost<
+    | { sent: true; to: string; from: string; threadId: string; resendId: string | null }
+    | { error: string }
+  >('send_thread_reply', { emailId, body })
 }
 
 export function getAmbrUnread() {
@@ -154,7 +154,10 @@ export function getSuggestedSlots(duration = 60, days = 7) {
 }
 
 export function approveDraft(draftId: string, editedSubject?: string, editedBody?: string) {
-  return opsPost<{ sent: boolean; to: string; subject: string; draftId: string } | { error: string }>(
+  return opsPost<
+    | { sent: true; to: string; from: string; subject: string; draftId: string; resendId: string | null }
+    | { error: string }
+  >(
     'approve_draft',
     {
       draftId,
