@@ -25,7 +25,12 @@ export interface ContractRow {
   contract_id: string; status: string; amendment_type: string; sha256_hash: string;
   created_at: string; updated_at: string | null; template_id: string;
   principal_declaration: { principal_name: string } | null;
-  nft_mint_status: string | null; visibility: string | null;
+  nft_mint_status: string | null;
+  nft_token_id: number | null;
+  nft_counterparty_token_id: number | null;
+  nft_holder_wallet: string | null;
+  nft_counterparty_wallet: string | null;
+  visibility: string | null;
   contract_type: string | null; payment_method: string | null;
   revoked_at: string | null; revoked_by: string | null; revocation_reason: string | null;
   expiry_date: string | null; parent_contract_hash: string | null;
@@ -698,6 +703,20 @@ function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[
 }
 
 // ─── Contract Detail View ──────────────────────────────
+interface AmendmentProposal {
+  id: string;
+  proposer_wallet: string;
+  diff_summary: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'escalated';
+  approval_required_from: string;
+  approved_by_wallet: string | null;
+  approved_at: string | null;
+  rejected_reason: string | null;
+  expires_at: string | null;
+  resulting_contract_id: string | null;
+  created_at: string;
+}
+
 function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   contract: ContractRow; apiKey: string; onBack: () => void; onRevoked: () => void;
 }) {
@@ -707,6 +726,16 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   const [revokeReason, setRevokeReason] = useState('');
   const [signatures, setSignatures] = useState<{ signer_wallet: string; created_at: string }[]>([]);
   const [amendments, setAmendments] = useState<{ contract_id: string; status: string; sha256_hash: string }[]>([]);
+  const [proposals, setProposals] = useState<AmendmentProposal[]>([]);
+  const [proposalAction, setProposalAction] = useState<{ id: string; action: 'approving' | 'rejecting' } | null>(null);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+
+  const refreshProposals = useCallback(() => {
+    fetch(`/api/v1/contracts/${contract.contract_id}/amendments`)
+      .then(r => r.json())
+      .then(data => { if (data.proposals) setProposals(data.proposals); })
+      .catch(() => {});
+  }, [contract.contract_id]);
 
   useEffect(() => {
     // Fetch signatures and amendment chain
@@ -717,7 +746,53 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
         if (data.amendments) setAmendments(data.amendments);
       })
       .catch(() => {});
-  }, [contract.contract_id]);
+    refreshProposals();
+  }, [contract.contract_id, refreshProposals]);
+
+  async function handleApproveProposal(proposalId: string) {
+    setProposalAction({ id: proposalId, action: 'approving' });
+    setProposalError(null);
+    try {
+      const res = await fetch(`/api/v1/contracts/${contract.contract_id}/amendments/${proposalId}/approve`, {
+        method: 'POST',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setProposalError(json.message || 'Approval failed');
+      } else {
+        refreshProposals();
+        onRevoked(); // reuse callback to refresh the outer contract list
+      }
+    } catch {
+      setProposalError('Network error approving proposal');
+    } finally {
+      setProposalAction(null);
+    }
+  }
+
+  async function handleRejectProposal(proposalId: string, reason?: string) {
+    setProposalAction({ id: proposalId, action: 'rejecting' });
+    setProposalError(null);
+    try {
+      const res = await fetch(`/api/v1/contracts/${contract.contract_id}/amendments/${proposalId}/reject`, {
+        method: 'POST',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setProposalError(json.message || 'Rejection failed');
+      } else {
+        refreshProposals();
+      }
+    } catch {
+      setProposalError('Network error rejecting proposal');
+    } finally {
+      setProposalAction(null);
+    }
+  }
 
   async function handleRevoke() {
     setRevoking(true);
@@ -942,6 +1017,98 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
           )}
         </div>
       </div>
+
+      {/* Pending amendment proposals (Phase 2 bilateral governance) */}
+      {proposals.length > 0 && (
+        <div className="rounded-xl border border-amber/30 bg-amber/5 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Handshake className="h-4 w-4 text-amber" />
+            <p className="text-micro">Amendment Proposals</p>
+            <span className="ml-auto text-xs text-text-secondary">
+              {proposals.filter(p => p.status === 'pending').length} pending · {proposals.length} total
+            </span>
+          </div>
+          {proposalError && (
+            <div className="mb-3 rounded-md border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+              {proposalError}
+            </div>
+          )}
+          <div className="space-y-2">
+            {proposals.map(p => (
+              <div key={p.id} className="rounded-lg border border-border bg-surface-elevated p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-text-secondary">
+                      {p.proposer_wallet.slice(0, 6)}...{p.proposer_wallet.slice(-4)}
+                    </span>
+                    <span className="text-text-secondary/40">→</span>
+                    <span className="text-xs font-mono text-text-secondary">
+                      {p.approval_required_from.slice(0, 6)}...{p.approval_required_from.slice(-4)}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                    p.status === 'pending' ? 'text-amber border border-amber/30' :
+                    p.status === 'approved' ? 'text-emerald-400 border border-emerald-500/30' :
+                    p.status === 'rejected' ? 'text-error border border-error/30' :
+                    p.status === 'escalated' ? 'text-orange-400 border border-orange-500/30' :
+                    'text-text-secondary border border-border'
+                  }`}>
+                    {p.status.toUpperCase()}
+                  </span>
+                </div>
+                {p.diff_summary && (
+                  <p className="text-xs text-text-secondary mb-2">{p.diff_summary}</p>
+                )}
+                <p className="text-[10px] text-text-secondary/60 font-mono">
+                  Proposed {new Date(p.created_at).toLocaleString()}
+                  {p.expires_at && p.status === 'pending' && (
+                    <> · expires {new Date(p.expires_at).toLocaleDateString()}</>
+                  )}
+                </p>
+                {p.status === 'pending' && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleApproveProposal(p.id)}
+                      disabled={proposalAction?.id === p.id}
+                      className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50 transition-colors"
+                    >
+                      {proposalAction?.id === p.id && proposalAction.action === 'approving' ? 'Approving...' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectProposal(p.id)}
+                      disabled={proposalAction?.id === p.id}
+                      className="rounded-md border border-error/30 bg-error/5 px-3 py-1 text-xs text-error hover:bg-error/10 disabled:opacity-50 transition-colors"
+                    >
+                      {proposalAction?.id === p.id && proposalAction.action === 'rejecting' ? 'Rejecting...' : 'Reject'}
+                    </button>
+                    <span className="ml-auto text-[10px] text-text-secondary/60">
+                      Requires signature from {p.approval_required_from.slice(0, 6)}...{p.approval_required_from.slice(-4)}
+                    </span>
+                  </div>
+                )}
+                {p.status === 'escalated' && (
+                  <div className="mt-2 rounded border border-orange-500/30 bg-orange-500/5 p-2 text-[11px] text-orange-400">
+                    EU AI Act Art. 14: Spending change exceeds the oversight threshold.
+                    Human principal approval required directly.
+                  </div>
+                )}
+                {p.status === 'rejected' && p.rejected_reason && (
+                  <p className="mt-2 text-[11px] text-text-secondary/80">
+                    Reason: <span className="text-text-secondary">{p.rejected_reason}</span>
+                  </p>
+                )}
+                {p.status === 'approved' && p.resulting_contract_id && (
+                  <p className="mt-2 text-[11px] text-emerald-400/80">
+                    Resulted in new amendment contract
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
@@ -1433,6 +1600,14 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-mono text-amber">{c.contract_id}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded font-mono text-emerald-400 border border-emerald-500/30">NFT</span>
+                    {c.nft_counterparty_token_id != null && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded font-mono text-amber border border-amber/30"
+                        title="Paired mint: both parties hold an NFT for this contract"
+                      >
+                        PAIRED
+                      </span>
+                    )}
                   </div>
                   <StatusBadge status={c.status} />
                 </div>

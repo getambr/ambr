@@ -99,12 +99,58 @@ export async function mintContractNFTAsync(contractUuid: string): Promise<void> 
   await db.from('contracts').update({ nft_mint_status: 'pending' }).eq('id', contractUuid);
 
   try {
+    // Phase 1: Paired cNFT minting.
+    // First mint: the "recipient" (first signer or x402 payer) gets their NFT.
+    // The counterparty address is recorded on-chain as metadata in this call.
     const { tokenId, txHash } = await mintContractNFT({
       recipientWallet: recipient,
       counterpartyWallet,
       metadataUri,
       contractHash: hashBytes32,
     });
+
+    // Second mint (paired): if there IS a counterparty, they also get an NFT
+    // in their own wallet. We swap the addresses so the counterparty becomes
+    // the recipient of the second token, with the original recipient in the
+    // counterparty metadata slot. Both tokens reference the SAME contract
+    // hash and metadata URI — they're twin receipts of the same agreement.
+    //
+    // If the second mint fails, we don't fail the whole operation: the first
+    // signer still holds on-chain proof. We log the error and carry on with
+    // nft_counterparty_token_id as NULL so it's visible in the DB.
+    let counterpartyTokenId: number | null = null;
+    let counterpartyTxHash: string | null = null;
+    const hasCounterparty = counterpartyWallet !== ethers.ZeroAddress;
+
+    if (hasCounterparty) {
+      try {
+        const pairedMint = await mintContractNFT({
+          recipientWallet: counterpartyWallet,
+          counterpartyWallet: recipient,
+          metadataUri,
+          contractHash: hashBytes32,
+        });
+        counterpartyTokenId = pairedMint.tokenId;
+        counterpartyTxHash = pairedMint.txHash;
+      } catch (pairedErr) {
+        console.error(
+          'cNFT paired mint (second call) failed:',
+          contract.contract_id,
+          pairedErr,
+        );
+        await db.from('audit_log').insert({
+          contract_id: contractUuid,
+          action: 'nft_paired_mint_failed',
+          actor: 'system',
+          details: {
+            first_token_id: tokenId,
+            first_tx_hash: txHash,
+            counterparty: counterpartyWallet,
+            error: pairedErr instanceof Error ? pairedErr.message : String(pairedErr),
+          },
+        });
+      }
+    }
 
     const metadata = buildNftMetadata(contract);
     await db.from('contracts').update({
@@ -113,7 +159,9 @@ export async function mintContractNFTAsync(contractUuid: string): Promise<void> 
       nft_minted_at: new Date().toISOString(),
       nft_mint_status: 'minted',
       nft_holder_wallet: recipient,
-      nft_counterparty_wallet: counterpartyWallet === ethers.ZeroAddress ? null : counterpartyWallet,
+      nft_counterparty_wallet: hasCounterparty ? counterpartyWallet : null,
+      nft_counterparty_token_id: counterpartyTokenId,
+      nft_counterparty_tx_hash: counterpartyTxHash,
     }).eq('id', contractUuid);
 
     await db.from('audit_log').insert({
@@ -125,12 +173,18 @@ export async function mintContractNFTAsync(contractUuid: string): Promise<void> 
         tx_hash: txHash,
         recipient,
         counterparty: counterpartyWallet,
+        counterparty_token_id: counterpartyTokenId,
+        counterparty_tx_hash: counterpartyTxHash,
+        paired: counterpartyTokenId !== null,
         hash_on_chain: hashBytes32,
         metadata,
       },
     });
 
-    console.log(`cNFT minted: ${contract.contract_id} -> token #${tokenId} (${txHash})`);
+    const pairedSuffix = counterpartyTokenId !== null
+      ? ` + paired #${counterpartyTokenId}`
+      : hasCounterparty ? ' (paired mint FAILED)' : '';
+    console.log(`cNFT minted: ${contract.contract_id} -> token #${tokenId}${pairedSuffix} (${txHash})`);
   } catch (err) {
     console.error('cNFT mint failed:', contract.contract_id, err);
     await db.from('contracts').update({ nft_mint_status: 'failed' }).eq('id', contractUuid);

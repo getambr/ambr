@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   // Fetch user's contracts (most recent first, limit 50)
   const { data: contracts } = await db
     .from('contracts')
-    .select('contract_id, status, amendment_type, sha256_hash, created_at, updated_at, template_id, principal_declaration, nft_mint_status, visibility, contract_type, payment_method, revoked_at, revoked_by, revocation_reason, expiry_date, parent_contract_hash, oversight_threshold_usd, principal_approval_required')
+    .select('contract_id, status, amendment_type, sha256_hash, created_at, updated_at, template_id, principal_declaration, nft_mint_status, nft_token_id, nft_counterparty_token_id, nft_holder_wallet, nft_counterparty_wallet, visibility, contract_type, payment_method, revoked_at, revoked_by, revocation_reason, expiry_date, parent_contract_hash, oversight_threshold_usd, principal_approval_required')
     .eq('api_key_id', auth.keyId)
     .order('created_at', { ascending: false })
     .limit(50);
