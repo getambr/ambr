@@ -1317,11 +1317,38 @@ function Row({ label, value, mono, className }: { label: string; value: string; 
 }
 
 // ─── Wallet & NFTs Section ─────────────────────────────
+const NFT_WALLET_STORAGE_KEY = 'ambr_nft_wallet';
+
 function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[]; walletAddress: string | null }) {
-  const [wallet, setWallet] = useState(walletAddress);
+  // Lazy initializer: auth wallet prop wins, then persisted NFT wallet, then null.
+  // This survives section navigation (component unmount/remount) and page reloads.
+  const [wallet, setWallet] = useState<string | null>(() => {
+    if (walletAddress) return walletAddress;
+    if (typeof window === 'undefined') return null;
+    try {
+      return localStorage.getItem(NFT_WALLET_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
   const walletProviders = useWalletProviders();
+
+  // Persist/clear the NFT wallet in localStorage whenever it changes.
+  // Disconnect (setWallet(null)) clears the stored value.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (wallet) {
+        localStorage.setItem(NFT_WALLET_STORAGE_KEY, wallet);
+      } else {
+        localStorage.removeItem(NFT_WALLET_STORAGE_KEY);
+      }
+    } catch {
+      // localStorage disabled (private browsing, quota exceeded) — non-critical
+    }
+  }, [wallet]);
 
   const nftContracts = contracts.filter(c => c.nft_mint_status === 'minted');
   const pendingMints = contracts.filter(c => c.nft_mint_status === 'pending');
