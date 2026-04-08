@@ -20,7 +20,7 @@ export default function TermsPage() {
       <SectionWrapper>
         <div className="mx-auto max-w-3xl prose-invert">
           <h1 className="text-3xl text-text-primary mb-6">Terms of Service</h1>
-          <p className="text-sm text-text-secondary mb-8">Last updated: March 9, 2026</p>
+          <p className="text-sm text-text-secondary mb-8">Last updated: April 8, 2026</p>
 
           <div className="space-y-6 text-sm text-text-secondary leading-relaxed">
             <section>
@@ -90,10 +90,42 @@ export default function TermsPage() {
             <section>
               <h2 className="text-lg text-text-primary mb-2">6. Payment Terms</h2>
               <p>
-                API access requires payment in USDC on the Base L2 network to the designated
-                wallet address. Credits are non-refundable and non-transferable. Credit
-                balances do not expire but may be adjusted if pricing tiers change. Enterprise
-                tier (&quot;unlimited&quot;) credits are subject to fair-use policies.
+                The Service offers three payment paths: (a) one-time credit packs purchased by
+                card in USD via Stripe, (b) one-time credit packs purchased in USDC or other
+                supported tokens on the Base L2 network, and (c) pay-per-contract settlement on
+                each API call via the x402 protocol. Pricing is displayed at{' '}
+                <a href="/activate" className="text-amber hover:underline">/activate</a> and on
+                the pricing section of the home page.
+              </p>
+              <p className="mt-2">
+                Credit packs are one-time purchases. Credits do not expire but are
+                non-transferable between accounts. Enterprise tier (&quot;unlimited&quot;)
+                credits are subject to fair-use policies described in the signed Enterprise
+                agreement.
+              </p>
+              <p className="mt-2">
+                <strong className="text-text-primary">Refunds.</strong> Credit packs are
+                non-refundable once the API key has been displayed, except in the following
+                cases: (i) the purchase is disputed within 14 days AND no contracts have been
+                created with the key, in which case a full refund is available on written
+                request to{' '}
+                <a href="mailto:support@ambr.run" className="text-amber hover:underline">
+                  support@ambr.run
+                </a>
+                ; (ii) unauthorized charges, billing errors, or duplicate charges, which are
+                refunded in full upon verification; (iii) extended Service outages that
+                materially prevent use of purchased credits, prorated at our discretion.
+                On-chain payments in USDC or other tokens and x402 pay-per-contract settlements
+                are final and cannot be reversed.
+              </p>
+              <p className="mt-2">
+                <strong className="text-text-primary">Chargebacks.</strong> If you believe a
+                charge is incorrect, please contact us at{' '}
+                <a href="mailto:support@ambr.run" className="text-amber hover:underline">
+                  support@ambr.run
+                </a>{' '}
+                before initiating a chargeback with your card issuer. We aim to resolve billing
+                questions within two business days.
               </p>
             </section>
 
