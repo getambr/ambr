@@ -13,12 +13,8 @@ import {
 import { AdminSection } from '@/components/dashboard/AdminSection';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
 import { ADMIN_EMAILS } from '@/lib/admin-emails';
-
-declare global {
-  interface Window {
-    ethereum?: import('ethers').Eip1193Provider;
-  }
-}
+import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
+import WalletPicker from '@/components/wallet/WalletPicker';
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
@@ -1325,16 +1321,16 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
   const [wallet, setWallet] = useState(walletAddress);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
+  const walletProviders = useWalletProviders();
 
   const nftContracts = contracts.filter(c => c.nft_mint_status === 'minted');
   const pendingMints = contracts.filter(c => c.nft_mint_status === 'pending');
 
-  async function connectWallet() {
-    if (!window?.ethereum) { setError('No wallet detected. Install MetaMask or another EIP-1193 wallet.'); return; }
+  async function connectWallet(picked: EIP6963ProviderDetail) {
     setConnecting(true); setError('');
     try {
       const { BrowserProvider } = await import('ethers');
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(picked.provider);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       setWallet(address.toLowerCase());
@@ -1383,12 +1379,9 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
           </div>
         ) : (
           <div>
-            <p className="text-xs text-text-secondary mb-3">Connect your wallet to view on-chain contract NFTs and link your wallet to your API key for delegation.</p>
+            <p className="text-xs text-text-secondary mb-3">Connect an Ethereum wallet on Base L2 to view your contract NFTs and link wallet delegation to your API key.</p>
             {error && <p className="text-xs text-error mb-3">{error}</p>}
-            <button onClick={connectWallet} disabled={connecting}
-              className="rounded-lg border border-amber/30 bg-amber/10 px-4 py-2.5 text-sm font-medium text-amber hover:bg-amber/20 disabled:opacity-50 transition-colors">
-              {connecting ? 'Connecting...' : 'Connect Wallet'}
-            </button>
+            <WalletPicker providers={walletProviders} onPick={connectWallet} connecting={connecting} variant="amber" />
           </div>
         )}
       </div>
@@ -1480,6 +1473,7 @@ export default function DashboardPage() {
   const [section, setSection] = useState<Section>('overview');
   // mobileOpen removed — replaced by bottom tab bar
   const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null);
+  const walletProviders = useWalletProviders();
 
   const isLoggedIn = data?.authMethod != null;
   const isAdmin = data?.user?.email ? ADMIN_EMAILS.includes(data.user.email) : false;
@@ -1503,12 +1497,11 @@ export default function DashboardPage() {
 
   async function handleApiKeySubmit(e: React.FormEvent) { e.preventDefault(); if (apiKey.trim()) await fetchWithApiKey(apiKey.trim()); }
 
-  async function handleWalletConnect() {
-    if (!window?.ethereum) { setData({ user: null, contracts: [], wallet: null, authMethod: null, error: 'No wallet detected.' }); return; }
+  async function handleWalletConnect(picked: EIP6963ProviderDetail) {
     setWalletLoading(true); setData(null);
     try {
       const { BrowserProvider } = await import('ethers');
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(picked.provider);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       const timestamp = new Date().toISOString();
@@ -1571,11 +1564,8 @@ export default function DashboardPage() {
               </div>
               <div className="rounded-xl border border-border bg-surface/80 p-6">
                 <h2 className="text-sm font-semibold text-text-primary mb-3">Wallet</h2>
-                <p className="text-xs text-text-secondary mb-4">Connect wallet to view signed contracts.</p>
-                <button onClick={handleWalletConnect} disabled={walletLoading}
-                  className="w-full rounded-lg border border-amber/30 bg-amber/10 px-4 py-2 text-sm font-medium text-amber hover:bg-amber/20 disabled:opacity-50">
-                  {walletLoading ? 'Connecting...' : 'Connect Wallet'}
-                </button>
+                <p className="text-xs text-text-secondary mb-4">Connect an Ethereum wallet to view signed contracts.</p>
+                <WalletPicker providers={walletProviders} onPick={handleWalletConnect} connecting={walletLoading} variant="amber" />
               </div>
             </div>
             {data?.error && <p className="text-sm text-error">{data.error}</p>}

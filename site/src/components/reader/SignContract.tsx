@@ -5,14 +5,10 @@ import dynamic from 'next/dynamic';
 import { BrowserProvider } from 'ethers';
 import ZKIdentityBadge from './ZKIdentityBadge';
 import type { IdentityAttestationPayload } from '@/lib/zk/types';
+import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
+import WalletPicker from '@/components/wallet/WalletPicker';
 
 const ZKIdentityVerify = dynamic(() => import('./ZKIdentityVerify'), { ssr: false });
-
-declare global {
-  interface Window {
-    ethereum?: import('ethers').Eip1193Provider;
-  }
-}
 
 type SignState = 'idle' | 'connecting' | 'connected' | 'signing' | 'submitting' | 'success' | 'error';
 
@@ -48,6 +44,8 @@ export default function SignContract({
     zk_identity?: { verified: boolean; provider: string };
   } | null>(null);
   const [identityAttestation, setIdentityAttestation] = useState<IdentityAttestationPayload | null>(null);
+  const [pickedProvider, setPickedProvider] = useState<EIP6963ProviderDetail | null>(null);
+  const walletProviders = useWalletProviders();
 
   const canSign = ['draft', 'handshake', 'pending_signature'].includes(status);
   const alreadySigned = useCallback(
@@ -56,18 +54,13 @@ export default function SignContract({
     [existingSignatures],
   );
 
-  const connectWallet = async () => {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      setError('No wallet detected. Install MetaMask or a compatible wallet.');
-      setState('error');
-      return;
-    }
-
+  const connectWallet = async (picked: EIP6963ProviderDetail) => {
     setState('connecting');
     setError(null);
+    setPickedProvider(picked);
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(picked.provider);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       setWalletAddress(address);
@@ -86,13 +79,13 @@ export default function SignContract({
   };
 
   const signContract = async () => {
-    if (!walletAddress || typeof window === 'undefined' || !window.ethereum) return;
+    if (!walletAddress || !pickedProvider) return;
 
     setState('signing');
     setError(null);
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(pickedProvider.provider);
       const signer = await provider.getSigner();
       const timestamp = new Date().toISOString();
 
@@ -160,12 +153,7 @@ export default function SignContract({
 
       <div className="mt-4">
         {state === 'idle' && (
-          <button
-            onClick={connectWallet}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500"
-          >
-            Connect Wallet
-          </button>
+          <WalletPicker providers={walletProviders} onPick={connectWallet} variant="reader" />
         )}
 
         {state === 'connecting' && (

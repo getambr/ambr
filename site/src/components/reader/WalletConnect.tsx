@@ -2,12 +2,8 @@
 
 import { useState } from 'react';
 import { BrowserProvider } from 'ethers';
-
-declare global {
-  interface Window {
-    ethereum?: import('ethers').Eip1193Provider;
-  }
-}
+import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
+import WalletPicker from '@/components/wallet/WalletPicker';
 
 type AuthState = 'idle' | 'connecting' | 'verifying' | 'authorized' | 'unauthorized' | 'error';
 
@@ -25,19 +21,14 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
   const [state, setState] = useState<AuthState>('idle');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const walletProviders = useWalletProviders();
 
-  const connect = async () => {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      setError('No wallet detected. Install MetaMask or a compatible wallet.');
-      setState('error');
-      return;
-    }
-
+  const connect = async (picked: EIP6963ProviderDetail) => {
     setState('connecting');
     setError(null);
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(picked.provider);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       setWalletAddress(address);
@@ -121,14 +112,9 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
       {state === 'idle' && (
         <>
           <p className="text-sm text-text-secondary mb-4">
-            Connect your wallet to verify access. If your wallet is associated with this contract, the full text will be unlocked.
+            Connect your Ethereum wallet to verify access. If your wallet is associated with this contract, the full text will be unlocked.
           </p>
-          <button
-            onClick={connect}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500"
-          >
-            Connect Wallet
-          </button>
+          <WalletPicker providers={walletProviders} onPick={connect} variant="reader" />
         </>
       )}
 
