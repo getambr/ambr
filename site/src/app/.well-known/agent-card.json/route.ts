@@ -9,7 +9,7 @@ import { buildAgentCard } from '../agent.json/route';
  */
 
 export async function GET() {
-  const agentCard = buildAgentCard();
+  const agentCard = await buildAgentCard();
 
   return NextResponse.json(agentCard, {
     headers: {

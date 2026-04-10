@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrowserProvider } from 'ethers';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
+import { validateSigner } from '@/lib/wallet/validate-signer';
+import { sanitizeWalletError, isUserRejection } from '@/lib/wallet/error-messages';
 import WalletPicker from '@/components/wallet/WalletPicker';
 
 type AuthState = 'idle' | 'detected' | 'connecting' | 'verifying' | 'authorized' | 'unauthorized' | 'error';
@@ -58,7 +60,7 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
 
     try {
       const provider = new BrowserProvider(picked.provider);
-      const signer = await provider.getSigner();
+      const signer = await validateSigner(provider);
       const address = await signer.getAddress();
       setWalletAddress(address);
 
@@ -96,11 +98,11 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
       setState('authorized');
       onAuthorized(data);
     } catch (err) {
-      if ((err as Error).message?.includes('user rejected')) {
+      if (isUserRejection(err)) {
         setState('idle');
         return;
       }
-      setError(err instanceof Error ? err.message : 'Connection failed');
+      setError(sanitizeWalletError(err));
       setState('error');
     }
   };

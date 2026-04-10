@@ -6,6 +6,8 @@ import { BrowserProvider } from 'ethers';
 import ZKIdentityBadge from './ZKIdentityBadge';
 import type { IdentityAttestationPayload } from '@/lib/zk/types';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
+import { validateSigner } from '@/lib/wallet/validate-signer';
+import { sanitizeWalletError, isUserRejection } from '@/lib/wallet/error-messages';
 import WalletPicker from '@/components/wallet/WalletPicker';
 
 const ZKIdentityVerify = dynamic(() => import('./ZKIdentityVerify'), { ssr: false });
@@ -61,7 +63,7 @@ export default function SignContract({
 
     try {
       const provider = new BrowserProvider(picked.provider);
-      const signer = await provider.getSigner();
+      const signer = await validateSigner(provider);
       const address = await signer.getAddress();
       setWalletAddress(address);
 
@@ -73,7 +75,8 @@ export default function SignContract({
 
       setState('connected');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+      if (isUserRejection(err)) { setState('idle'); return; }
+      setError(sanitizeWalletError(err));
       setState('error');
     }
   };
@@ -86,7 +89,7 @@ export default function SignContract({
 
     try {
       const provider = new BrowserProvider(pickedProvider.provider);
-      const signer = await provider.getSigner();
+      const signer = await validateSigner(provider);
       const timestamp = new Date().toISOString();
 
       const message = [
@@ -121,7 +124,8 @@ export default function SignContract({
       setResult(data);
       setState('success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signing failed');
+      if (isUserRejection(err)) { setState('connected'); return; }
+      setError(sanitizeWalletError(err));
       setState('error');
     }
   };

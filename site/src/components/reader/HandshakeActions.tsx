@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { sanitizeWalletError } from '@/lib/wallet/error-messages';
 
 type Intent = 'accept' | 'reject' | 'request_changes';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -73,7 +74,7 @@ export default function HandshakeActions({
       setSubmitState('success');
       onHandshakeComplete();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Handshake failed');
+      setError(sanitizeWalletError(err));
       setSubmitState('error');
     }
   };

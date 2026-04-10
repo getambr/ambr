@@ -72,8 +72,11 @@ export default function ReaderAuthGate({ contractId, contractUuid }: ReaderAuthG
     if (!walletAddress) return;
     // Re-fetch via wallet-auth to get updated state
     try {
-      const provider = await import('ethers').then(m => new m.BrowserProvider(window.ethereum!));
-      const signer = await provider.getSigner();
+      if (!window.ethereum) return;
+      const { BrowserProvider } = await import('ethers');
+      const { validateSigner } = await import('@/lib/wallet/validate-signer');
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await validateSigner(provider);
       const timestamp = new Date().toISOString();
       const message = [
         `Ambr wallet verification for contract ${contractId}`,
@@ -94,8 +97,9 @@ export default function ReaderAuthGate({ contractId, contractUuid }: ReaderAuthG
         setSignatures(data.signatures);
         setHandshakes(data.handshakes);
       }
-    } catch {
+    } catch (err) {
       // Silent fail on refresh — user can manually reload
+      console.warn('[reader] refresh failed:', err instanceof Error ? err.message : err);
     }
   }, [contractId, contractUuid, walletAddress]);
 

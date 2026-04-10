@@ -3,6 +3,7 @@ import { createOgMetadata } from '@/lib/og/create-og-metadata';
 import HeroSection from '@/components/home/HeroSection';
 import CoreCapabilities from '@/components/home/CoreCapabilities';
 import ArchitecturePanel from '@/components/home/ArchitecturePanel';
+import AgentCardSection from '@/components/home/AgentCardSection';
 import PricingSection from '@/components/home/PricingSection';
 import EcosystemCompatibility from '@/components/home/EcosystemCompatibility';
 import HomeCTA from '@/components/home/HomeCTA';
@@ -35,6 +36,9 @@ export default function Home() {
       <SectionWrapper variant="dark">
         <ArchitecturePanel />
       </SectionWrapper>
+
+      {/* Agent Card — A2A discovery */}
+      <AgentCardSection />
 
       {/* Pricing */}
       <PricingSection />

@@ -1,11 +1,28 @@
 import { NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 /** A2A Agent Card — /.well-known/agent.json discovery endpoint */
 
 const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL || 'https://getamber.dev';
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://ambr.run';
 
-export function buildAgentCard() {
+export async function buildAgentCard() {
+  // Live stats from Supabase
+  let totalContracts = 0;
+  let activeContracts = 0;
+
+  try {
+    const db = getSupabaseAdmin();
+    const [totalResult, activeResult] = await Promise.all([
+      db.from('contracts').select('id', { count: 'exact', head: true }),
+      db.from('contracts').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+    ]);
+    totalContracts = totalResult.count ?? 0;
+    activeContracts = activeResult.count ?? 0;
+  } catch {
+    // Supabase unavailable — return card with zero stats
+  }
+
   const a2aUrl = `${PLATFORM_URL}/api/a2a`;
 
   return {
@@ -130,16 +147,21 @@ export function buildAgentCard() {
     defaultOutputModes: ['application/json'],
     default_input_modes: ['application/json'],
     default_output_modes: ['application/json'],
+    stats: {
+      total_contracts_served: totalContracts,
+      active_contracts: activeContracts,
+      skills_count: 6,
+    },
   };
 }
 
 export async function GET() {
-  const agentCard = buildAgentCard();
+  const agentCard = await buildAgentCard();
 
   return NextResponse.json(agentCard, {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
+import { useWalletStatus } from '@/lib/wallet/use-wallet-status';
 import { ADMIN_EMAILS } from '@/lib/admin-emails';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import WalletPicker from '@/components/wallet/WalletPicker';
@@ -119,6 +120,60 @@ const NAV_SECTIONS = [
   },
 ];
 
+function SidebarWalletCard() {
+  const { wallet, nftCount, pendingActions, hasZkIdentity, disconnect } = useWalletStatus();
+
+  if (!wallet) return null;
+
+  return (
+    <div className="shrink-0 border-t border-border px-3 py-3">
+      <div className="rounded-lg border border-border/50 bg-surface/50 p-2.5">
+        {/* Wallet address + status */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className="w-[5px] h-[5px] rounded-full bg-emerald-500 shrink-0"
+              style={{ boxShadow: '0 0 4px rgba(52,211,153,0.4)' }}
+            />
+            <span className="text-[10px] font-mono text-text-secondary truncate">
+              {wallet.slice(0, 6)}...{wallet.slice(-4)}
+            </span>
+            <span className={`inline-flex items-center gap-0.5 px-1 border rounded text-[8px] shrink-0 ${
+              hasZkIdentity
+                ? 'border-amber/25 bg-amber/[0.06] text-amber'
+                : 'border-border bg-surface text-text-secondary/50'
+            }`}>
+              <img src="/demos-logo.svg" alt="" className={`w-2 h-2 ${hasZkIdentity ? 'opacity-70' : 'opacity-30'}`} />
+              {hasZkIdentity ? 'ZK' : 'Link ZK'}
+            </span>
+          </div>
+          <button
+            onClick={disconnect}
+            className="text-text-secondary/40 hover:text-text-primary transition-colors cursor-pointer p-0.5"
+            title="Disconnect"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-3 text-[9px] font-mono">
+          <span className="text-text-secondary">
+            <span className="text-text-primary">{nftCount}</span> NFTs
+          </span>
+          <span className="text-emerald-500/60">Base L2</span>
+          {pendingActions > 0 && (
+            <span className="text-amber flex items-center gap-0.5">
+              <span className="w-1 h-1 rounded-full bg-amber animate-pulse" />
+              {pendingActions}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
   active: Section;
   onNav: (s: Section) => void;
@@ -161,6 +216,9 @@ function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
           );
         })}
       </nav>
+
+      {/* Wallet status card */}
+      <SidebarWalletCard />
 
       {/* Pinned footer with user card + sign out */}
       <div className="shrink-0 border-t border-border px-3 py-3 bg-background">
@@ -1518,6 +1576,7 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
 
   // Persist/clear the NFT wallet in localStorage whenever it changes.
   // Disconnect (setWallet(null)) clears the stored value.
+  // Dispatch custom event so the WalletStatusBar picks up same-tab changes.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -1526,6 +1585,7 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
       } else {
         localStorage.removeItem(NFT_WALLET_STORAGE_KEY);
       }
+      window.dispatchEvent(new Event('ambr-wallet-change'));
     } catch {
       // localStorage disabled (private browsing, quota exceeded) — non-critical
     }
