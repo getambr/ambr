@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import SmartCTA from './SmartCTA';
 
 const marketingLinks = [
   { href: '/', label: 'Home' },
@@ -100,13 +101,10 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/activate"
+            <SmartCTA
               onClick={onClose}
-              className="mt-4 rounded-none bg-amber px-4 py-3 text-center font-mono text-sm uppercase tracking-wider font-medium text-background transition-colors hover:bg-amber-light"
-            >
-              Get Started
-            </Link>
+              className="mt-4 rounded-none bg-amber px-4 py-3 text-center font-mono text-sm uppercase tracking-wider font-medium text-background transition-colors hover:bg-amber-light block"
+            />
           </div>
         </motion.div>
       )}

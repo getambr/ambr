@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import MobileMenu from './MobileMenu';
+import SmartCTA from './SmartCTA';
 
 const marketingLinks = [
   { href: '/', label: 'Home' },
@@ -78,12 +79,9 @@ export default function Navigation() {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                href="/activate"
+              <SmartCTA
                 className="rounded-none bg-amber px-4 py-2 font-mono text-xs uppercase tracking-wide font-medium text-background transition-colors hover:bg-amber-light"
-              >
-                Get Started
-              </Link>
+              />
             </div>
 
             <button
