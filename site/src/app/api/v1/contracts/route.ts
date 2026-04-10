@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 
   if (error) {
     return NextResponse.json(
-      { error: 'query_failed', message: error.message },
+      { error: 'query_failed', message: 'Failed to retrieve contracts. Please try again.' },
       { status: 500 },
     );
   }

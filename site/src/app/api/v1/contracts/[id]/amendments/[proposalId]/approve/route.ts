@@ -412,7 +412,7 @@ export async function POST(
   } catch (err) {
     console.error('Amendment approval failed:', err);
     return NextResponse.json(
-      { error: 'generation_failed', message: err instanceof Error ? err.message : 'Failed to generate amendment contract' },
+      { error: 'generation_failed', message: 'Failed to generate amendment contract. Please try again.' },
       { status: 500 },
     );
   }
