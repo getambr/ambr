@@ -51,6 +51,17 @@ export async function GET(
     .eq('parent_contract_hash', contract.sha256_hash)
     .order('created_at', { ascending: true });
 
+  // Amendment proposals (v0.2.0 bilateral governance)
+  const { data: proposals } = await db
+    .from('amendment_proposals')
+    .select(
+      'id, proposer_wallet, diff_summary, status, approval_required_from, ' +
+      'approved_by_wallet, approved_at, rejected_reason, expires_at, ' +
+      'resulting_contract_id, created_at, proposed_visibility'
+    )
+    .eq('original_contract_id', contract.id)
+    .order('created_at', { ascending: false });
+
   // Find parent (if this is an amendment)
   let parent = null;
   if (contract.parent_contract_hash) {
@@ -67,6 +78,8 @@ export async function GET(
       };
     }
   }
+
+  const proposalsList = (proposals ?? []) as unknown as { status: string }[];
 
   return NextResponse.json({
     contract_id: contract.contract_id,
@@ -88,6 +101,8 @@ export async function GET(
       sha256_hash: a.sha256_hash,
       created_at: a.created_at,
     })),
+    proposals: proposalsList,
+    pending_proposals: proposalsList.filter((p: { status: string }) => p.status === 'pending').length,
     reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
   });
 }

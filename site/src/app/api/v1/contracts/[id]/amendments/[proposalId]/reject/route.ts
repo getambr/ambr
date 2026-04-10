@@ -71,7 +71,7 @@ export async function POST(
   // Lookup the proposal
   const { data: proposal, error: proposalError } = await db
     .from('amendment_proposals')
-    .select('id, original_contract_id, status, approval_required_from, proposer_wallet')
+    .select('id, original_contract_id, status, approval_required_from, proposer_wallet, expires_at')
     .eq('id', proposalId)
     .eq('original_contract_id', original.id)
     .single();
@@ -89,6 +89,17 @@ export async function POST(
         error: 'invalid_state',
         message: `Cannot reject a proposal with status '${proposal.status}'. Only 'pending' proposals can be rejected.`,
       },
+      { status: 409 },
+    );
+  }
+
+  if (proposal.expires_at && new Date(proposal.expires_at) < new Date()) {
+    await db
+      .from('amendment_proposals')
+      .update({ status: 'expired' })
+      .eq('id', proposal.id);
+    return NextResponse.json(
+      { error: 'expired', message: 'Proposal has expired and can no longer be rejected' },
       { status: 409 },
     );
   }
