@@ -148,8 +148,116 @@ export function CalendarWidget({
     onRefresh?.()
   }
 
+  // Filter out past free slots (don't show stale times)
+  const now = new Date()
+  const futureSlots = useMemo(() => {
+    if (!slots?.slots?.length) return []
+    return slots.slots.filter(s => new Date(s.start) > now)
+  }, [slots, now.toDateString()])
+
+  const futureDaySlots = useMemo(() => {
+    return futureSlots.filter(s => isSameDay(new Date(s.start), selectedDate))
+  }, [futureSlots, selectedDate])
+
+  // ─── Shared sub-components ─────────────────────────
+  const dayPanel = (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-text-primary">
+          {selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1 rounded-md bg-amber/10 px-2 py-1 text-xs font-medium text-amber transition-colors hover:bg-amber/20"
+        >
+          <Plus className="h-3 w-3" />
+          New
+        </button>
+      </div>
+
+      {dayEvents.length === 0 ? (
+        <p className="text-xs text-text-secondary/50">No events</p>
+      ) : (
+        <div className="space-y-2">
+          {dayEvents.map(ev => (
+            <div
+              key={ev.id}
+              className={`rounded-lg border p-3 ${
+                isAmbrEvent(ev.title)
+                  ? 'border-amber/30 bg-amber/5'
+                  : 'border-border bg-surface-elevated'
+              }`}
+            >
+              <p className="text-sm font-medium text-text-primary">{ev.title}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {fmtTime(ev.start)}&ndash;{fmtTime(ev.end)}
+                </span>
+                {ev.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {ev.location}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Day-specific free slots */}
+      {futureDaySlots.length > 0 && (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-micro mb-2">Free slots</p>
+          <div className="flex flex-wrap gap-2">
+            {futureDaySlots.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setSelectedDate(new Date(s.start))
+                  setShowCreate(true)
+                }}
+                className="rounded-md border border-border bg-surface-elevated px-2 py-1 text-xs font-mono text-text-secondary hover:border-amber/30 hover:text-amber transition-colors"
+              >
+                {fmtTime(s.start)}&ndash;{fmtTime(s.end)}
+                <span className="ml-1 text-text-secondary/40">{s.duration}m</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Week free slots fallback */}
+      {futureDaySlots.length === 0 && futureSlots.length > 0 && (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-micro mb-2">Free slots this week</p>
+          <div className="flex flex-wrap gap-2">
+            {futureSlots.slice(0, 8).map((s, i) => {
+              const d = new Date(s.start)
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setSelectedDate(d)
+                    setViewMonth(d.getMonth())
+                    setViewYear(d.getFullYear())
+                  }}
+                  className="rounded-md border border-border bg-surface-elevated px-2 py-1 text-xs font-mono text-text-secondary hover:border-amber/30 hover:text-amber transition-colors"
+                >
+                  {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })} {fmtTime(s.start)}
+                  <span className="ml-1 text-text-secondary/40">{s.duration}m</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <div className="rounded-xl border border-border bg-surface p-5 max-w-5xl">
       {/* Header */}
       <div className="mb-4 flex items-center gap-2">
         <Calendar className="h-4 w-4 text-amber" />
@@ -163,64 +271,79 @@ export function CalendarWidget({
 
       {loading ? <Skeleton /> : (
         <>
-          {/* ─── Desktop: Month Grid ────────────────────── */}
+          {/* ─── Desktop: Side-by-side layout on xl+ ───── */}
           <div className="hidden lg:block">
-            {/* Month nav */}
-            <div className="flex items-center justify-between mb-3">
-              <button onClick={prevMonth} className="p-1 text-text-secondary hover:text-text-primary transition-colors">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="text-sm font-medium text-text-primary">
-                {MONTH_NAMES[viewMonth]} {viewYear}
-              </span>
-              <button onClick={nextMonth} className="p-1 text-text-secondary hover:text-text-primary transition-colors">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-px mb-1">
-              {WEEKDAY_HEADERS.map(d => (
-                <div key={d} className="text-center text-[10px] font-mono uppercase tracking-wider text-text-secondary/60 py-1">
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Day cells */}
-            <div className="grid grid-cols-7 gap-px">
-              {grid.map((date, i) => {
-                if (!date) return <div key={i} />
-                const isCurrentMonth = date.getMonth() === viewMonth
-                const isToday = isSameDay(date, today)
-                const isSelected = isSameDay(date, selectedDate)
-                const eventCount = eventsByDay.get(date.toDateString()) || 0
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedDate(new Date(date))}
-                    className={`relative h-10 rounded-md text-xs transition-colors ${
-                      isSelected
-                        ? 'border border-amber bg-amber/10 text-amber font-medium'
-                        : isToday
-                          ? 'border border-amber/30 bg-amber/5 text-amber'
-                          : isCurrentMonth
-                            ? 'border border-transparent text-text-primary hover:bg-surface-elevated'
-                            : 'border border-transparent text-text-secondary/30'
-                    }`}
-                  >
-                    {date.getDate()}
-                    {eventCount > 0 && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
-                        {Array.from({ length: Math.min(eventCount, 3) }).map((_, j) => (
-                          <span key={j} className="h-1 w-1 rounded-full bg-amber" />
-                        ))}
-                      </span>
-                    )}
+            <div className="xl:grid xl:grid-cols-[1fr_320px] xl:gap-6">
+              {/* Left: Month grid */}
+              <div>
+                {/* Month nav */}
+                <div className="flex items-center justify-between mb-3">
+                  <button onClick={prevMonth} className="p-1 text-text-secondary hover:text-text-primary transition-colors">
+                    <ChevronLeft className="h-4 w-4" />
                   </button>
-                )
-              })}
+                  <span className="text-sm font-medium text-text-primary">
+                    {MONTH_NAMES[viewMonth]} {viewYear}
+                  </span>
+                  <button onClick={nextMonth} className="p-1 text-text-secondary hover:text-text-primary transition-colors">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Day headers */}
+                <div className="grid grid-cols-7 gap-px mb-1">
+                  {WEEKDAY_HEADERS.map(d => (
+                    <div key={d} className="text-center text-[10px] font-mono uppercase tracking-wider text-text-secondary/60 py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day cells */}
+                <div className="grid grid-cols-7 gap-px">
+                  {grid.map((date, i) => {
+                    if (!date) return <div key={i} />
+                    const isCurrentMonth = date.getMonth() === viewMonth
+                    const isToday = isSameDay(date, today)
+                    const isSelected = isSameDay(date, selectedDate)
+                    const eventCount = eventsByDay.get(date.toDateString()) || 0
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedDate(new Date(date))}
+                        className={`relative h-10 rounded-md text-xs transition-colors ${
+                          isSelected
+                            ? 'border border-amber bg-amber/10 text-amber font-medium'
+                            : isToday
+                              ? 'border border-amber/30 bg-amber/5 text-amber'
+                              : isCurrentMonth
+                                ? 'border border-transparent text-text-primary hover:bg-surface-elevated'
+                                : 'border border-transparent text-text-secondary/30'
+                        }`}
+                      >
+                        {date.getDate()}
+                        {eventCount > 0 && (
+                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                            {Array.from({ length: Math.min(eventCount, 3) }).map((_, j) => (
+                              <span key={j} className="h-1 w-1 rounded-full bg-amber" />
+                            ))}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Right: Day panel (side-by-side on xl+, below on lg) */}
+              <div className="hidden xl:block xl:border-l xl:border-border xl:pl-6">
+                {dayPanel}
+              </div>
+            </div>
+
+            {/* Day panel below on lg (not xl) */}
+            <div className="xl:hidden mt-4 border-t border-border pt-4">
+              {dayPanel}
             </div>
           </div>
 
@@ -277,100 +400,12 @@ export function CalendarWidget({
                 )
               })}
             </div>
+
+            {/* Day panel below on mobile */}
+            <div className="mt-4 border-t border-border pt-4">
+              {dayPanel}
+            </div>
           </div>
-
-          {/* ─── Selected Day Panel ─────────────────────── */}
-          <div className="mt-4 border-t border-border pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-text-primary">
-                {selectedDate.toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric' })}
-              </p>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1 rounded-md bg-amber/10 px-2 py-1 text-xs font-medium text-amber transition-colors hover:bg-amber/20"
-              >
-                <Plus className="h-3 w-3" />
-                New
-              </button>
-            </div>
-
-            {dayEvents.length === 0 ? (
-              <p className="text-xs text-text-secondary/50">No events</p>
-            ) : (
-              <div className="space-y-2">
-                {dayEvents.map(ev => (
-                  <div
-                    key={ev.id}
-                    className={`rounded-lg border p-3 ${
-                      isAmbrEvent(ev.title)
-                        ? 'border-amber/30 bg-amber/5'
-                        : 'border-border bg-surface-elevated'
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-text-primary">{ev.title}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {fmtTime(ev.start)}&ndash;{fmtTime(ev.end)}
-                      </span>
-                      {ev.location && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {ev.location}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ─── Suggested Slots ─────────────────────────── */}
-          {daySlots.length > 0 && (
-            <div className="mt-3 border-t border-border pt-3">
-              <p className="text-micro mb-2">Free slots</p>
-              <div className="flex flex-wrap gap-2">
-                {daySlots.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setSelectedDate(new Date(s.start))
-                      setShowCreate(true)
-                    }}
-                    className="rounded-md border border-border bg-surface-elevated px-2 py-1 text-xs font-mono text-text-secondary hover:border-amber/30 hover:text-amber transition-colors"
-                  >
-                    {fmtTime(s.start)}&ndash;{fmtTime(s.end)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ─── All Free Slots (when no day-specific) ──── */}
-          {daySlots.length === 0 && slots?.slots && slots.slots.length > 0 && (
-            <div className="mt-3 border-t border-border pt-3">
-              <p className="text-micro mb-2">Free slots this week</p>
-              <div className="flex flex-wrap gap-2">
-                {slots.slots.slice(0, 6).map((s, i) => {
-                  const d = new Date(s.start)
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setSelectedDate(d)
-                        setViewMonth(d.getMonth())
-                        setViewYear(d.getFullYear())
-                      }}
-                      className="rounded-md border border-border bg-surface-elevated px-2 py-1 text-xs font-mono text-text-secondary hover:border-amber/30 hover:text-amber transition-colors"
-                    >
-                      {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })} {fmtTime(s.start)}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </>
       )}
 
