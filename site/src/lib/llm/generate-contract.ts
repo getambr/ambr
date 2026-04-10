@@ -80,6 +80,32 @@ function sanitizeParameters(
 }
 
 /**
+ * Fix common UTF-8 mojibake patterns. This happens when UTF-8 bytes are
+ * re-interpreted as Windows-1252/Latin-1 (e.g., em-dash U+2014 bytes
+ * E2 80 94 become â€" = U+00E2 U+20AC U+201D as three characters).
+ * Must run BEFORE hashing to ensure the hash matches the clean text.
+ */
+function fixMojibake(text: string): string {
+  return text
+    // Em-dash variants
+    .replace(/\u00e2\u20ac\u201d/g, '\u2014')   // â€" → —
+    .replace(/\u00e2\u20ac\u201c/g, '\u2013')   // â€" variant → –
+    // Curly quotes and apostrophes
+    .replace(/\u00e2\u20ac\u2122/g, '\u2019')   // â€™ → '
+    .replace(/\u00e2\u20ac\u0153/g, '\u201c')   // â€œ → "
+    .replace(/\u00e2\u20ac[\u009c\u009d]/g, '\u201d') // â€\x9d → "
+    .replace(/\u00e2\u20ac\u2018/g, '\u2018')   // â€˜ → '
+    // Section sign, middle dot
+    .replace(/\u00c2\u00a7/g, '\u00a7')          // Â§ → §
+    .replace(/\u00c2\u00b7/g, '\u00b7')          // Â· → ·
+    // Bullet
+    .replace(/\u00e2\u0080\u00a2/g, '\u2022')   // â€¢ → •
+    .replace(/\u00e2\u2022[\u0090-\u009f]/g, '\u2022') // other bullet mojibake → •
+    // Normalize to NFC (canonical composition) for deterministic hashing
+    .normalize('NFC');
+}
+
+/**
  * Strip HTML tags from LLM-generated human-readable text to prevent XSS.
  */
 function stripHtml(text: string): string {
@@ -149,8 +175,9 @@ export async function generateContract(
 
   // ─── Output validation ────────────────────────────────
 
-  // Strip HTML from human-readable text (prevent XSS if rendered in browser)
-  const humanReadable = stripHtml(input.humanReadable as string);
+  // Fix encoding mojibake + strip HTML (order matters: fix encoding first,
+  // then strip tags, so the hash is computed on clean, correct text)
+  const humanReadable = stripHtml(fixMojibake(input.humanReadable as string));
 
   // Validate machine-readable structure — reject prototype pollution
   const machineReadable = input.machineReadable as Record<string, unknown>;

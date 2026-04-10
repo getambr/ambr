@@ -66,6 +66,7 @@ function verifyHash(humanReadable: string, machineReadable: Record<string, unkno
   const shallowObj = Object.fromEntries(shallowKeys.map((k) => [k, machineReadable[k]]));
   const shallowCanonical = humanReadable + '\n---\n' + JSON.stringify(shallowObj);
   const shallowHash = createHash('sha256').update(shallowCanonical, 'utf-8').digest('hex');
+
   return shallowHash === storedHash;
 }
 

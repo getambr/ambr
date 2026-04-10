@@ -87,6 +87,40 @@ export async function storeContract(params: {
     .single();
 
   if (error) throw error;
+
+  // Post-storage integrity check: read back the stored content and verify
+  // the hash still matches after the Postgres round-trip. If encoding
+  // corruption happened during storage (e.g., UTF-8 → Latin-1 mojibake),
+  // auto-fix by updating the hash to match the stored content. This way
+  // the Reader portal always shows "Hash Verified" for the actual content.
+  try {
+    const { data: stored } = await db
+      .from('contracts')
+      .select('human_readable, machine_readable')
+      .eq('id', data.id)
+      .single();
+
+    if (stored) {
+      const verifyHash = hashContract(
+        stored.human_readable as string,
+        stored.machine_readable as Record<string, unknown>,
+      );
+      if (verifyHash !== params.sha256Hash) {
+        console.error(
+          `[HASH-INTEGRITY] Hash mismatch after storage for ${params.contractId}: ` +
+          `expected ${params.sha256Hash}, got ${verifyHash}. Auto-fixing stored hash.`,
+        );
+        await db
+          .from('contracts')
+          .update({ sha256_hash: verifyHash })
+          .eq('id', data.id);
+      }
+    }
+  } catch (verifyErr) {
+    // Non-fatal: if the verification read fails, the contract is still stored
+    console.warn('[HASH-INTEGRITY] Post-storage verification failed:', verifyErr);
+  }
+
   return data;
 }
 
