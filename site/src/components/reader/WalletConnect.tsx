@@ -25,15 +25,17 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
   const walletProviders = useWalletProviders();
   const autoDetectRan = useRef(false);
 
-  // Auto-detect already-connected wallet on mount (passive, no popup)
+  // Auto-detect already-connected wallet on mount (passive, no popup).
+  // EIP-6963 provider discovery is async — walletProviders may be empty
+  // on first render. Wait until providers arrive before running detection.
   useEffect(() => {
     if (autoDetectRan.current || state !== 'idle') return;
+    if (walletProviders.length === 0) return; // providers not ready yet
     autoDetectRan.current = true;
 
     async function detect() {
       for (const wp of walletProviders) {
         try {
-          // eth_accounts is passive — returns connected accounts without prompting
           const accounts = await wp.provider.request({ method: 'eth_accounts' }) as string[];
           if (accounts?.length > 0) {
             setWalletAddress(accounts[0]);
@@ -42,12 +44,12 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
             return;
           }
         } catch {
-          // Provider doesn't support eth_accounts or not connected — skip
+          // Provider doesn't support eth_accounts or not connected
         }
       }
     }
 
-    if (walletProviders.length > 0) detect();
+    detect();
   }, [walletProviders, state]);
 
   const connect = async (picked: EIP6963ProviderDetail) => {
