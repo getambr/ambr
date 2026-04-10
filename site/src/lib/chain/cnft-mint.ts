@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { buildNftMetadata, getMetadataUri } from './cnft-metadata';
-
-const BASE_RPC = 'https://mainnet.base.org';
+import { getBaseProvider, withRetry } from './base-rpc';
 
 const CNFT_ABI = [
   'function mint(address to, address _counterparty, string uri, bytes32 _hash) external returns (uint256)',
@@ -22,17 +21,20 @@ export async function mintContractNFT(params: {
     throw new Error('CNFT_CONTRACT_ADDRESS or CNFT_MINTER_PRIVATE_KEY not set');
   }
 
-  const provider = new ethers.JsonRpcProvider(BASE_RPC);
+  const provider = await getBaseProvider();
   const wallet = new ethers.Wallet(minterKey, provider);
   const contract = new ethers.Contract(contractAddress, CNFT_ABI, wallet);
 
-  const tx = await contract.mint(
-    params.recipientWallet,
-    params.counterpartyWallet,
-    params.metadataUri,
-    params.contractHash,
-  );
-  const receipt = await tx.wait();
+  const { tx, receipt } = await withRetry(async () => {
+    const mintTx = await contract.mint(
+      params.recipientWallet,
+      params.counterpartyWallet,
+      params.metadataUri,
+      params.contractHash,
+    );
+    const mintReceipt = await mintTx.wait();
+    return { tx: mintTx, receipt: mintReceipt };
+  }, 'cNFT mint');
 
   const transferLog = receipt.logs.find(
     (log: ethers.Log) =>

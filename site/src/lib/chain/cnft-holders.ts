@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-
-const BASE_RPC = 'https://mainnet.base.org';
+import { getBaseProvider } from './base-rpc';
 
 const CNFT_ABI = [
   'function ownerOf(uint256 tokenId) view returns (address)',
@@ -82,7 +81,7 @@ export async function getCurrentHolders(contractRow: {
   }
 
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_RPC);
+    const provider = await getBaseProvider();
     const cnft = new ethers.Contract(contractAddress, CNFT_ABI, provider);
 
     const currentHolders: string[] = [];

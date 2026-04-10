@@ -171,11 +171,11 @@ export async function POST(request: Request) {
     }
   }
 
-  // 5. Lookup template
+  // 5. Lookup template (include parameter_schema for validation)
   const db = getSupabaseAdmin();
   const { data: template } = await db
     .from('templates')
-    .select('id, slug')
+    .select('id, slug, parameter_schema')
     .eq('slug', parsed.data.template)
     .eq('is_active', true)
     .single();
@@ -188,6 +188,29 @@ export async function POST(request: Request) {
       },
       { status: 404 },
     );
+  }
+
+  // 5a. Validate parameters against template's JSON Schema.
+  // Checks required fields are present and non-empty. This prevents
+  // incomplete parameters from reaching the LLM (which would hallucinate
+  // missing values or return unclear errors).
+  const schema = template.parameter_schema as { required?: string[] } | null;
+  if (schema?.required && Array.isArray(schema.required)) {
+    const params = parsed.data.parameters;
+    const missing = schema.required.filter(
+      (key: string) => params[key] === undefined || params[key] === null || params[key] === '',
+    );
+    if (missing.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'invalid_parameters',
+          message: `Missing required parameters for template '${template.slug}': ${missing.join(', ')}`,
+          required: schema.required,
+          missing,
+        },
+        { status: 400 },
+      );
+    }
   }
 
   try {
