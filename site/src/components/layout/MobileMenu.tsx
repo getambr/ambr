@@ -83,9 +83,10 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
           <div className="relative z-10 flex flex-col gap-2 px-4 pt-8">
             {(() => {
               const host = typeof window !== 'undefined' ? window.location.hostname : '';
+              const marketingPaths = ['/', '/how-it-works', '/ecosystem', '/waitlist', '/privacy', '/terms'];
               const links = host.includes('ambr.run') ? marketingLinks
                 : host.includes('getamber.dev') ? platformLinks
-                : [...marketingLinks, ...platformLinks];
+                : marketingPaths.includes(currentPath) ? marketingLinks : platformLinks;
               return links;
             })().map((link) => (
               <Link

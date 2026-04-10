@@ -21,7 +21,10 @@ const platformLinks = [
   { href: '/reader', label: 'Reader' },
 ];
 
+const MARKETING_PATHS = ['/', '/how-it-works', '/ecosystem', '/waitlist', '/privacy', '/terms'];
+
 function useNavLinks() {
+  const pathname = usePathname();
   const [links, setLinks] = useState([...marketingLinks, ...platformLinks]);
 
   useEffect(() => {
@@ -30,9 +33,12 @@ function useNavLinks() {
       setLinks(marketingLinks);
     } else if (host.includes('getamber.dev')) {
       setLinks(platformLinks);
+    } else {
+      // Localhost/preview: infer from current route
+      const isMarketingRoute = MARKETING_PATHS.includes(pathname);
+      setLinks(isMarketingRoute ? marketingLinks : platformLinks);
     }
-    // localhost/preview: keep all links
-  }, []);
+  }, [pathname]);
 
   return links;
 }
