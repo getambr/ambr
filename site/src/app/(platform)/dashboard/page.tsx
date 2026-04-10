@@ -725,7 +725,7 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   const [revokeError, setRevokeError] = useState('');
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
-  const [signatures, setSignatures] = useState<{ signer_wallet: string; created_at: string }[]>([]);
+  const [signatures, setSignatures] = useState<{ signer_wallet: string; signed_at: string; signature_level?: string }[]>([]);
   const [amendments, setAmendments] = useState<{ contract_id: string; status: string; sha256_hash: string }[]>([]);
   const [proposals, setProposals] = useState<AmendmentProposal[]>([]);
   const [proposalAction, setProposalAction] = useState<{ id: string; action: 'approving' | 'rejecting' } | null>(null);
@@ -990,7 +990,7 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
               {signatures.map((sig, i) => (
                 <div key={i} className="flex items-center justify-between text-xs">
                   <span className="font-mono text-text-primary">{sig.signer_wallet.slice(0, 6)}...{sig.signer_wallet.slice(-4)}</span>
-                  <span className="text-text-secondary">{new Date(sig.created_at).toLocaleDateString()}</span>
+                  <span className="text-text-secondary">{new Date(sig.signed_at).toLocaleDateString()}</span>
                 </div>
               ))}
             </div>

@@ -1,13 +1,28 @@
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from './supabase-admin';
 
+/**
+ * Deep-sort all object keys recursively so JSON.stringify produces a
+ * deterministic output regardless of insertion order. This is critical
+ * because Postgres JSONB normalizes (alphabetically sorts) nested keys
+ * on storage. Without deep-sorting, the hash computed pre-storage won't
+ * match the hash recomputed after a DB round-trip.
+ */
+function deepSortKeys(obj: unknown): unknown {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(deepSortKeys);
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(obj as Record<string, unknown>).sort()) {
+    sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
+  }
+  return sorted;
+}
+
 export function hashContract(
   humanReadable: string,
   machineReadable: Record<string, unknown>,
 ): string {
-  const sortedKeys = Object.keys(machineReadable).sort();
-  const sortedObj = Object.fromEntries(sortedKeys.map((k) => [k, machineReadable[k]]));
-  const canonical = humanReadable + '\n---\n' + JSON.stringify(sortedObj);
+  const canonical = humanReadable + '\n---\n' + JSON.stringify(deepSortKeys(machineReadable));
   return createHash('sha256').update(canonical, 'utf-8').digest('hex');
 }
 

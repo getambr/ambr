@@ -45,12 +45,28 @@ async function validateShareToken(contractUuid: string, token: string): Promise<
   return true;
 }
 
+function deepSortKeys(obj: unknown): unknown {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(deepSortKeys);
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(obj as Record<string, unknown>).sort()) {
+    sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
+  }
+  return sorted;
+}
+
 function verifyHash(humanReadable: string, machineReadable: Record<string, unknown>, storedHash: string): boolean {
-  const sortedKeys = Object.keys(machineReadable).sort();
-  const sortedObj = Object.fromEntries(sortedKeys.map((k) => [k, machineReadable[k]]));
-  const canonical = humanReadable + '\n---\n' + JSON.stringify(sortedObj);
-  const computed = createHash('sha256').update(canonical, 'utf-8').digest('hex');
-  return computed === storedHash;
+  // Try deep-sorted keys first (current canonical method)
+  const deepCanonical = humanReadable + '\n---\n' + JSON.stringify(deepSortKeys(machineReadable));
+  const deepHash = createHash('sha256').update(deepCanonical, 'utf-8').digest('hex');
+  if (deepHash === storedHash) return true;
+
+  // Fallback: shallow top-level sort (legacy contracts hashed before deep-sort fix)
+  const shallowKeys = Object.keys(machineReadable).sort();
+  const shallowObj = Object.fromEntries(shallowKeys.map((k) => [k, machineReadable[k]]));
+  const shallowCanonical = humanReadable + '\n---\n' + JSON.stringify(shallowObj);
+  const shallowHash = createHash('sha256').update(shallowCanonical, 'utf-8').digest('hex');
+  return shallowHash === storedHash;
 }
 
 export default async function ReaderPage({ params, searchParams }: Props) {

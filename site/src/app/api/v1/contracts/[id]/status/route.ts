@@ -38,11 +38,14 @@ export async function GET(
     );
   }
 
-  // Count signatures
-  const { count: signatureCount } = await db
+  // Fetch signature records (not just count — dashboard needs the array)
+  const { data: signatureRows } = await db
     .from('signatures')
-    .select('id', { count: 'exact', head: true })
-    .eq('contract_id', contract.id);
+    .select('signer_wallet, signed_at, signature_level')
+    .eq('contract_id', contract.id)
+    .order('signed_at', { ascending: true });
+
+  const signatures = signatureRows ?? [];
 
   // Find amendments (child contracts)
   const { data: amendments } = await db
@@ -86,7 +89,8 @@ export async function GET(
     status: contract.status,
     sha256_hash: contract.sha256_hash,
     amendment_type: contract.amendment_type,
-    signatures: signatureCount ?? 0,
+    signatures: signatures,
+    signature_count: signatures.length,
     created_at: contract.created_at,
     updated_at: contract.updated_at,
     revoked_at: contract.revoked_at,
