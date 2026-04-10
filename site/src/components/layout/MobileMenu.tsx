@@ -102,6 +102,19 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
                 {link.label}
               </Link>
             ))}
+            {(() => {
+              const host = typeof window !== 'undefined' ? window.location.hostname : '';
+              const isMarketingSite = host.includes('ambr.run') || (!host.includes('getamber.dev') && ['/', '/how-it-works', '/ecosystem', '/waitlist', '/privacy', '/terms'].includes(currentPath));
+              return isMarketingSite ? (
+                <Link
+                  href="https://getamber.dev/dashboard"
+                  onClick={onClose}
+                  className="mt-4 rounded-none border border-amber/30 px-4 py-3 text-center font-mono text-sm uppercase tracking-wider text-amber transition-colors hover:bg-amber/10 block"
+                >
+                  Sign in
+                </Link>
+              ) : null;
+            })()}
             <SmartCTA
               onClick={onClose}
               className="mt-4 rounded-none bg-amber px-4 py-3 text-center font-mono text-sm uppercase tracking-wider font-medium text-background transition-colors hover:bg-amber-light block"

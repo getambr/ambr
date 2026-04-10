@@ -43,11 +43,30 @@ function useNavLinks() {
   return links;
 }
 
+function useIsMarketing() {
+  const pathname = usePathname();
+  const [isMarketing, setIsMarketing] = useState(false);
+
+  useEffect(() => {
+    const host = window.location.hostname;
+    if (host.includes('ambr.run')) {
+      setIsMarketing(true);
+    } else if (host.includes('getamber.dev')) {
+      setIsMarketing(false);
+    } else {
+      setIsMarketing(MARKETING_PATHS.includes(pathname));
+    }
+  }, [pathname]);
+
+  return isMarketing;
+}
+
 export default function Navigation() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const navLinks = useNavLinks();
   const [scrolled, setScrolled] = useState(false);
+  const isMarketing = useIsMarketing();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -85,6 +104,14 @@ export default function Navigation() {
                   {link.label}
                 </Link>
               ))}
+              {isMarketing && (
+                <Link
+                  href="https://getamber.dev/dashboard"
+                  className="font-mono text-xs uppercase tracking-wide text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Sign in
+                </Link>
+              )}
               <SmartCTA
                 className="rounded-none bg-amber px-4 py-2 font-mono text-xs uppercase tracking-wide font-medium text-background transition-colors hover:bg-amber-light"
               />
