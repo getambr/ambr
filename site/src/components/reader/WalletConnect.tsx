@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserProvider } from 'ethers';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import WalletPicker from '@/components/wallet/WalletPicker';
 
-type AuthState = 'idle' | 'connecting' | 'verifying' | 'authorized' | 'unauthorized' | 'error';
+type AuthState = 'idle' | 'detected' | 'connecting' | 'verifying' | 'authorized' | 'unauthorized' | 'error';
 
 interface WalletConnectProps {
   contractId: string;
@@ -20,8 +20,35 @@ interface WalletConnectProps {
 export default function WalletConnect({ contractId, contractUuid, onAuthorized }: WalletConnectProps) {
   const [state, setState] = useState<AuthState>('idle');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [detectedProvider, setDetectedProvider] = useState<EIP6963ProviderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const walletProviders = useWalletProviders();
+  const autoDetectRan = useRef(false);
+
+  // Auto-detect already-connected wallet on mount (passive, no popup)
+  useEffect(() => {
+    if (autoDetectRan.current || state !== 'idle') return;
+    autoDetectRan.current = true;
+
+    async function detect() {
+      for (const wp of walletProviders) {
+        try {
+          // eth_accounts is passive — returns connected accounts without prompting
+          const accounts = await wp.provider.request({ method: 'eth_accounts' }) as string[];
+          if (accounts?.length > 0) {
+            setWalletAddress(accounts[0]);
+            setDetectedProvider(wp);
+            setState('detected');
+            return;
+          }
+        } catch {
+          // Provider doesn't support eth_accounts or not connected — skip
+        }
+      }
+    }
+
+    if (walletProviders.length > 0) detect();
+  }, [walletProviders, state]);
 
   const connect = async (picked: EIP6963ProviderDetail) => {
     setState('connecting');
@@ -108,6 +135,33 @@ export default function WalletConnect({ contractId, contractUuid, onAuthorized }
         </svg>
         <h2 className="text-lg font-semibold text-text-primary">Wallet Access</h2>
       </div>
+
+      {state === 'detected' && walletAddress && detectedProvider && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-amber-500" />
+            <span className="font-mono text-xs text-text-primary">
+              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+            </span>
+            <span className="text-xs text-text-secondary">detected</span>
+          </div>
+          <p className="text-sm text-text-secondary">
+            Wallet already connected. Verify access to unlock the contract.
+          </p>
+          <button
+            onClick={() => connect(detectedProvider)}
+            className="rounded-lg bg-amber/15 px-4 py-2.5 text-sm font-medium text-amber hover:bg-amber/25 transition-colors"
+          >
+            Verify Access
+          </button>
+          <button
+            onClick={() => { setState('idle'); setDetectedProvider(null); setWalletAddress(null); }}
+            className="ml-3 text-xs text-text-secondary hover:text-text-primary transition-colors"
+          >
+            Use a different wallet
+          </button>
+        </div>
+      )}
 
       {state === 'idle' && (
         <>
