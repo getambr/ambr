@@ -13,6 +13,8 @@ import {
 import { AdminSection } from '@/components/dashboard/AdminSection';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
 import { useWalletStatus } from '@/lib/wallet/use-wallet-status';
+import ContractViewer from '@/app/(platform)/reader/[hashOrId]/ContractViewer';
+import ExportButtons from '@/app/(platform)/reader/[hashOrId]/ExportButtons';
 import { ADMIN_EMAILS } from '@/lib/admin-emails';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import WalletPicker from '@/components/wallet/WalletPicker';
@@ -788,6 +790,8 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   const [proposals, setProposals] = useState<AmendmentProposal[]>([]);
   const [proposalAction, setProposalAction] = useState<{ id: string; action: 'approving' | 'rejecting' } | null>(null);
   const [proposalError, setProposalError] = useState<string | null>(null);
+  const [contractText, setContractText] = useState<{ human_readable: string; machine_readable: Record<string, unknown> } | null>(null);
+  const [textLoading, setTextLoading] = useState(false);
 
   const refreshProposals = useCallback(() => {
     fetch(`/api/v1/contracts/${contract.contract_id}/amendments`)
@@ -806,7 +810,21 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
       })
       .catch(() => {});
     refreshProposals();
-  }, [contract.contract_id, refreshProposals]);
+
+    // Fetch full contract text for inline viewing
+    setTextLoading(true);
+    fetch(`/api/v1/contracts/${contract.contract_id}`, {
+      headers: apiKey ? { 'X-API-Key': apiKey } : {},
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.human_readable && data.machine_readable) {
+          setContractText({ human_readable: data.human_readable, machine_readable: data.machine_readable });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTextLoading(false));
+  }, [contract.contract_id, apiKey, refreshProposals]);
 
   async function handleApproveProposal(proposalId: string) {
     setProposalAction({ id: proposalId, action: 'approving' });
@@ -1182,10 +1200,32 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
         </div>
       )}
 
+      {/* Inline contract viewer */}
+      {textLoading && (
+        <div className="rounded-xl border border-border bg-surface/80 p-8 text-center">
+          <RefreshCw className="h-5 w-5 text-text-secondary/40 animate-spin mx-auto mb-2" />
+          <p className="text-xs text-text-secondary">Loading contract text...</p>
+        </div>
+      )}
+      {contractText && (
+        <div className="space-y-3">
+          <ExportButtons
+            contractId={contract.contract_id}
+            humanReadable={contractText.human_readable}
+            machineReadable={contractText.machine_readable}
+            sha256Hash={contract.sha256_hash}
+          />
+          <ContractViewer
+            humanReadable={contractText.human_readable}
+            machineReadable={contractText.machine_readable}
+          />
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
         <Link href={`/reader/${contract.sha256_hash}`} target="_blank"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber/15 px-4 py-2.5 text-sm font-medium text-amber hover:bg-amber/25 transition-colors">
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:border-amber/30 transition-colors">
           Open in Reader <ExternalLink className="h-3.5 w-3.5" />
         </Link>
 
