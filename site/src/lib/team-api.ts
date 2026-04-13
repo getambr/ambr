@@ -206,3 +206,26 @@ export function createEvent(event: {
     | { error: string }
   >('create_event', event)
 }
+
+// --- Sent log + assignments ---
+
+export interface SentEmail {
+  draftId: string; emailId: string; to: string; subject: string
+  body: string; project: string; status: string; createdAt: string; approvedAt: string
+}
+
+export function getSentLog(limit = 50) {
+  return opsGet<{ count: number; total: number; emails: SentEmail[] }>(
+    'sent_log', { max: String(limit) }
+  )
+}
+
+export function assignEmail(messageId: string, assignees: string[]) {
+  return opsPost<{ updated?: boolean; created?: boolean; messageId: string; assignees: string[] } | { error: string }>(
+    'assign_email', { messageId, assignees }
+  )
+}
+
+export function getAssignments() {
+  return opsGet<{ assignments: Record<string, string[]> }>('get_assignments')
+}

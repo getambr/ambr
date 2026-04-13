@@ -4,7 +4,7 @@
 // IMPORTANT: this file must NOT import any Node-only modules so it can be safely
 // imported into 'use client' components without breaking the browser bundle.
 
-export const ADMIN_EMAILS = ['ilvers.sermols@gmail.com', 'dainis@ambr.run']
+export const ADMIN_EMAILS = ['ilvers.sermols@gmail.com', 'dainis@ambr.run', 'brunokrisjanis99@gmail.com']
 
 export function isAdmin(email?: string | null): boolean {
   if (!email) return false

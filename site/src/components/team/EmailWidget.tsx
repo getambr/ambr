@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronLeft, ChevronDown, Mail, CornerUpLeft, CalendarPlus,
-  Sparkles, Send, Check, Loader2, Maximize2, Archive, PenSquare,
+  Sparkles, Send, Check, Loader2, Maximize2, Archive, PenSquare, UserPlus, X,
 } from 'lucide-react'
 import {
   getEmailBody, draftReply, archiveEmail, improveDraft, sendThreadReply,
   sendNewEmail, generateNewDraft, improveCompose,
-  type EmailBody, type TriagedEmail,
+  getSentLog, assignEmail, getAssignments,
+  type EmailBody, type TriagedEmail, type SentEmail,
 } from '@/lib/team-api'
 
 // Render a Gmail thread (one or more messages) as a stack of cards.
@@ -105,6 +106,7 @@ const TIER_1_ALIASES: AliasTab[] = [
   { id: 'legal@ambr.run', label: 'Legal', match: to => to.includes('legal@ambr.run'), p1: true },
   { id: 'privacy@ambr.run', label: 'Privacy', match: to => to.includes('privacy@ambr.run'), p1: true },
   { id: 'security@ambr.run', label: 'Security', match: to => to.includes('security@ambr.run'), p1: true },
+  { id: 'sent', label: 'Sent', match: () => false },
 ]
 
 // Personal aliases scoped to their owner. Shared aliases are visible to both founders.
@@ -140,7 +142,14 @@ const ALIASES_OWNED_BY: Record<string, string[]> = {
 const PERSONAL_ALIAS_BY_USER: Record<string, string> = {
   'ilvers.sermols@gmail.com': 'ilvers@ambr.run',
   'dainis@ambr.run': 'dainis@ambr.run',
+  'brunokrisjanis99@gmail.com': 'bruno@ambr.run',
 }
+
+const TEAM_MEMBERS = [
+  { email: 'ilvers.sermols@gmail.com', name: 'Ilvers', alias: 'ilvers@ambr.run' },
+  { email: 'dainis@ambr.run', name: 'Dainis', alias: 'dainis@ambr.run' },
+  { email: 'brunokrisjanis99@gmail.com', name: 'Bruno', alias: 'bruno@ambr.run' },
+]
 
 // Mirrors the server-side resolveFromAlias() in Apps Script Code.gs. Picks
 // which @ambr.run alias the reply will be sent from. Pure UI hint — actual
@@ -213,7 +222,7 @@ type Mode =
   | { kind: 'list' }
   | { kind: 'reading'; email: TriagedEmail }
   | { kind: 'replying'; email: TriagedEmail; draft: DraftState }
-  | { kind: 'scheduling'; email: TriagedEmail }
+  | { kind: 'scheduling'; email: TriagedEmail; extraGuests?: string[] }
   | { kind: 'sent'; email: TriagedEmail; sentTo: string }
   | { kind: 'composing'; compose: ComposeState }
   | { kind: 'composeSent'; to: string; from: string }
@@ -236,17 +245,45 @@ export function EmailWidget({
   const [bodyError, setBodyError] = useState<string | null>(null)
   const [locallyArchived, setLocallyArchived] = useState<Set<string>>(new Set())
   const [archiveError, setArchiveError] = useState<string | null>(null)
+  const [assignments, setAssignments] = useState<Record<string, string[]>>({})
+  const [assignDropdown, setAssignDropdown] = useState<string | null>(null)
+  const [sentEmails, setSentEmails] = useState<SentEmail[]>([])
+  const [sentLoading, setSentLoading] = useState(false)
 
   const allEmails = useMemo(() => emails?.emails || [], [emails])
 
   // Privacy filter: which aliases is this user allowed to see?
   const visibleAliasIds = useMemo(() => getVisibleAliases(currentUserEmail), [currentUserEmail])
 
-  // Tabs the user can see (always include 'all', plus only the aliases in their permitted set)
+  // Tabs the user can see (always include 'all' + 'sent', plus only the aliases in their permitted set)
   const visibleTabs = useMemo(
-    () => TIER_1_ALIASES.filter(t => t.id === 'all' || visibleAliasIds.includes(t.id)),
+    () => TIER_1_ALIASES.filter(t => t.id === 'all' || t.id === 'sent' || visibleAliasIds.includes(t.id)),
     [visibleAliasIds]
   )
+
+  // Load persisted assignments on mount
+  useEffect(() => {
+    getAssignments()
+      .then(res => { if (res.assignments) setAssignments(res.assignments) })
+      .catch(() => {})
+  }, [])
+
+  // Fetch sent emails on mount + when Sent tab is clicked
+  useEffect(() => {
+    getSentLog(50)
+      .then(res => { setSentEmails(res.emails || []) })
+      .catch(() => {})
+  }, [])
+
+  // Refresh sent list when switching to Sent tab
+  useEffect(() => {
+    if (activeTab !== 'sent') return
+    setSentLoading(true)
+    getSentLog(50)
+      .then(res => { setSentEmails(res.emails || []) })
+      .catch(() => {})
+      .finally(() => setSentLoading(false))
+  }, [activeTab])
 
   // Emails the user is permitted to see. Must be addressed to an @ambr.run
   // alias the user owns. Personal Gmail (Kraken, Namecheap, GitHub, etc.) and
@@ -370,7 +407,9 @@ export function EmailWidget({
   }
 
   function startSchedule(email: TriagedEmail) {
-    setMode({ kind: 'scheduling', email })
+    // Auto-include assigned team members as guests
+    const assigned = assignments[email.messageId] || []
+    setMode({ kind: 'scheduling', email, extraGuests: assigned.length > 0 ? assigned : undefined })
   }
 
   // ── Compose new email (cold outreach) ──────────────────
@@ -513,6 +552,8 @@ export function EmailWidget({
     const senderEmail = bodyData?.replyTo
       ? extractEmail(bodyData.replyTo)
       : extractEmail(mode.email.from)
+    const extraGuests = mode.extraGuests || []
+    const allGuests = [senderEmail, ...extraGuests].filter(Boolean).join(', ')
     const description = bodyData
       ? `Subject: ${mode.email.subject}\nFrom: ${bodyData.from}\n\n${bodyData.body.substring(0, 300)}${bodyData.body.length > 300 ? '...' : ''}`
       : `Subject: ${mode.email.subject}\nFrom: ${mode.email.from}`
@@ -526,7 +567,7 @@ export function EmailWidget({
           selectedDate={new Date()}
           initialTitle={subjectClean}
           initialDescription={description}
-          initialGuests={senderEmail}
+          initialGuests={allGuests}
           onClose={() => setMode({ kind: 'list' })}
           onCreated={() => setMode({ kind: 'list' })}
         />
@@ -791,7 +832,7 @@ export function EmailWidget({
         <div className="mb-3 flex flex-wrap gap-1.5">
           {visibleTabs.map(tab => {
             const isActive = activeTab === tab.id
-            const count = ownedEmails.filter(e => tab.match((e.to_address || '').toLowerCase())).length
+            const count = tab.id === 'sent' ? sentEmails.length : ownedEmails.filter(e => tab.match((e.to_address || '').toLowerCase())).length
             const showRedCount = tab.p1 && count > 0
             return (
               <button
@@ -812,7 +853,68 @@ export function EmailWidget({
           })}
         </div>
 
-        {loading ? (
+        {activeTab === 'sent' ? (
+          sentLoading ? (
+            <Skeleton />
+          ) : sentEmails.length > 0 ? (
+            <div className="space-y-1.5">
+              {sentEmails.slice(0, 20).map((email, i) => {
+                const isOpen = expandedId === `sent-${email.draftId}`
+                return (
+                  <div
+                    key={`sent-${email.draftId}-${i}`}
+                    className={`rounded-lg border bg-surface-elevated transition-colors ${isOpen ? 'border-amber/30' : 'border-border hover:border-amber/30'}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isOpen ? null : `sent-${email.draftId}`)}
+                      className="w-full text-left p-3 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Send className="h-3 w-3 text-amber/60 shrink-0" />
+                        <span className="text-xs font-medium text-text-primary truncate">{email.to}</span>
+                        <span className="ml-auto text-[10px] font-mono text-text-secondary/50 shrink-0">
+                          {email.createdAt ? new Date(email.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-text-secondary/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                      <p className="mt-1 text-xs text-text-secondary truncate">{email.subject}</p>
+                      {!isOpen && <p className="mt-1 text-[10px] text-text-secondary/50 line-clamp-1">{email.body}</p>}
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3 border-t border-border mt-0 pt-3">
+                        <pre className="whitespace-pre-wrap break-words text-xs text-text-primary font-sans leading-relaxed max-h-[40vh] overflow-y-auto">
+                          {email.body}
+                        </pre>
+                        <div className="mt-3 flex items-center gap-2">
+                          {email.project && (
+                            <span className="rounded bg-amber/10 px-1.5 py-0.5 text-[10px] font-mono text-amber">{email.project}</span>
+                          )}
+                          <span className="text-[10px] font-mono text-text-secondary/50">ID: {email.draftId}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('Delete this sent email from the log?')) {
+                                setSentEmails(prev => prev.filter(s => s.draftId !== email.draftId))
+                              }
+                            }}
+                            className="ml-auto flex items-center gap-1 rounded-md border border-error/30 bg-error/10 px-2.5 py-1 text-[10px] text-error hover:bg-error/20 transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-xs text-text-secondary/50">No sent emails yet</div>
+          )
+        ) : loading ? (
           <Skeleton />
         ) : filtered.length > 0 ? (
           <div className="space-y-1.5">
@@ -843,6 +945,18 @@ export function EmailWidget({
                     {alias && (
                       <span className="mt-0.5 shrink-0 rounded border border-amber/20 bg-amber/10 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-amber">
                         → {alias}
+                      </span>
+                    )}
+                    {assignments[email.messageId]?.length > 0 && (
+                      <span className="mt-0.5 shrink-0 flex items-center gap-0.5">
+                        {assignments[email.messageId].map(a => {
+                          const member = TEAM_MEMBERS.find(m => m.email === a)
+                          return (
+                            <span key={a} className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-mono text-indigo-300" title={member?.alias || a}>
+                              {member?.name?.charAt(0) || '?'}
+                            </span>
+                          )
+                        })}
                       </span>
                     )}
                     <ChevronDown
@@ -887,6 +1001,63 @@ export function EmailWidget({
                               <CalendarPlus className="h-3.5 w-3.5" />
                               Schedule Meeting
                             </button>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setAssignDropdown(assignDropdown === email.messageId ? null : email.messageId)}
+                                className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-text-primary hover:border-amber/30 transition-colors"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" />
+                                Assign
+                                {assignments[email.messageId]?.length ? (
+                                  <span className="rounded-full bg-amber/20 px-1.5 py-0.5 text-[10px] text-amber">
+                                    {assignments[email.messageId].length}
+                                  </span>
+                                ) : null}
+                              </button>
+                              {assignDropdown === email.messageId && (
+                                <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-border bg-surface-elevated p-1 shadow-lg">
+                                  {TEAM_MEMBERS.filter(m => m.email !== currentUserEmail?.toLowerCase()).map(member => {
+                                    const isAssigned = assignments[email.messageId]?.includes(member.email)
+                                    return (
+                                      <button
+                                        key={member.email}
+                                        type="button"
+                                        onClick={() => {
+                                          const current = assignments[email.messageId] || []
+                                          const updated = isAssigned
+                                            ? current.filter(e => e !== member.email)
+                                            : [...current, member.email]
+                                          setAssignments(prev => ({ ...prev, [email.messageId]: updated }))
+                                          assignEmail(email.messageId, updated).catch(() => {})
+                                        }}
+                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors ${
+                                          isAssigned ? 'bg-amber/10 text-amber' : 'text-text-secondary hover:bg-surface'
+                                        }`}
+                                      >
+                                        {isAssigned && <Check className="h-3 w-3" />}
+                                        <span>{member.name}</span>
+                                        <span className="ml-auto text-[10px] opacity-50">{member.alias}</span>
+                                      </button>
+                                    )
+                                  })}
+                                  <div className="mt-1 border-t border-border pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const assigned = assignments[email.messageId] || []
+                                        setAssignDropdown(null)
+                                        setMode({ kind: 'scheduling', email, extraGuests: assigned })
+                                      }}
+                                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-amber hover:bg-amber/10 transition-colors"
+                                    >
+                                      <CalendarPlus className="h-3 w-3" />
+                                      Schedule with assigned
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                             <button
                               type="button"
                               onClick={() => handleArchive(email)}

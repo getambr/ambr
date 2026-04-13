@@ -8,9 +8,10 @@ import {
   Layers, FileText, Send as SendIcon, Handshake, PenTool, ShieldCheck,
   Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
   Calendar, Mail, Users, Lock, Copy, Check, ExternalLink,
-  ArrowRight, Clock, Plus, RefreshCw, TrendingUp, Eye,
+  ArrowRight, Clock, Plus, RefreshCw, TrendingUp, Eye, Activity,
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
+import { TechHealthWidget } from '@/components/team/TechHealthWidget';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
 import { useWalletStatus } from '@/lib/wallet/use-wallet-status';
 import ContractViewer from '@/app/(platform)/reader/[hashOrId]/ContractViewer';
@@ -21,7 +22,7 @@ import WalletPicker from '@/components/wallet/WalletPicker';
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'health';
 
 interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
 export interface ContractRow {
@@ -118,6 +119,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
       { id: 'email' as Section, label: 'Email Triage', icon: Mail },
+      { id: 'health' as Section, label: 'System Health', icon: Activity },
     ],
   },
 ];
@@ -1532,10 +1534,62 @@ function X402Calculator() {
 }
 
 // ─── Account ────────────────────────────────────────────
-function AccountSection({ user, wallet, authMethod, onSignOut }: {
-  user: UserInfo | null; wallet: string | null; authMethod: AuthMethod; onSignOut: () => void;
+interface StripePayment {
+  id: string;
+  tier: string | null;
+  amount_cents: number | null;
+  currency: string | null;
+  created_at: string;
+  receipt_url: string | null;
+}
+
+function AccountSection({ user, wallet, authMethod, apiKey, onSignOut }: {
+  user: UserInfo | null; wallet: string | null; authMethod: AuthMethod; apiKey: string; onSignOut: () => void;
 }) {
   const tierInfo = user?.tier ? TIER_INFO[user.tier] || { label: user.tier, limit: '—', overage: '—' } : null;
+
+  // Buy credits state
+  const [buyTier, setBuyTier] = useState<'startup' | 'scale' | null>(null);
+  const [buyLoading, setBuyLoading] = useState(false);
+  const [buyError, setBuyError] = useState<string | null>(null);
+
+  // Payment history state
+  const [payments, setPayments] = useState<StripePayment[] | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Fetch payment history on mount (only for API key auth)
+  useEffect(() => {
+    if (authMethod !== 'api_key' || !apiKey) return;
+    setPaymentsLoading(true);
+    fetch('/api/v1/stripe/payments', { headers: { 'X-API-Key': apiKey } })
+      .then((r) => r.json())
+      .then((d) => setPayments(d.payments ?? []))
+      .catch(() => setPayments([]))
+      .finally(() => setPaymentsLoading(false));
+  }, [authMethod, apiKey]);
+
+  async function handleBuyCredits() {
+    if (!buyTier || !user?.email) return;
+    setBuyLoading(true);
+    setBuyError(null);
+    try {
+      const res = await fetch('/api/v1/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, tier: buyTier, mode: 'topup' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBuyError(data.message || 'Failed to start checkout');
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setBuyError('Network error. Please try again.');
+    } finally {
+      setBuyLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -1552,6 +1606,105 @@ function AccountSection({ user, wallet, authMethod, onSignOut }: {
           <Row label="Auth Method" value={authMethod === 'wallet' ? 'Wallet (ECDSA)' : 'API Key'} />
         </div>
       </div>
+
+      {/* Buy more credits */}
+      {user?.email && (
+        <div className="rounded-xl border border-border bg-surface/80 p-5">
+          <p className="text-micro mb-3">Buy More Credits</p>
+          <p className="text-xs text-text-secondary mb-4">One-time purchase. Credits never expire.</p>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button
+              type="button"
+              onClick={() => setBuyTier('startup')}
+              className={`text-left p-4 rounded-lg border transition-colors ${
+                buyTier === 'startup'
+                  ? 'border-amber bg-amber/10'
+                  : 'border-border bg-surface-elevated hover:border-amber/40'
+              }`}
+            >
+              <p className="text-sm font-medium text-text-primary">Starter Pack</p>
+              <p className="text-lg font-mono font-bold text-amber mt-1">$49</p>
+              <p className="text-xs text-text-secondary mt-1">200 contracts</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setBuyTier('scale')}
+              className={`text-left p-4 rounded-lg border transition-colors ${
+                buyTier === 'scale'
+                  ? 'border-amber bg-amber/10'
+                  : 'border-border bg-surface-elevated hover:border-amber/40'
+              }`}
+            >
+              <p className="text-sm font-medium text-text-primary">Scale Pack</p>
+              <p className="text-lg font-mono font-bold text-amber mt-1">$199</p>
+              <p className="text-xs text-text-secondary mt-1">1,000 contracts</p>
+            </button>
+          </div>
+          {buyError && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 mb-3">
+              {buyError}
+            </div>
+          )}
+          <button
+            onClick={handleBuyCredits}
+            disabled={!buyTier || buyLoading}
+            className="w-full rounded-lg bg-amber px-4 py-2.5 text-sm font-mono uppercase tracking-wide text-xs text-background transition-colors hover:bg-amber-light disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {buyLoading ? 'Redirecting to checkout...' : 'Buy Credits'}
+          </button>
+          <p className="text-xs text-text-secondary/60 mt-3 text-center">
+            Secure checkout via Stripe. Credits are added to your current key.
+          </p>
+        </div>
+      )}
+
+      {/* Payment history */}
+      {authMethod === 'api_key' && (
+        <div className="rounded-xl border border-border bg-surface/80 p-5">
+          <p className="text-micro mb-3">Payment History</p>
+          {paymentsLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-amber border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !payments || payments.length === 0 ? (
+            <p className="text-xs text-text-secondary/60 py-2">No Stripe payments yet.</p>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-4 gap-2 text-[10px] font-mono uppercase tracking-wider text-text-secondary pb-1 border-b border-border">
+                <span>Date</span>
+                <span>Tier</span>
+                <span className="text-right">Amount</span>
+                <span className="text-right">Receipt</span>
+              </div>
+              {payments.map((p) => (
+                <div key={p.id} className="grid grid-cols-4 gap-2 text-xs items-center">
+                  <span className="text-text-secondary font-mono">
+                    {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <span className="text-text-primary capitalize">{p.tier || '—'}</span>
+                  <span className="text-right font-mono text-text-primary">
+                    ${((p.amount_cents ?? 0) / 100).toFixed(2)}
+                  </span>
+                  <span className="text-right">
+                    {p.receipt_url ? (
+                      <a
+                        href={p.receipt_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber hover:underline font-mono"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-text-secondary/40">—</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* x402 pay-per-contract info */}
       <div className="rounded-xl border border-border bg-surface/80 p-5">
@@ -1575,9 +1728,6 @@ function AccountSection({ user, wallet, authMethod, onSignOut }: {
       </div>
 
       <div className="flex gap-3">
-        <Link href="/activate" className="rounded-lg bg-amber/15 px-4 py-2.5 text-sm font-medium text-amber hover:bg-amber/25 transition-colors">
-          {user?.tier === 'developer' || user?.tier === 'alpha' ? 'Upgrade Plan' : 'Manage Plan'}
-        </Link>
         <button onClick={onSignOut}
           className="rounded-lg border border-error/30 bg-error/5 px-4 py-2.5 text-sm text-error hover:bg-error/10 transition-colors">
           Sign Out
@@ -1958,7 +2108,7 @@ export default function DashboardPage() {
                   {section === 'wallet' && <WalletSection contracts={data.contracts} walletAddress={data.wallet} />}
                   {section === 'agents' && <AgentSetup apiKeyPrefix={data.user?.key_prefix || 'amb_***'} apiKey={apiKey} />}
                   {section === 'analytics' && <ContractAnalytics contracts={data.contracts} />}
-                  {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} onSignOut={handleSignOut} />}
+                  {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} apiKey={apiKey} onSignOut={handleSignOut} />}
 
                   {/* Admin sections */}
                   {isAdmin && ['calendar', 'email', 'drafts'].includes(section) && (
@@ -1966,6 +2116,16 @@ export default function DashboardPage() {
                       activeSection={section as 'calendar' | 'email' | 'drafts'}
                       currentUserEmail={data.user?.email}
                     />
+                  )}
+
+                  {/* Tech health — Ilvers + Dainis only (Bruno sees business metrics elsewhere) */}
+                  {isAdmin && section === 'health' && data.user?.email !== 'brunokrisjanis99@gmail.com' && (
+                    <TechHealthWidget />
+                  )}
+                  {isAdmin && section === 'health' && data.user?.email === 'brunokrisjanis99@gmail.com' && (
+                    <div className="rounded-xl border border-border bg-surface p-8 text-center">
+                      <p className="text-sm text-text-secondary">Business metrics are shown in Pipeline Overview and Analytics.</p>
+                    </div>
                   )}
                 </motion.div>
               </AnimatePresence>

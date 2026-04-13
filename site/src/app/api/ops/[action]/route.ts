@@ -3,25 +3,31 @@
 // authenticated via an Ambr API key in the X-API-Key header AND to be in
 // the ADMIN_EMAILS allowlist.
 //
-// Routes:
-//   GET  /api/ops/[action]?param=...   → forwards GET to Apps Script with the server-only key
-//   POST /api/ops/[action]             → forwards POST body to Apps Script with the server-only key
+// Google Apps Script returns a 302 redirect on POST, and fetch's
+// redirect:'follow' converts POST→GET per HTTP spec, stripping the body.
+// Workaround: ALL requests go as GET with key in URL params. POST data is
+// encoded in a `payload` URL parameter. The doGet handler in Code.gs routes
+// payload-bearing GETs to the same action handlers as doPost.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey } from '@/lib/api-auth'
 import { isAdmin } from '@/lib/admin-emails'
 
-const OPS_BASE = process.env.OPS_BASE || ''
-const OPS_KEY = process.env.OPS_KEY || ''
-
-function configCheck() {
-  if (!OPS_BASE || !OPS_KEY) {
-    return NextResponse.json(
-      { error: 'Ops backend not configured (missing OPS_BASE or OPS_KEY env)' },
-      { status: 500 }
-    )
+// Read env vars per-request (not module level) to avoid stale values
+// and trim to strip any trailing newlines from `echo | vercel env add`.
+function getConfig() {
+  const base = (process.env.OPS_BASE || '').trim()
+  const key = (process.env.OPS_KEY || '').trim()
+  if (!base || !key) {
+    return {
+      error: NextResponse.json(
+        { error: 'Ops backend not configured', debug: { hasBase: !!base, hasKey: !!key, keyLen: key.length } },
+        { status: 500 }
+      ),
+      base: '', key: ''
+    }
   }
-  return null
+  return { error: null, base, key }
 }
 
 async function authCheck(request: NextRequest) {
@@ -39,15 +45,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ action: string }> }
 ) {
-  const cfg = configCheck()
-  if (cfg) return cfg
+  const cfg = getConfig()
+  if (cfg.error) return cfg.error
   const a = await authCheck(request)
   if ('error' in a) return a.error
 
   const { action } = await params
-  const url = new URL(OPS_BASE)
+  const url = new URL(cfg.base)
   url.searchParams.set('action', action)
-  url.searchParams.set('key', OPS_KEY)
+  url.searchParams.set('key', cfg.key)
   request.nextUrl.searchParams.forEach((v, k) => {
     if (k !== 'action' && k !== 'key') url.searchParams.set(k, v)
   })
@@ -68,8 +74,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ action: string }> }
 ) {
-  const cfg = configCheck()
-  if (cfg) return cfg
+  const cfg = getConfig()
+  if (cfg.error) return cfg.error
   const a = await authCheck(request)
   if ('error' in a) return a.error
 
@@ -81,17 +87,14 @@ export async function POST(
     // empty body OK
   }
 
-  // Inject the authenticated user's email server-side so Apps Script knows
-  // who is sending. The client cannot spoof this — the proxy gets it from
-  // validateApiKey() which verified the X-API-Key against the database.
-  // Apps Script uses senderEmail to look up the correct From: alias and
-  // signature for outbound mail sent via Resend.
+  // Encode POST data as GET with payload URL param (Apps Script 302 workaround)
+  const payload = { senderEmail: a.auth.email, ...body }
   try {
-    const res = await fetch(OPS_BASE, {
-      method: 'POST',
-      body: JSON.stringify({ action, key: OPS_KEY, senderEmail: a.auth.email, ...body }),
-      redirect: 'follow',
-    })
+    const url = new URL(cfg.base)
+    url.searchParams.set('action', action)
+    url.searchParams.set('key', cfg.key)
+    url.searchParams.set('payload', JSON.stringify(payload))
+    const res = await fetch(url.toString(), { redirect: 'follow' })
     const data = await res.json()
     return NextResponse.json(data, { status: res.status })
   } catch (e) {
