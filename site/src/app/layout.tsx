@@ -62,6 +62,37 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Ambr',
+  applicationCategory: 'BusinessApplication',
+  applicationSubCategory: 'Contract Management',
+  operatingSystem: 'Web',
+  description:
+    'Legal framework for AI agents — create, sign, and verify Ricardian Contracts for delegation and commerce. Dual-format: human-readable legal text + machine-parsable JSON, linked by SHA-256 hash.',
+  url: 'https://ambr.run',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    description: 'Free tier available. Pay-per-contract via API key credits or x402 USDC.',
+  },
+  provider: {
+    '@type': 'Organization',
+    name: 'Ambr',
+    url: 'https://ambr.run',
+  },
+  featureList: [
+    'Ricardian Contract generation',
+    'SHA-256 integrity verification',
+    'A2A protocol support',
+    'Bilateral amendments',
+    'Agent delegation authority',
+    'Compliance audit trails',
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -69,6 +100,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} antialiased`}>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[70] focus:rounded-lg focus:bg-amber focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-background">
           Skip to content

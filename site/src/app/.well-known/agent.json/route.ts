@@ -45,6 +45,7 @@ export async function buildAgentCard() {
     capabilities: {
       streaming: false,
       pushNotifications: false,
+      stateTransitionHistory: false,
       extendedAgentCard: false,
     },
     skills: [
@@ -54,6 +55,8 @@ export async function buildAgentCard() {
         description:
           'Generate a legally-structured dual-format Ricardian Contract from a template. Requires template slug, parameters, and principal declaration. Costs 1 credit per contract.',
         tags: ['legal', 'contracts', 'delegation', 'commerce', 'ricardian', 'ai-agents'],
+        inputModes: ['application/json'],
+        outputModes: ['application/json'],
         examples: [
           'Create a delegation contract authorizing agent X to make purchases up to $500',
           'Generate an API access agreement for compute services between Company A and Agent B',
@@ -66,6 +69,8 @@ export async function buildAgentCard() {
         description:
           'List available contract templates with parameter schemas. Categories: delegation (d1-d3) and commerce (c1-c3).',
         tags: ['templates', 'catalog', 'browse'],
+        inputModes: ['application/json'],
+        outputModes: ['application/json'],
         examples: [
           'What contract templates are available?',
           'Show me delegation contract templates',
@@ -77,6 +82,8 @@ export async function buildAgentCard() {
         description:
           'Retrieve a contract by ID (amb-YYYY-NNNN), SHA-256 hash, or UUID. Returns both human-readable and machine-parsable formats.',
         tags: ['contracts', 'retrieval', 'verification'],
+        inputModes: ['application/json'],
+        outputModes: ['application/json'],
         examples: [
           'Get contract amb-2026-0042',
           'Retrieve the contract with hash abc123...',
@@ -88,6 +95,8 @@ export async function buildAgentCard() {
         description:
           "Verify a contract's SHA-256 hash to confirm it hasn't been tampered with.",
         tags: ['verification', 'integrity', 'hash', 'security'],
+        inputModes: ['application/json'],
+        outputModes: ['application/json'],
         examples: [
           'Verify that hash abc123... matches a valid contract',
         ],
@@ -98,6 +107,8 @@ export async function buildAgentCard() {
         description:
           'Check contract lifecycle status (draft/active/terminated/etc) and amendment chain.',
         tags: ['status', 'lifecycle', 'amendments'],
+        inputModes: ['application/json'],
+        outputModes: ['application/json'],
         examples: [
           'What is the status of contract amb-2026-0042?',
           'Check if contract abc123... is still active',
@@ -109,6 +120,8 @@ export async function buildAgentCard() {
         description:
           'Initiate a handshake on a contract on behalf of the delegating principal. Requires API key with registered delegation. Principal must approve separately.',
         tags: ['delegation', 'handshake', 'agent', 'intent'],
+        inputModes: ['application/json'],
+        outputModes: ['application/json'],
         examples: [
           'Accept contract amb-2026-0042 on behalf of my principal',
           'Handshake contract abc123... with intent to accept',

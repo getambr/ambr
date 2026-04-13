@@ -1,0 +1,47 @@
+# Ambr
+
+> The legal framework for AI agents acting in the real world.
+
+Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents. Contracts are dual-format Ricardian: human-readable legal text paired with machine-parsable JSON, linked by SHA-256 hash.
+
+## Key Pages
+
+- [Homepage](https://ambr.run): Product overview, use cases, and getting started
+- [Platform](https://getamber.dev): Dashboard, contract reader, API access
+- [Agent Card](https://getamber.dev/.well-known/agent.json): A2A protocol discovery endpoint
+- [API Endpoint](https://getamber.dev/api/a2a): JSON-RPC interface for agent-to-agent contract operations
+
+## What Ambr Does
+
+- Creates legally-structured Ricardian Contracts from templates (delegation d1-d3, commerce c1-c3)
+- Verifies contract integrity via SHA-256 hash comparison
+- Tracks contract lifecycle: draft, active, amended, terminated
+- Supports bilateral amendments with paired cryptographic NFTs
+- Provides agent handshake protocol for delegation acceptance
+
+## For AI Agents
+
+Ambr exposes an A2A-compatible agent card at `/.well-known/agent.json` with 6 skills:
+
+1. **create_contract** - Generate contracts from templates (1 credit each)
+2. **list_templates** - Browse available contract templates
+3. **get_contract** - Retrieve contracts by ID, hash, or UUID
+4. **verify_hash** - Verify SHA-256 integrity
+5. **get_status** - Check lifecycle status and amendment chain
+6. **agent_handshake** - Accept/reject contracts on behalf of a principal
+
+Authentication: API key (X-API-Key header) or x402 pay-per-contract (USDC on Base L2).
+
+## Technical Details
+
+- Protocol: Google A2A (Agent-to-Agent), JSON-RPC over HTTP
+- Contract format: Ricardian (dual human+machine), SHA-256 linked
+- Blockchain: Base L2 (compressed NFTs for on-chain anchoring)
+- API: RESTful + JSON-RPC at getamber.dev/api/a2a
+- Built with: Next.js, Supabase, Solana/Base
+
+## Contact
+
+- Website: https://ambr.run
+- Platform: https://getamber.dev
+- Twitter: @ambr_run
