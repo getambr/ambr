@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    // Check idempotency — don't create duplicate keys
+    // Check idempotency — don't process the same session twice
     const db = getSupabaseAdmin();
     const { data: existing } = await db
       .from('api_keys')
@@ -60,7 +60,64 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    // Generate and store API key
+    const isTopup = session.metadata?.mode === 'topup';
+    const paymentIntent = typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id;
+
+    if (isTopup) {
+      // Top-up: add credits to the most recent active key for this email
+      const { data: activeKey } = await db
+        .from('api_keys')
+        .select('id, credits, key_prefix')
+        .eq('email', email)
+        .eq('is_active', true)
+        .order('last_used_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .single();
+
+      if (!activeKey) {
+        console.error('Topup but no active key found for:', email);
+        // Fall through to create a new key instead
+      } else {
+        const newCredits = activeKey.credits === -1
+          ? -1  // already unlimited
+          : activeKey.credits + tierConfig.credits;
+
+        const { error: updateError } = await db
+          .from('api_keys')
+          .update({ credits: newCredits })
+          .eq('id', activeKey.id);
+
+        if (updateError) {
+          console.error('Failed to topup credits:', updateError);
+          return NextResponse.json({ error: 'DB error' }, { status: 500 });
+        }
+
+        // Record the topup as a separate row for payment history (no key_hash = not a login key)
+        await db.from('api_keys').insert({
+          key_hash: `topup_${session.id}`,
+          key_prefix: activeKey.key_prefix,
+          email,
+          tier,
+          credits: tierConfig.credits,
+          payment_method: 'stripe',
+          stripe_session_id: session.id,
+          stripe_payment_intent: paymentIntent,
+          is_active: false, // not a usable key — just a payment record
+        });
+
+        logAudit({
+          event_type: 'stripe_credits_topup',
+          actor: email,
+          details: { tier, session_id: session.id, key_prefix: activeKey.key_prefix, credits_added: tierConfig.credits, new_total: newCredits },
+        });
+
+        return NextResponse.json({ received: true });
+      }
+    }
+
+    // New key: generate and store
     const { key, hash, prefix } = generateApiKey();
 
     const { error: insertError } = await db.from('api_keys').insert({
@@ -71,9 +128,7 @@ export async function POST(request: Request) {
       credits: tierConfig.credits,
       payment_method: 'stripe',
       stripe_session_id: session.id,
-      stripe_payment_intent: typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : session.payment_intent?.id,
+      stripe_payment_intent: paymentIntent,
       pending_key_display: key,
       is_active: true,
     });

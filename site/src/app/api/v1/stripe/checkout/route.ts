@@ -8,6 +8,7 @@ import { corsOptions } from '@/lib/cors';
 const schema = z.object({
   email: z.email('Valid email required'),
   tier: z.enum(['startup', 'scale', 'enterprise']),
+  mode: z.enum(['new', 'topup']).optional(),
 });
 
 export async function POST(request: Request) {
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { email, tier } = parsed.data;
+  const { email, tier, mode } = parsed.data;
+  const isTopup = mode === 'topup';
   const tierConfig = TIER_PRICES[tier];
 
   try {
@@ -43,6 +45,10 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: email,
+      payment_intent_data: {
+        statement_descriptor: 'AMBR.RUN',
+        statement_descriptor_suffix: tierConfig.label.toUpperCase(),
+      },
       line_items: [
         {
           price_data: {
@@ -58,9 +64,13 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      metadata: { tier, email },
-      success_url: `${appUrl}/activate?session_id={CHECKOUT_SESSION_ID}&status=success`,
-      cancel_url: `${appUrl}/activate?status=cancelled`,
+      metadata: { tier, email, mode: isTopup ? 'topup' : 'new' },
+      success_url: isTopup
+        ? `${appUrl}/dashboard?topup=success`
+        : `${appUrl}/activate?session_id={CHECKOUT_SESSION_ID}&status=success`,
+      cancel_url: isTopup
+        ? `${appUrl}/dashboard?topup=cancelled`
+        : `${appUrl}/activate?status=cancelled`,
     });
 
     logAudit({
