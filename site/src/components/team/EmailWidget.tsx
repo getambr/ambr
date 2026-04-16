@@ -8,8 +8,8 @@ import {
 import {
   getEmailBody, draftReply, archiveEmail, improveDraft, sendThreadReply,
   sendNewEmail, generateNewDraft, improveCompose,
-  getSentLog, assignEmail, getAssignments,
-  type EmailBody, type TriagedEmail, type SentEmail,
+  getSentLog, assignEmail, getAssignments, approveDraft, updateDraft, archiveDrafts,
+  type EmailBody, type TriagedEmail, type SentEmail, type Draft,
 } from '@/lib/team-api'
 
 // Render a Gmail thread (one or more messages) as a stack of cards.
@@ -106,6 +106,7 @@ const TIER_1_ALIASES: AliasTab[] = [
   { id: 'legal@ambr.run', label: 'Legal', match: to => to.includes('legal@ambr.run'), p1: true },
   { id: 'privacy@ambr.run', label: 'Privacy', match: to => to.includes('privacy@ambr.run'), p1: true },
   { id: 'security@ambr.run', label: 'Security', match: to => to.includes('security@ambr.run'), p1: true },
+  { id: 'outbox', label: 'Outbox', match: () => false },
   { id: 'sent', label: 'Sent', match: () => false },
 ]
 
@@ -204,8 +205,8 @@ function extractEmail(input: string): string {
 
 type DraftState =
   | { phase: 'loading' }
-  | { phase: 'editing'; draftId: string; subject: string; body: string }
-  | { phase: 'sending'; draftId: string; subject: string; body: string }
+  | { phase: 'editing'; draftId: string; subject: string; body: string; autoDrafted?: boolean }
+  | { phase: 'sending'; draftId: string; subject: string; body: string; autoDrafted?: boolean }
   | { phase: 'error'; message: string }
 
 type ComposeState = {
@@ -229,15 +230,120 @@ type Mode =
 
 export function EmailWidget({
   emails,
+  drafts,
   loading,
   currentUserEmail,
+  onRefresh,
 }: {
   emails: { count: number; emails: TriagedEmail[] } | null
+  drafts?: { count: number; drafts: Draft[] } | null
   unread?: { unread: Record<string, number> } | null
   loading: boolean
   currentUserEmail?: string
+  onRefresh?: () => void
 }) {
   const [activeTab, setActiveTab] = useState<string>(() => pickDefaultTab(currentUserEmail))
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [outboxError, setOutboxError] = useState<string | null>(null)
+  // Unsaved edits per draft — flushed to server via updateDraft (Save) or sent
+  // with the approveDraft call (Approve & Send).
+  const [edits, setEdits] = useState<Record<string, { subject: string; body: string }>>({})
+
+  // Only compose-style drafts ("compose_*" draftId prefix, empty emailId) are
+  // considered outbound outreach. Reply drafts ("draft_*") are triage noise
+  // and are hidden from the UI — the inbox tabs handle inbound conversations.
+  const composeDrafts = useMemo(() => {
+    return (drafts?.drafts || []).filter(d => d.draftId?.startsWith('compose_'))
+  }, [drafts])
+
+  function getEditedFields(draft: Draft) {
+    const e = edits[draft.draftId]
+    return {
+      subject: e?.subject ?? draft.subject,
+      body: e?.body ?? draft.body,
+      isDirty: !!e && (e.subject !== draft.subject || e.body !== draft.body),
+    }
+  }
+
+  function updateLocalEdit(draftId: string, field: 'subject' | 'body', value: string) {
+    setEdits(prev => ({
+      ...prev,
+      [draftId]: { subject: prev[draftId]?.subject ?? '', body: prev[draftId]?.body ?? '', [field]: value },
+    }))
+  }
+
+  async function handleSaveEdit(draft: Draft) {
+    const { subject, body, isDirty } = getEditedFields(draft)
+    if (!isDirty) return
+    setSavingId(draft.draftId)
+    setOutboxError(null)
+    try {
+      const res = (await updateDraft(draft.draftId, subject, body)) as { updated?: boolean; error?: string }
+      if (res?.error) {
+        setOutboxError(res.error)
+      } else {
+        // Drop the local edit — server is now the source of truth; refresh
+        // pulls the saved values back into the `drafts` prop.
+        setEdits(prev => {
+          const next = { ...prev }
+          delete next[draft.draftId]
+          return next
+        })
+        onRefresh?.()
+      }
+    } catch (e) {
+      setOutboxError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function handleDeleteDraft(draft: Draft) {
+    if (!confirm('Delete this draft from the outbox? It will not be sent.')) return
+    setDeletingId(draft.draftId)
+    setOutboxError(null)
+    try {
+      const res = await archiveDrafts([draft.draftId])
+      if ('error' in res) {
+        setOutboxError(res.error)
+      } else {
+        onRefresh?.()
+      }
+    } catch (e) {
+      setOutboxError(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function handleApproveCompose(draft: Draft) {
+    const { subject, body, isDirty } = getEditedFields(draft)
+    setApprovingId(draft.draftId)
+    setOutboxError(null)
+    try {
+      const res = (await approveDraft(
+        draft.draftId,
+        isDirty ? subject : undefined,
+        isDirty ? body : undefined,
+      )) as { sent?: boolean; error?: string }
+      if (res?.error) {
+        setOutboxError(res.error)
+      } else {
+        setEdits(prev => {
+          const next = { ...prev }
+          delete next[draft.draftId]
+          return next
+        })
+        onRefresh?.()
+      }
+    } catch (e) {
+      setOutboxError(e instanceof Error ? e.message : 'Send failed')
+    } finally {
+      setApprovingId(null)
+    }
+  }
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [bodyData, setBodyData] = useState<EmailBody | null>(null)
@@ -255,9 +361,9 @@ export function EmailWidget({
   // Privacy filter: which aliases is this user allowed to see?
   const visibleAliasIds = useMemo(() => getVisibleAliases(currentUserEmail), [currentUserEmail])
 
-  // Tabs the user can see (always include 'all' + 'sent', plus only the aliases in their permitted set)
+  // Tabs the user can see (always include 'all' + 'outbox' + 'sent', plus only the aliases in their permitted set)
   const visibleTabs = useMemo(
-    () => TIER_1_ALIASES.filter(t => t.id === 'all' || t.id === 'sent' || visibleAliasIds.includes(t.id)),
+    () => TIER_1_ALIASES.filter(t => t.id === 'all' || t.id === 'outbox' || t.id === 'sent' || visibleAliasIds.includes(t.id)),
     [visibleAliasIds]
   )
 
@@ -352,6 +458,29 @@ export function EmailWidget({
   // inside the draft column to opt in to Kimi.
   function startReply(email: TriagedEmail) {
     const subject = `Re: ${email.subject.replace(/^re:\s*/i, '')}`
+
+    // If a Kimi auto-draft was already prepared by the Ops agent when this
+    // reply arrived (status='pending', emailId matches), pre-fill the editor
+    // with it instead of opening blank. Stamp autoDrafted=true so the UI shows
+    // the "AI pre-drafted" chip.
+    const autoDraft = drafts?.drafts?.find(
+      d => d.emailId === email.messageId && d.status === 'pending' && d.draftId?.startsWith('draft_')
+    )
+    if (autoDraft) {
+      setMode({
+        kind: 'replying',
+        email,
+        draft: {
+          phase: 'editing',
+          draftId: autoDraft.draftId,
+          subject: autoDraft.subject || subject,
+          body: autoDraft.body || '',
+          autoDrafted: true,
+        },
+      })
+      return
+    }
+
     setMode({
       kind: 'replying',
       email,
@@ -642,6 +771,11 @@ export function EmailWidget({
             <div className="mb-2 flex items-center gap-2">
               <Sparkles className={`h-3.5 w-3.5 text-amber ${draftPhase === 'loading' ? 'animate-pulse' : ''}`} />
               <p className="text-[10px] font-mono uppercase tracking-wider text-amber">Ambr Draft</p>
+              {(draftPhase === 'editing' || draftPhase === 'sending') && mode.draft.autoDrafted && (
+                <span className="rounded bg-amber/15 px-1.5 py-0.5 text-[10px] font-mono text-amber" title="Auto-drafted by Ops agent the moment this reply arrived">
+                  ⚡ AI pre-drafted
+                </span>
+              )}
               {draftPhase === 'sending' && (
                 <span className="ml-auto flex items-center gap-1 text-[10px] text-text-secondary">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -832,7 +966,10 @@ export function EmailWidget({
         <div className="mb-3 flex flex-wrap gap-1.5">
           {visibleTabs.map(tab => {
             const isActive = activeTab === tab.id
-            const count = tab.id === 'sent' ? sentEmails.length : ownedEmails.filter(e => tab.match((e.to_address || '').toLowerCase())).length
+            const count =
+              tab.id === 'sent' ? sentEmails.length
+              : tab.id === 'outbox' ? composeDrafts.length
+              : ownedEmails.filter(e => tab.match((e.to_address || '').toLowerCase())).length
             const showRedCount = tab.p1 && count > 0
             return (
               <button
@@ -853,7 +990,126 @@ export function EmailWidget({
           })}
         </div>
 
-        {activeTab === 'sent' ? (
+        {activeTab === 'outbox' ? (
+          loading ? (
+            <Skeleton />
+          ) : composeDrafts.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-text-secondary">
+              <Send className="mb-2 h-7 w-7 text-amber/30" />
+              <p className="text-sm">Outbox is empty</p>
+              <p className="mt-1 text-xs text-text-secondary/60">Staged outreach drafts will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {outboxError && (
+                <div className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
+                  {outboxError}
+                </div>
+              )}
+              {composeDrafts.map(draft => {
+                const isOpen = expandedId === `outbox-${draft.draftId}`
+                const isSending = approvingId === draft.draftId
+                const isSaving = savingId === draft.draftId
+                const isDeleting = deletingId === draft.draftId
+                const { subject: currentSubject, body: currentBody, isDirty } = getEditedFields(draft)
+                return (
+                  <div
+                    key={`outbox-${draft.draftId}`}
+                    className={`rounded-lg border bg-surface-elevated transition-colors ${isOpen ? 'border-amber/30' : 'border-border hover:border-amber/30'}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isOpen ? null : `outbox-${draft.draftId}`)}
+                      className="w-full text-left p-3 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Send className="h-3 w-3 text-amber/60 shrink-0" />
+                        <span className="rounded bg-amber/10 px-1.5 py-0.5 text-[10px] font-mono text-amber shrink-0">OUT</span>
+                        <span className="text-xs font-medium text-text-primary truncate">{draft.to}</span>
+                        {isDirty && !isOpen && (
+                          <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-mono text-warning shrink-0">EDITED</span>
+                        )}
+                        <span className="ml-auto text-[10px] font-mono text-text-secondary/50 shrink-0">
+                          {draft.created ? new Date(draft.created).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''}
+                        </span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-text-secondary/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                      <p className="mt-1 text-xs text-text-secondary truncate">{currentSubject}</p>
+                      {!isOpen && <p className="mt-1 text-[10px] text-text-secondary/50 line-clamp-1">{currentBody}</p>}
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3 border-t border-border mt-0 pt-3 space-y-2" onClick={e => e.stopPropagation()}>
+                        <label className="block">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60">Subject</span>
+                          <input
+                            type="text"
+                            value={currentSubject}
+                            onChange={e => updateLocalEdit(draft.draftId, 'subject', e.target.value)}
+                            className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-text-primary font-sans focus:border-amber/50 focus:outline-none"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-text-secondary/60">Body</span>
+                          <textarea
+                            value={currentBody}
+                            onChange={e => updateLocalEdit(draft.draftId, 'body', e.target.value)}
+                            rows={14}
+                            className="mt-1 w-full rounded-md border border-border bg-background p-2.5 text-xs text-text-primary font-sans leading-relaxed focus:border-amber/50 focus:outline-none resize-y min-h-[220px]"
+                          />
+                        </label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {draft.project && (
+                            <span className="rounded bg-amber/10 px-1.5 py-0.5 text-[10px] font-mono text-amber">{draft.project}</span>
+                          )}
+                          {isDirty && (
+                            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-mono text-warning">UNSAVED</span>
+                          )}
+                          <span className="text-[10px] font-mono text-text-secondary/50 truncate">ID: {draft.draftId}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDraft(draft)}
+                            disabled={isDeleting || isSending || isSaving}
+                            className="ml-auto flex items-center gap-1 rounded-md border border-error/30 bg-error/10 px-2.5 py-1.5 text-xs text-error transition-colors hover:bg-error/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {isDeleting ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Deleting...</>
+                            ) : (
+                              <><X className="h-3 w-3" /> Delete</>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEdit(draft)}
+                            disabled={isSaving || isDeleting || !isDirty}
+                            className="flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-amber/30 hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {isSaving ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
+                            ) : (
+                              <><Check className="h-3 w-3" /> Save</>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApproveCompose(draft)}
+                            disabled={isSending || isSaving || isDeleting}
+                            className="flex items-center gap-1 rounded-md bg-success/15 px-3 py-1.5 text-xs font-medium text-success transition-colors hover:bg-success/25 disabled:opacity-50"
+                          >
+                            {isSending ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Sending...</>
+                            ) : (
+                              <><Send className="h-3 w-3" /> Approve &amp; Send</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        ) : activeTab === 'sent' ? (
           sentLoading ? (
             <Skeleton />
           ) : sentEmails.length > 0 ? (
@@ -873,6 +1129,11 @@ export function EmailWidget({
                       <div className="flex items-center gap-2">
                         <Send className="h-3 w-3 text-amber/60 shrink-0" />
                         <span className="text-xs font-medium text-text-primary truncate">{email.to}</span>
+                        {email.reply_received_at && (
+                          <span className="rounded bg-success/15 px-1.5 py-0.5 text-[10px] font-mono text-success shrink-0" title={`Replied ${new Date(email.reply_received_at).toLocaleString('en-GB')}`}>
+                            ✓ REPLIED
+                          </span>
+                        )}
                         <span className="ml-auto text-[10px] font-mono text-text-secondary/50 shrink-0">
                           {email.createdAt ? new Date(email.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
@@ -883,6 +1144,18 @@ export function EmailWidget({
                     </button>
                     {isOpen && (
                       <div className="px-3 pb-3 border-t border-border mt-0 pt-3">
+                        {email.reply_received_at && (
+                          <div className="mb-3 rounded-md border border-success/30 bg-success/5 p-2.5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-success">Reply received</span>
+                              <span className="text-[10px] font-mono text-text-secondary/50">{new Date(email.reply_received_at).toLocaleString('en-GB')}</span>
+                            </div>
+                            {email.reply_snippet && (
+                              <p className="text-xs text-text-primary leading-relaxed">{email.reply_snippet}{email.reply_snippet.length >= 200 && '…'}</p>
+                            )}
+                            <p className="mt-1.5 text-[10px] text-text-secondary/60">Open Email Triage to read the full reply and the AI-drafted response.</p>
+                          </div>
+                        )}
                         <pre className="whitespace-pre-wrap break-words text-xs text-text-primary font-sans leading-relaxed max-h-[40vh] overflow-y-auto">
                           {email.body}
                         </pre>
@@ -893,10 +1166,20 @@ export function EmailWidget({
                           <span className="text-[10px] font-mono text-text-secondary/50">ID: {email.draftId}</span>
                           <button
                             type="button"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation()
-                              if (confirm('Delete this sent email from the log?')) {
-                                setSentEmails(prev => prev.filter(s => s.draftId !== email.draftId))
+                              if (!confirm('Delete this sent email from the log?')) return
+                              const removed = email
+                              setSentEmails(prev => prev.filter(s => s.draftId !== removed.draftId))
+                              try {
+                                const res = await archiveDrafts([removed.draftId])
+                                if ('error' in res) {
+                                  setSentEmails(prev => [removed, ...prev])
+                                  alert('Delete failed: ' + res.error)
+                                }
+                              } catch (err) {
+                                setSentEmails(prev => [removed, ...prev])
+                                alert('Delete failed: ' + String(err))
                               }
                             }}
                             className="ml-auto flex items-center gap-1 rounded-md border border-error/30 bg-error/10 px-2.5 py-1 text-[10px] text-error hover:bg-error/20 transition-colors"

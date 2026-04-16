@@ -77,6 +77,9 @@ export interface EmailBody {
 export interface Draft {
   draftId: string; to: string; subject: string; body: string
   project: string; status: string; created: string
+  // Optional: emailId is set when this is a reply-draft (linked to an inbound
+  // Gmail message). Compose drafts have emailId='' / undefined.
+  emailId?: string
 }
 
 export interface DraftReplyResponse {
@@ -197,6 +200,16 @@ export function approveDraft(draftId: string, editedSubject?: string, editedBody
   )
 }
 
+// Persist edits to a draft in DraftQueue without sending. Backed by the
+// Apps Script `update_draft` action (updateDraftInPlace). Returns the saved
+// subject/body so the UI can clear its local "dirty" state after a save.
+export function updateDraft(draftId: string, subject: string, body: string) {
+  return opsPost<
+    | { updated: true; draftId: string; subject: string; body: string }
+    | { error: string }
+  >('update_draft', { draftId, subject, body })
+}
+
 export function createEvent(event: {
   title: string; start: string; end: string;
   description?: string; location?: string; guests?: string;
@@ -212,12 +225,24 @@ export function createEvent(event: {
 export interface SentEmail {
   draftId: string; emailId: string; to: string; subject: string
   body: string; project: string; status: string; createdAt: string; approvedAt: string
+  // Filled by Apps Script when triageNewEmails detects a reply from the
+  // recipient (snake_case to match the DraftQueue sheet column names).
+  sent_message_id?: string
+  reply_received_at?: string
+  reply_snippet?: string
 }
 
 export function getSentLog(limit = 50) {
   return opsGet<{ count: number; total: number; emails: SentEmail[] }>(
     'sent_log', { max: String(limit) }
   )
+}
+
+export function archiveDrafts(draftIds: string[]) {
+  return opsPost<
+    | { archived: number; notFound: string[] }
+    | { error: string }
+  >('archive_drafts', { draftIds })
 }
 
 export function assignEmail(messageId: string, assignees: string[]) {

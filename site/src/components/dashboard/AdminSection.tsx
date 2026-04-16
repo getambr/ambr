@@ -75,14 +75,19 @@ export function AdminSection({
       <motion.div variants={item} initial="hidden" animate="show">
         <EmailWidget
           emails={data.emails}
+          drafts={data.drafts}
           unread={data.unread}
           loading={loading}
           currentUserEmail={currentUserEmail}
+          onRefresh={fetchAll}
         />
       </motion.div>
     )
   }
 
+  // Legacy: the separate Draft Queue nav item was removed in favor of an
+  // "Outbox" tab inside Email Triage. Kept as a fallback route so any
+  // bookmarked URL with ?section=drafts doesn't crash.
   if (activeSection === 'drafts') {
     return (
       <motion.div variants={item} initial="hidden" animate="show">

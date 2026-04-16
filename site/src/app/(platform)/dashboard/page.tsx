@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Layers, FileText, Send as SendIcon, Handshake, PenTool, ShieldCheck,
+  Layers, FileText, Handshake, PenTool, ShieldCheck,
   Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
   Calendar, Mail, Users, Lock, Copy, Check, ExternalLink,
   ArrowRight, Clock, Plus, RefreshCw, TrendingUp, Eye, Activity,
