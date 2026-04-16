@@ -1134,8 +1134,14 @@ export function EmailWidget({
                             ✓ REPLIED
                           </span>
                         )}
-                        <span className="ml-auto text-[10px] font-mono text-text-secondary/50 shrink-0">
-                          {email.createdAt ? new Date(email.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                        <span
+                          className="ml-auto text-[10px] font-mono text-text-secondary/50 shrink-0"
+                          title={email.createdAt ? `Drafted ${new Date(email.createdAt).toLocaleString('en-GB')}` : ''}
+                        >
+                          {(() => {
+                            const ts = email.approvedAt || email.createdAt
+                            return ts ? new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+                          })()}
                         </span>
                         <ChevronDown className={`h-4 w-4 shrink-0 text-text-secondary/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                       </div>
