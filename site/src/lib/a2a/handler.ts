@@ -308,6 +308,7 @@ async function handleSendMessage(
                     'c2-compute-sla': '$4.00',
                     'c3-task-execution': '$3.50',
                     'a1-service-purchase': '$0.30',
+                    'a2-ai-subscription': '$0.30',
                   },
                 },
                 alternative: {
