@@ -335,6 +335,53 @@ CONTRACT STRUCTURE:
 14. DISPUTE RESOLUTION — IETF ADP v1
 15. PRIMACY CLAUSE
 16. SIGNATURE BLOCK`,
+
+  // ─────────────────────────────────────────────
+  // A2: AI-Driven Subscription Agreement
+  // ─────────────────────────────────────────────
+  'a2-ai-subscription': `${BASE_INSTRUCTIONS}
+
+TEMPLATE: A2 — AI-Driven Subscription Agreement (Agent-to-Consumer)
+PURPOSE: Consumer subscribes to an AI-mediated service with recurring billing. Full consumer protection with cooling-off, cancellation parity, and explicit auto-renewal opt-in.
+
+LEGAL BASIS:
+- EU: Consumer Rights Directive 2011/83/EU (cooling-off Art. 9-16, auto-renewal Art. 22), eIDAS Art. 25, EU AI Act Art. 50 (transparency), GDPR Art. 13-14
+- US: UETA s. 14 (electronic agent formation), ESIGN Act, FTC Negative Option Rule (auto-renewal disclosure)
+- SG: Electronic Transactions Act s. 15, Consumer Protection (Fair Trading) Act
+- UK: Consumer Rights Act 2015 s. 62, Consumer Contracts Regulations 2013, UCTA 1977 s. 2-3, ECA 2000 s. 7
+
+CRITICAL CONSUMER REQUIREMENTS:
+- MUST include 14-day minimum cooling-off period
+- MUST state cancellation terms prominently — cancellation must be as easy as sign-up
+- MUST disclose AI agent involvement (EU AI Act Art. 50)
+- Auto-renewal MUST default to OFF; consumer must explicitly opt in
+- MUST NOT exclude liability for negligence or death (UCTA s. 2)
+- MUST include GDPR data processing notice
+- MUST use plain language in consumer-facing sections
+- Prorated refund on cancellation by default
+
+REQUIRED PARAMETERS: consumer_name, consumer_email, provider_name, provider_agent_id, subscription_description, monthly_fee, currency, billing_cycle, cancellation_notice_days, governing_law
+OPTIONAL PARAMETERS: sla_description, cooling_off_days (default 14), auto_renew (default false), prorated_refund (default true)
+
+CONTRACT STRUCTURE:
+1. RECITALS — identify parties (consumer + AI agent acting for provider); electronic agent formation recital (jurisdiction-specific)
+2. PLAIN-LANGUAGE SUMMARY — one paragraph: what the consumer gets, how much it costs per billing cycle, how to cancel, cooling-off rights
+3. AGENT DISCLOSURE — EU AI Act Art. 50: "This subscription is managed by an AI agent on behalf of [provider_name]. The AI agent operates under the authority of the provider through an Ambr delegation contract."
+4. SUBSCRIPTION DESCRIPTION — from subscription_description parameter; included features, exclusions
+5. PRICING AND BILLING — monthly_fee, currency, billing_cycle, when charges occur, all fees itemized
+6. SERVICE LEVEL — sla_description terms (uptime, response time, support hours); remedies for SLA breach
+7. COOLING-OFF PERIOD — {cooling_off_days} days from signing; how to exercise (email to provider); no penalty for withdrawal
+8. CANCELLATION AND REFUND — cancellation_notice_days; cancellation process must be as easy as sign-up; prorated_refund terms; no hidden barriers or retention flows
+9. AUTO-RENEWAL — auto_renew status; if true, explicit consumer consent recorded; renewal notification at least 30 days before; one-click opt-out
+10. LIABILITY — provider liable for agent actions within subscription scope; UCTA-compliant caps (minimum 2x monthly_fee); no exclusion of liability for negligence or death
+11. DATA PROTECTION — GDPR Art. 13-14 information notice; who processes data, purpose, retention period, consumer rights (access, erasure, portability)
+12. CONSUMER RIGHTS NOTICE — reference to applicable consumer protection law (CRD, CRA, UCTA, FTC rules)
+13. DISPUTE RESOLUTION — IETF ADP v1 primary; consumer retains right to small claims court
+14. CHOICE OF LAW — governing_law; EU consumers retain local mandatory protections regardless
+15. PRIMACY CLAUSE — human-readable text prevails
+16. SHA-256 HASH — placeholder for verification
+17. ELECTRONIC SIGNATURE ACKNOWLEDGMENT — ECDSA/blockchain valid
+18. SIGNATURE BLOCK`,
 };
 
 // ─────────────────────────────────────────────
