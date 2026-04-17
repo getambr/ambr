@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { validateApiKey } from '@/lib/api-auth';
+import { validateApiKey, isAdmin } from '@/lib/api-auth';
 import { hashContract } from '@/lib/contract-engine';
 
 // TEMPORARY debug + rehash endpoint — remove after fixing hash mismatches
@@ -19,9 +19,14 @@ function deepSortKeys(obj: unknown): unknown {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await validateApiKey(request);
+  if (!auth || !isAdmin(auth.email)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   const { id } = await params;
   const db = getSupabaseAdmin();
 
@@ -98,14 +103,12 @@ export async function GET(
  * Updates sha256_hash so the Reader shows "Hash Verified" for the
  * actual stored text (even if that text has encoding artifacts).
  */
-const ADMIN_EMAILS = ['ilvers.sermols@gmail.com', 'flossydev@gmail.com'];
-
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await validateApiKey(request);
-  if (!auth || !ADMIN_EMAILS.includes(auth.email)) {
+  if (!auth || !isAdmin(auth.email)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
