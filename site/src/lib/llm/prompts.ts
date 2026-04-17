@@ -53,6 +53,51 @@ RULES:
 
 const TEMPLATE_PROMPTS: Record<string, string> = {
   // ─────────────────────────────────────────────
+  // A1: Service Purchase Agreement (Agent-to-Consumer)
+  // ─────────────────────────────────────────────
+  'a1-service-purchase': `${BASE_INSTRUCTIONS}
+
+TEMPLATE: A1 — Service Purchase Agreement (Agent-to-Consumer)
+PURPOSE: AI agent sells a defined service to a human consumer with full consumer protection.
+
+LEGAL BASIS:
+- EU: Consumer Rights Directive 2011/83/EU (cooling-off Art. 9-16), eIDAS Art. 25, EU AI Act Art. 50 (transparency), GDPR Art. 13-14
+- US: UETA s. 14 (electronic agent formation), ESIGN Act, FTC Act s. 5 (unfair practices)
+- SG: Electronic Transactions Act s. 15, Consumer Protection (Fair Trading) Act
+- UK: Consumer Rights Act 2015 s. 62, UCTA 1977 s. 2-3, ECA 2000 s. 7
+
+CRITICAL CONSUMER REQUIREMENTS:
+- MUST include 14-day minimum cooling-off period
+- MUST state refund policy in first 3 sections
+- MUST disclose AI agent involvement (EU AI Act Art. 50)
+- MUST NOT exclude liability for negligence or death (UCTA s. 2)
+- MUST include GDPR data processing notice
+- MUST use plain language (no dense legal jargon in consumer sections)
+- Cancellation must be as easy as purchase
+
+REQUIRED PARAMETERS: consumer_name, consumer_email, provider_name, provider_agent_id, service_description, fee, currency, delivery_timeline, refund_policy, governing_law
+OPTIONAL PARAMETERS: cooling_off_days (default 14), data_processing_notice, agent_disclosure
+
+CONTRACT STRUCTURE:
+1. RECITALS — identify parties (consumer + AI agent acting for provider); electronic agent formation recital (jurisdiction-specific)
+2. PLAIN-LANGUAGE SUMMARY — one paragraph describing what the consumer is getting, for how much, and how to cancel
+3. AGENT DISCLOSURE — EU AI Act Art. 50: "This contract is generated and administered by an AI agent on behalf of [provider_name]. The AI agent operates under the authority of the provider through an Ambr delegation contract."
+4. SERVICE DESCRIPTION — from service_description parameter
+5. PRICING AND PAYMENT — fee, currency, all charges itemized; no hidden costs
+6. DELIVERY — delivery_timeline terms
+7. COOLING-OFF PERIOD — {cooling_off_days} days from signing; how to exercise (email to provider); no penalty for withdrawal
+8. CANCELLATION AND REFUND — refund_policy terms; cancellation must be as easy as purchase; no hidden barriers
+9. LIABILITY — provider liable for agent actions; UCTA-compliant caps (minimum 2x fee); no exclusion of liability for negligence or death (UCTA s. 2)
+10. DATA PROTECTION — GDPR Art. 13-14 information notice; who processes data, purpose, retention, consumer rights (access, erasure, portability)
+11. CONSUMER RIGHTS NOTICE — reference to applicable consumer protection legislation (Consumer Rights Directive, Consumer Rights Act 2015, UCTA)
+12. DISPUTE RESOLUTION — IETF ADP v1 primary; consumer retains right to small claims court
+13. CHOICE OF LAW — governing_law; EU consumers retain local mandatory protections regardless
+14. PRIMACY CLAUSE — human-readable text prevails
+15. SHA-256 HASH — placeholder for verification
+16. ELECTRONIC SIGNATURE ACKNOWLEDGMENT — ECDSA/blockchain valid
+17. SIGNATURE BLOCK`,
+
+  // ─────────────────────────────────────────────
   // D1: General Agent Authorization
   // ─────────────────────────────────────────────
   'd1-general-auth': `${BASE_INSTRUCTIONS}

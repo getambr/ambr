@@ -9,6 +9,7 @@ describe('getTemplatePrompt', () => {
     'c1-api-access',
     'c2-compute-sla',
     'c3-task-execution',
+    'a1-service-purchase',
   ];
 
   for (const slug of templateSlugs) {
@@ -42,6 +43,56 @@ describe('getTemplatePrompt', () => {
       });
     });
   }
+
+  describe('a1-service-purchase consumer requirements', () => {
+    const prompt = getTemplatePrompt('a1-service-purchase');
+
+    it('includes cooling-off period', () => {
+      expect(prompt).toContain('COOLING-OFF');
+      expect(prompt).toContain('14');
+    });
+
+    it('includes cancellation parity requirement', () => {
+      expect(prompt).toContain('cancellation must be as easy as purchase');
+    });
+
+    it('includes AI agent disclosure', () => {
+      expect(prompt).toContain('EU AI Act Art. 50');
+      expect(prompt).toContain('AGENT DISCLOSURE');
+    });
+
+    it('includes GDPR data protection notice', () => {
+      expect(prompt).toContain('GDPR Art. 13-14');
+      expect(prompt).toContain('DATA PROTECTION');
+    });
+
+    it('includes consumer rights notice', () => {
+      expect(prompt).toContain('CONSUMER RIGHTS');
+      expect(prompt).toContain('Consumer Rights Directive');
+    });
+
+    it('prohibits exclusion of negligence liability', () => {
+      expect(prompt).toContain('UCTA s. 2');
+      expect(prompt).toContain('negligence or death');
+    });
+
+    it('includes refund policy requirement', () => {
+      expect(prompt).toContain('refund_policy');
+      expect(prompt).toContain('CANCELLATION AND REFUND');
+    });
+
+    it('includes plain-language summary', () => {
+      expect(prompt).toContain('PLAIN-LANGUAGE SUMMARY');
+    });
+
+    it('includes consumer right to small claims court', () => {
+      expect(prompt).toContain('small claims court');
+    });
+
+    it('references eIDAS', () => {
+      expect(prompt).toContain('eIDAS Art. 25');
+    });
+  });
 
   describe('legacy slug mapping', () => {
     it('maps "delegation" to d1-general-auth', () => {
