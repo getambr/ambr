@@ -382,6 +382,53 @@ CONTRACT STRUCTURE:
 16. SHA-256 HASH — placeholder for verification
 17. ELECTRONIC SIGNATURE ACKNOWLEDGMENT — ECDSA/blockchain valid
 18. SIGNATURE BLOCK`,
+
+  // ─────────────────────────────────────────────
+  // A3: AI Agent Warranty and Liability Agreement
+  // ─────────────────────────────────────────────
+  'a3-warranty-liability': `${BASE_INSTRUCTIONS}
+
+TEMPLATE: A3 — AI Agent Warranty and Liability Agreement (Agent-to-Consumer)
+PURPOSE: AI agent commits to a guaranteed service outcome with enforceable liability caps, claim procedures, and remedies. Consumer-facing warranty with full consumer protection.
+
+LEGAL BASIS:
+- EU: Consumer Rights Directive 2011/83/EU (cooling-off Art. 9-16), Consumer Sales Directive 2019/771, eIDAS Art. 25, EU AI Act Art. 50 (transparency), GDPR Art. 13-14
+- US: UETA s. 14 (electronic agent formation), ESIGN Act, Magnuson-Moss Warranty Act (written warranty requirements), UCC Art. 2 (implied warranties)
+- SG: Electronic Transactions Act s. 15, Consumer Protection (Fair Trading) Act, Sale of Goods Act (implied terms)
+- UK: Consumer Rights Act 2015 s. 9-18 (goods), s. 49-52 (services), UCTA 1977 s. 2-3, ECA 2000 s. 7
+
+CRITICAL CONSUMER REQUIREMENTS:
+- MUST include 14-day minimum cooling-off period
+- MUST NOT exclude liability for negligence or death (UCTA s. 2 — absolute prohibition)
+- Liability cap MUST be reasonable under UCTA s. 11 (minimum 2x contract value for consumer contracts)
+- MUST disclose AI agent involvement (EU AI Act Art. 50)
+- Guaranteed outcome MUST be objectively verifiable
+- Claim procedure MUST be clear and accessible — no hidden barriers
+- Consumer retains right to reject arbitration in favor of small claims court
+- MUST include GDPR data processing notice
+- MUST use plain language in consumer-facing sections
+
+REQUIRED PARAMETERS: consumer_name, consumer_email, provider_name, provider_agent_id, warranty_description, guaranteed_outcome, liability_cap_usd, remedy_description, claim_deadline_days, governing_law
+OPTIONAL PARAMETERS: arbitration_provider (default "IETF ADP v1"), cooling_off_days (default 14)
+
+CONTRACT STRUCTURE:
+1. RECITALS — identify parties (consumer + AI agent acting for provider); electronic agent formation recital (jurisdiction-specific)
+2. PLAIN-LANGUAGE SUMMARY — one paragraph: what is warranted, what happens if the guarantee fails, how to claim, cooling-off rights
+3. AGENT DISCLOSURE — EU AI Act Art. 50: "This warranty is issued and administered by an AI agent on behalf of [provider_name]. The AI agent operates under the authority of the provider through an Ambr delegation contract."
+4. WARRANTY SCOPE — warranty_description parameter; what is covered, what is excluded; duration
+5. GUARANTEED OUTCOME — guaranteed_outcome parameter; specific, measurable, objectively verifiable criteria
+6. LIABILITY CAP — liability_cap_usd; UCTA s. 11 reasonableness statement; minimum 2x contract value; no exclusion of negligence/death liability
+7. REMEDIES — remedy_description parameter; refund, credit, re-performance, or replacement; consumer choice where reasonable
+8. CLAIM PROCEDURE — claim_deadline_days window; how to file (email to provider); evidence requirements; response timeline (14 business days max)
+9. COOLING-OFF PERIOD — {cooling_off_days} days from signing; how to exercise (email to provider); no penalty for withdrawal
+10. DATA PROTECTION — GDPR Art. 13-14 information notice; who processes data, purpose, retention period, consumer rights (access, erasure, portability)
+11. CONSUMER RIGHTS NOTICE — statutory warranty rights under applicable law (CRA 2015, Magnuson-Moss, Consumer Sales Directive); this agreement supplements, does not replace, statutory rights
+12. DISPUTE RESOLUTION — arbitration_provider primary; consumer retains right to reject arbitration and use small claims court; IETF ADP v1 fallback
+13. CHOICE OF LAW — governing_law; EU consumers retain local mandatory protections regardless
+14. PRIMACY CLAUSE — human-readable text prevails
+15. SHA-256 HASH — placeholder for verification
+16. ELECTRONIC SIGNATURE ACKNOWLEDGMENT — ECDSA/blockchain valid
+17. SIGNATURE BLOCK`,
 };
 
 // ─────────────────────────────────────────────

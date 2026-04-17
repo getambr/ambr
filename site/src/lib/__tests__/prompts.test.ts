@@ -11,6 +11,7 @@ describe('getTemplatePrompt', () => {
     'c3-task-execution',
     'a1-service-purchase',
     'a2-ai-subscription',
+    'a3-warranty-liability',
   ];
 
   for (const slug of templateSlugs) {
@@ -129,6 +130,65 @@ describe('getTemplatePrompt', () => {
 
     it('references eIDAS', () => {
       expect(prompt).toContain('eIDAS Art. 25');
+    });
+  });
+
+  describe('a3-warranty-liability consumer requirements', () => {
+    const prompt = getTemplatePrompt('a3-warranty-liability');
+
+    it('includes cooling-off period', () => {
+      expect(prompt).toContain('COOLING-OFF');
+      expect(prompt).toContain('14');
+    });
+
+    it('includes warranty scope and guaranteed outcome', () => {
+      expect(prompt).toContain('WARRANTY SCOPE');
+      expect(prompt).toContain('GUARANTEED OUTCOME');
+      expect(prompt).toContain('objectively verifiable');
+    });
+
+    it('includes liability cap with UCTA reasonableness', () => {
+      expect(prompt).toContain('LIABILITY CAP');
+      expect(prompt).toContain('UCTA s. 11');
+      expect(prompt).toContain('2x contract value');
+    });
+
+    it('prohibits exclusion of negligence liability', () => {
+      expect(prompt).toContain('UCTA s. 2');
+      expect(prompt).toContain('negligence or death');
+    });
+
+    it('includes claim procedure', () => {
+      expect(prompt).toContain('CLAIM PROCEDURE');
+      expect(prompt).toContain('claim_deadline_days');
+    });
+
+    it('includes AI agent disclosure', () => {
+      expect(prompt).toContain('EU AI Act Art. 50');
+      expect(prompt).toContain('AGENT DISCLOSURE');
+    });
+
+    it('includes consumer right to reject arbitration', () => {
+      expect(prompt).toContain('small claims court');
+      expect(prompt).toContain('reject arbitration');
+    });
+
+    it('includes GDPR data protection notice', () => {
+      expect(prompt).toContain('GDPR Art. 13-14');
+      expect(prompt).toContain('DATA PROTECTION');
+    });
+
+    it('includes consumer rights notice with statutory warranty', () => {
+      expect(prompt).toContain('CONSUMER RIGHTS');
+      expect(prompt).toContain('statutory');
+    });
+
+    it('references eIDAS', () => {
+      expect(prompt).toContain('eIDAS Art. 25');
+    });
+
+    it('references Magnuson-Moss Warranty Act', () => {
+      expect(prompt).toContain('Magnuson-Moss');
     });
   });
 

@@ -309,6 +309,7 @@ async function handleSendMessage(
                     'c3-task-execution': '$3.50',
                     'a1-service-purchase': '$0.30',
                     'a2-ai-subscription': '$0.30',
+                    'a3-warranty-liability': '$0.30',
                   },
                 },
                 alternative: {
