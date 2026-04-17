@@ -16,17 +16,61 @@ import { authenticateRequest, buildPaymentRequired, linkPaymentToContract } from
 import type { AuthContext } from '@/lib/adapters/payment/index';
 import { corsOptions } from '@/lib/cors';
 import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
+import { verifyMessage } from 'ethers';
+
+const WALLET_SIG_MAX_AGE_MS = 5 * 60 * 1000;
+
+async function verifyWalletOwnership(request: Request, wallet: string): Promise<{ valid: boolean; error?: string }> {
+  const signature = request.headers.get('X-Wallet-Signature');
+  const message = request.headers.get('X-Wallet-Message');
+
+  if (!signature || !message) {
+    return { valid: false, error: 'Wallet lookup requires X-Wallet-Signature and X-Wallet-Message headers to prove ownership' };
+  }
+
+  const tsMatch = message.match(/Timestamp:\s*(\d+)/);
+  if (!tsMatch) {
+    return { valid: false, error: 'X-Wallet-Message must contain a Timestamp field (unix ms)' };
+  }
+
+  const messageTs = parseInt(tsMatch[1], 10);
+  if (Math.abs(Date.now() - messageTs) > WALLET_SIG_MAX_AGE_MS) {
+    return { valid: false, error: 'Signature expired. Timestamp must be within 5 minutes of server time.' };
+  }
+
+  let recoveredAddress: string;
+  try {
+    recoveredAddress = verifyMessage(message, signature);
+  } catch {
+    return { valid: false, error: 'Signature verification failed' };
+  }
+
+  if (recoveredAddress.toLowerCase() !== wallet.toLowerCase()) {
+    return { valid: false, error: 'Recovered address does not match wallet parameter' };
+  }
+
+  return { valid: true };
+}
 
 export async function GET(request: Request) {
-  // Auth — API key for listing (x402 users query by wallet via separate param)
   const apiCtx = await validateApiKey(request);
   const walletParam = new URL(request.url).searchParams.get('wallet');
 
   if (!apiCtx && !walletParam) {
     return NextResponse.json(
-      { error: 'unauthorized', message: 'Valid API key required via X-API-Key header, or provide ?wallet= query parameter' },
+      { error: 'unauthorized', message: 'Valid API key required via X-API-Key header, or provide ?wallet= with signature headers' },
       { status: 401 },
     );
+  }
+
+  if (walletParam && !apiCtx) {
+    const walletAuth = await verifyWalletOwnership(request, walletParam);
+    if (!walletAuth.valid) {
+      return NextResponse.json(
+        { error: 'unauthorized', message: walletAuth.error },
+        { status: 401 },
+      );
+    }
   }
 
   const { searchParams } = new URL(request.url);
