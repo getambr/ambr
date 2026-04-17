@@ -28,6 +28,7 @@ export async function getTemplatePrice(templateSlug: string): Promise<bigint> {
     'c1-api-access': 1_000000n,       // $1.00
     'c2-compute-sla': 1_000000n,      // $1.00
     'c3-task-execution': 1_000000n,   // $1.00
+    'a1-service-purchase': 300000n,   // $0.30
   };
 
   return defaults[templateSlug] ?? 1_000000n; // default $1 if unknown
