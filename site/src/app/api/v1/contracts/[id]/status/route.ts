@@ -19,7 +19,7 @@ export async function GET(
   // Lookup contract (lightweight fields only)
   let query = db
     .from('contracts')
-    .select('id, contract_id, status, sha256_hash, amendment_type, parent_contract_hash, created_at, updated_at, revoked_at, revoked_by, revocation_reason, expiry_date');
+    .select('id, contract_id, status, sha256_hash, amendment_type, parent_contract_hash, created_at, updated_at, revoked_at, revoked_by, revocation_reason, expiry_date, visibility');
 
   if (id.startsWith('amb-')) {
     query = query.eq('contract_id', id);
@@ -83,18 +83,23 @@ export async function GET(
   }
 
   const proposalsList = (proposals ?? []) as unknown as { status: string }[];
+  const visibility = (contract.visibility as string) || 'private';
+  const isRestricted = visibility === 'private' || visibility === 'encrypted';
 
   return NextResponse.json({
     contract_id: contract.contract_id,
     status: contract.status,
+    visibility,
     sha256_hash: contract.sha256_hash,
     amendment_type: contract.amendment_type,
-    signatures: signatures,
+    signatures: isRestricted
+      ? signatures.map((s) => ({ signed_at: s.signed_at, signature_level: s.signature_level }))
+      : signatures,
     signature_count: signatures.length,
     created_at: contract.created_at,
     updated_at: contract.updated_at,
     revoked_at: contract.revoked_at,
-    revoked_by: contract.revoked_by,
+    revoked_by: isRestricted ? undefined : contract.revoked_by,
     revocation_reason: contract.revocation_reason,
     expiry_date: contract.expiry_date,
     parent: parent,
@@ -105,9 +110,13 @@ export async function GET(
       sha256_hash: a.sha256_hash,
       created_at: a.created_at,
     })),
-    proposals: proposalsList,
+    proposals: isRestricted
+      ? proposalsList.map((p) => ({ status: (p as Record<string, unknown>).status, created_at: (p as Record<string, unknown>).created_at }))
+      : proposalsList,
     pending_proposals: proposalsList.filter((p: { status: string }) => p.status === 'pending').length,
-    reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
+    reader_url: visibility === 'public' || visibility === 'metadata_only'
+      ? `https://getamber.dev/reader/${contract.sha256_hash}`
+      : undefined,
   });
 }
 

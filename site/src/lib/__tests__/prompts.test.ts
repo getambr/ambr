@@ -12,6 +12,7 @@ describe('getTemplatePrompt', () => {
     'a1-service-purchase',
     'a2-ai-subscription',
     'a3-warranty-liability',
+    'p1-nda',
   ];
 
   for (const slug of templateSlugs) {
@@ -211,10 +212,65 @@ describe('getTemplatePrompt', () => {
       expect(legacy).toBe(direct);
     });
 
-    it('maps "nda" to c3-task-execution', () => {
+    it('maps "nda" to p1-nda', () => {
       const legacy = getTemplatePrompt('nda');
-      const direct = getTemplatePrompt('c3-task-execution');
+      const direct = getTemplatePrompt('p1-nda');
       expect(legacy).toBe(direct);
+    });
+  });
+
+  describe('p1-nda C2C requirements', () => {
+    const prompt = getTemplatePrompt('p1-nda');
+
+    it('states no agent_id required', () => {
+      expect(prompt).toContain('NO agent_id');
+    });
+
+    it('supports mutual and one-way NDA types', () => {
+      expect(prompt).toContain('mutual');
+      expect(prompt).toContain('one-way-a-to-b');
+      expect(prompt).toContain('one-way-b-to-a');
+    });
+
+    it('includes standard exclusions', () => {
+      expect(prompt).toContain('public domain');
+      expect(prompt).toContain('independently developed');
+      expect(prompt).toContain('compelled disclosure');
+      expect(prompt).toContain('court order');
+    });
+
+    it('includes surviving obligations', () => {
+      expect(prompt).toContain('surviving');
+      expect(prompt).toContain('24');
+    });
+
+    it('includes confidential scope definition', () => {
+      expect(prompt).toContain('CONFIDENTIAL INFORMATION SCOPE');
+      expect(prompt).toContain('confidential_scope');
+    });
+
+    it('includes return of materials clause', () => {
+      expect(prompt).toContain('RETURN OF MATERIALS');
+    });
+
+    it('includes remedies with injunctive relief', () => {
+      expect(prompt).toContain('REMEDIES');
+      expect(prompt).toContain('injunctive relief');
+    });
+
+    it('includes no-license clause', () => {
+      expect(prompt).toContain('NO LICENSE');
+    });
+
+    it('identifies both parties by email for signing', () => {
+      expect(prompt).toContain('party_a_email');
+      expect(prompt).toContain('party_b_email');
+      expect(prompt).toContain('magic link');
+    });
+
+    it('references trade secret legislation', () => {
+      expect(prompt).toContain('Defend Trade Secrets Act');
+      expect(prompt).toContain('Directive (EU) 2016/943');
     });
   });
 

@@ -310,6 +310,7 @@ async function handleSendMessage(
                     'a1-service-purchase': '$0.30',
                     'a2-ai-subscription': '$0.30',
                     'a3-warranty-liability': '$0.30',
+                    'p1-nda': '$0.50',
                   },
                 },
                 alternative: {

@@ -128,6 +128,28 @@ describe('createContractSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('accepts all valid visibility values', () => {
+    for (const visibility of ['private', 'metadata_only', 'public', 'encrypted']) {
+      const result = createContractSchema.safeParse({ ...validInput, visibility });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('defaults to no visibility (optional field)', () => {
+    const result = createContractSchema.safeParse(validInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.visibility).toBeUndefined();
+    }
+  });
+
+  it('rejects invalid visibility values', () => {
+    for (const visibility of ['secret', 'hidden', 'restricted', '']) {
+      const result = createContractSchema.safeParse({ ...validInput, visibility });
+      expect(result.success).toBe(false);
+    }
+  });
 });
 
 describe('activateKeySchema', () => {
