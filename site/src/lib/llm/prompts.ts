@@ -386,6 +386,49 @@ CONTRACT STRUCTURE:
   // ─────────────────────────────────────────────
   // A3: AI Agent Warranty and Liability Agreement
   // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // P1: Non-Disclosure Agreement (Peer-to-Peer)
+  // ─────────────────────────────────────────────
+  'p1-nda': `${BASE_INSTRUCTIONS}
+
+TEMPLATE: P1 — Non-Disclosure Agreement (Peer-to-Peer)
+PURPOSE: Mutual or one-way NDA between two individuals or entities. Defines confidential information scope, term, surviving obligations, and remedies. Both parties are human — no agent_id required.
+
+LEGAL BASIS:
+- US: UETA s. 14, ESIGN Act, Defend Trade Secrets Act 2016 (federal trade secret protection), state UTSA (Uniform Trade Secrets Act)
+- EU: eIDAS Art. 25 (electronic signatures), Directive (EU) 2016/943 (trade secrets protection)
+- SG: Electronic Transactions Act s. 15, common law of confidence
+- UK: ECA 2000 s. 7, common law duty of confidence, Intellectual Property (Unjustified Threats) Act 2017
+
+IMPORTANT — C2C TEMPLATE:
+- NO agent_id required — both parties are human consumers
+- Both parties sign via email magic link (Privy adapter)
+- NDA type controls clause symmetry: "mutual" = symmetric obligations; "one-way-a-to-b" = Party A discloses, Party B receives; "one-way-b-to-a" = Party B discloses, Party A receives
+- MUST include standard exclusions even if not provided: public domain information, prior knowledge, compelled disclosure (court order/subpoena), independent development
+- Surviving obligations continue after NDA expiry (default 24 months)
+
+REQUIRED PARAMETERS: party_a_name, party_a_email, party_b_name, party_b_email, nda_type, confidential_scope, term_months, governing_law
+OPTIONAL PARAMETERS: exclusions, surviving_obligations_months (default 24), permitted_disclosures
+
+CONTRACT STRUCTURE:
+1. RECITALS — identify both parties by name and email; electronic formation recital (jurisdiction-specific); state whether mutual or one-way NDA
+2. PARTIES — Party A (disclosing party in one-way) and Party B (receiving party in one-way); for mutual NDA, both are disclosing and receiving
+3. DEFINITIONS — "Confidential Information" (from confidential_scope parameter); "Disclosing Party"; "Receiving Party"; "Representatives" (employees, advisors, agents)
+4. CONFIDENTIAL INFORMATION SCOPE — detailed description from confidential_scope; forms covered (written, oral, electronic, visual)
+5. STANDARD EXCLUSIONS — (a) publicly available information (not through breach); (b) already known to receiving party (with evidence); (c) independently developed without reference to confidential information; (d) received from third party without restriction; (e) compelled disclosure by court order or legal process (with prompt notice to disclosing party)
+6. OBLIGATIONS OF RECEIVING PARTY — use only for permitted purpose; protect with same care as own confidential information (minimum reasonable care); no disclosure except to permitted recipients; return or destroy on termination
+7. PERMITTED DISCLOSURES — from permitted_disclosures parameter; recipients must be bound by equivalent confidentiality obligations
+8. TERM — term_months duration from effective date; surviving_obligations_months after expiry for ongoing confidentiality
+9. REMEDIES — injunctive relief available (monetary damages may be inadequate); prevailing party entitled to reasonable legal fees where permitted by governing law
+10. RETURN OF MATERIALS — on termination or request, receiving party must return or certify destruction of all confidential materials within 30 days
+11. NO LICENSE — nothing in this agreement grants any IP rights or license to use confidential information beyond the stated purpose
+12. DISPUTE RESOLUTION — IETF ADP v1 primary; fallback to jurisdiction courts
+13. CHOICE OF LAW — governing_law jurisdiction
+14. PRIMACY CLAUSE — human-readable text prevails
+15. SHA-256 HASH — placeholder for verification
+16. ELECTRONIC SIGNATURE ACKNOWLEDGMENT — both parties accept electronic signatures as valid per UETA/ESIGN/eIDAS
+17. SIGNATURE BLOCK — both parties sign via email magic link`,
+
   'a3-warranty-liability': `${BASE_INSTRUCTIONS}
 
 TEMPLATE: A3 — AI Agent Warranty and Liability Agreement (Agent-to-Consumer)
@@ -438,7 +481,7 @@ const LEGACY_SLUG_MAP: Record<string, string> = {
   delegation: 'd1-general-auth',
   commerce: 'c1-api-access',
   'service-agreement': 'c2-compute-sla',
-  nda: 'c3-task-execution',
+  nda: 'p1-nda',
 };
 
 export function getTemplatePrompt(slug: string): string {

@@ -31,6 +31,7 @@ export async function getTemplatePrice(templateSlug: string): Promise<bigint> {
     'a1-service-purchase': 300000n,   // $0.30
     'a2-ai-subscription': 300000n,    // $0.30
     'a3-warranty-liability': 300000n, // $0.30
+    'p1-nda': 500000n,               // $0.50
   };
 
   return defaults[templateSlug] ?? 1_000000n; // default $1 if unknown
