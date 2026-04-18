@@ -27,7 +27,7 @@ export default function DocsPage() {
             getamber.dev/activate
           </a>
           , enter your email, and receive an API key instantly. The free developer tier
-          includes 5 contracts with no payment required.
+          includes 5 contracts per account per month with no payment required.
         </p>
       </section>
 
