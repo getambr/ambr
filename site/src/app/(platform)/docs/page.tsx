@@ -27,7 +27,7 @@ export default function DocsPage() {
             getamber.dev/activate
           </a>
           , enter your email, and receive an API key instantly. The free developer tier
-          includes 25 contracts per month with no payment required.
+          includes 5 contracts per account per month with no payment required.
         </p>
       </section>
 
@@ -371,7 +371,7 @@ export default function DocsPage() {
               </tr>
             </thead>
             <tbody className="text-text-secondary">
-              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Developer</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 pr-4 text-xs">25</td><td className="py-2 text-xs">N/A</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Developer</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 pr-4 text-xs">5</td><td className="py-2 text-xs">N/A</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Startup</td><td className="py-2 pr-4 font-mono text-xs text-amber">$49</td><td className="py-2 pr-4 text-xs">200</td><td className="py-2 text-xs">$0.35/ea</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Scale</td><td className="py-2 pr-4 font-mono text-xs text-amber">$199</td><td className="py-2 pr-4 text-xs">1,000</td><td className="py-2 text-xs">$0.25/ea</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Enterprise</td><td className="py-2 pr-4 font-mono text-xs text-amber">Custom</td><td className="py-2 pr-4 text-xs">Unlimited</td><td className="py-2 text-xs">Custom SLA</td></tr>

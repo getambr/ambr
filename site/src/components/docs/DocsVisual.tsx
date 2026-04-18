@@ -507,7 +507,7 @@ const sectionCaptions: Record<string, string> = {
   'cnft': 'Each contract is minted as an ERC-721 on Base L2 with its SHA-256 hash stored permanently on-chain.',
   'transfers': 'Counterparty-gated: both the holder and counterparty must approve before an NFT can be transferred.',
   'zk-identity': 'Groth16/BN128 zk-SNARK: prover generates a proof from private inputs, verifier checks it on-chain via Merkle oracle — no personal data on the blockchain.',
-  'free-alpha': 'Developer tier: 25 free contracts/month. Startup ($49) and Scale ($199) for production workloads. x402 pay-per-contract for agents.',
+  'free-alpha': 'Developer tier: 5 free contracts. Startup ($49) and Scale ($199) for production workloads. x402 pay-per-contract for agents.',
   'crypto': '7 tokens accepted on Base L2: stablecoins (USDC, USDbC, DAI) and volatile assets (ETH, WETH, cbETH, cbBTC).',
   'card': 'Stripe checkout for card payments. Currently in test mode — live payments coming soon.',
 };

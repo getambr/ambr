@@ -9,7 +9,7 @@ import { checkVelocity } from '@/lib/velocity';
 import { corsOptions } from '@/lib/cors';
 
 const TIER_CREDITS: Record<string, number> = {
-  developer: 25,
+  developer: 5,
   startup: 200,
   scale: 1000,
   enterprise: -1, // unlimited — custom pricing
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       key_prefix: prefix,
       email,
       tier: 'developer',
-      credits: 25,
+      credits: 5,
       is_active: true,
       payment_method: 'free',
     });
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       event_type: 'developer_key_claimed',
       severity: 'info',
       actor: email,
-      details: { tier: 'developer', credits: 25 },
+      details: { tier: 'developer', credits: 5 },
       ip_address: ip,
     });
 
@@ -101,8 +101,8 @@ export async function POST(request: Request) {
         api_key: key,
         prefix,
         tier: 'developer',
-        credits: 25,
-        message: 'Free developer key activated — 25 contracts/month. Save this key — it cannot be retrieved again.',
+        credits: 5,
+        message: 'Free developer key activated — 5 contracts. Save this key — it cannot be retrieved again.',
         docs: 'https://ambr.run/developers',
       },
       { status: 201 },

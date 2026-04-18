@@ -204,7 +204,7 @@ function ActivateContent() {
               Get Your API Key
             </h1>
             <p className="mt-4 text-[#aaa] text-sm font-light">
-              Free developer tier — 25 contracts. Or pay per contract via x402.
+              Free developer tier — 5 contracts. Or pay per contract via x402.
             </p>
           </div>
 
@@ -298,7 +298,7 @@ function ActivateContent() {
                 <form onSubmit={alphaForm.handleSubmit(onAlphaSubmit)} className="space-y-5">
                   <div className="rounded-none border border-amber/60 bg-amber-glow relative p-4 text-center">
                     <p className="text-micro mb-1">Developer</p>
-                    <p className="text-2xl font-serif text-text-primary">25 Free Contracts</p>
+                    <p className="text-2xl font-serif text-text-primary">5 Free Contracts</p>
                     <p className="text-xs text-text-secondary mt-2">
                       Build and test integrations. One key per email. No payment required.
                     </p>
