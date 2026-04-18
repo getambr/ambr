@@ -87,7 +87,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Tier Info ──────────────────────────────────────────
 const TIER_INFO: Record<string, { label: string; limit: string; overage: string }> = {
-  developer: { label: 'Developer', limit: '25/mo', overage: 'N/A' },
+  developer: { label: 'Developer', limit: '5', overage: 'N/A' },
   startup: { label: 'Startup', limit: '200/mo', overage: '$0.35/contract' },
   scale: { label: 'Scale', limit: '1,000/mo', overage: '$0.25/contract' },
   enterprise: { label: 'Enterprise', limit: 'Unlimited', overage: 'Custom' },
@@ -1473,7 +1473,7 @@ function X402Calculator() {
 
   const tierComparison = [
     { tier: 'x402 (pay-per-use)', cost: total, note: `${count} contracts` },
-    { tier: 'Developer (free)', cost: 0, note: '25/mo included' },
+    { tier: 'Developer (free)', cost: 0, note: '5 included' },
     { tier: 'Startup ($49/mo)', cost: 49, note: `200/mo, overage $0.35` },
     { tier: 'Scale ($199/mo)', cost: 199, note: `1,000/mo, overage $0.25` },
   ];
