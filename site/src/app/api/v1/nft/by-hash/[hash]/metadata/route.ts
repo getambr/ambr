@@ -16,7 +16,7 @@ export async function GET(
   const db = getSupabaseAdmin();
   const { data: contract } = await db
     .from('contracts')
-    .select('contract_id, sha256_hash, contract_type, amendment_type, principal_declaration, nft_token_id')
+    .select('contract_id, sha256_hash, contract_type, amendment_type, principal_declaration, nft_token_id, visibility')
     .eq('sha256_hash', hash)
     .single();
 
@@ -24,7 +24,14 @@ export async function GET(
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
   }
 
-  const metadata = buildNftMetadata(contract);
+  const visibility = (contract.visibility as string) || 'private';
+  const redactPrincipal = visibility === 'private' || visibility === 'encrypted';
+
+  const metadataContract = redactPrincipal
+    ? { ...contract, principal_declaration: { principal_name: 'Redacted' } }
+    : contract;
+
+  const metadata = buildNftMetadata(metadataContract);
 
   return NextResponse.json(metadata, {
     headers: {
