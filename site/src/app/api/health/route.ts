@@ -99,7 +99,7 @@ async function checkOpsAgent(): Promise<CheckResult> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const start = Date.now();
 
   const [supabase, baseRpc, anthropic, opsAgent] = await Promise.all([
@@ -114,6 +114,14 @@ export async function GET() {
   const anyDown = Object.values(checks).some((c) => c.status === 'down');
 
   const overall = anyDown ? 'unhealthy' : allOk ? 'healthy' : 'degraded';
+
+  const apiKey = request.headers.get('x-api-key');
+  if (!apiKey) {
+    return NextResponse.json(
+      { status: overall, version: '0.2.0', timestamp: new Date().toISOString() },
+      { status: overall === 'healthy' ? 200 : 503, headers: { 'Cache-Control': 'public, s-maxage=30' } },
+    );
+  }
 
   return NextResponse.json(
     {

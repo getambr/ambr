@@ -4,9 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { validateApiKey, isAdmin } from '@/lib/api-auth';
 import { hashContract } from '@/lib/contract-engine';
 
-// TEMPORARY debug + rehash endpoint — remove after fixing hash mismatches
-// GET: Returns hash comparison data for diagnosis
-// POST: Rehashes a contract from its stored content (admin only)
+// Admin-only hash diagnostics + rehash endpoint
 
 function deepSortKeys(obj: unknown): unknown {
   if (obj === null || typeof obj !== 'object') return obj;

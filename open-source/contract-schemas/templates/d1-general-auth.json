@@ -2,7 +2,7 @@
   "slug": "d1-general-auth",
   "name": "General Agent Authorization",
   "category": "delegation",
-  "description": "Broad delegation of authority to an AI agent — defines action categories, spending caps, revocation terms, and principal liability. Compliant with UETA s. 14 (US) and eIDAS Art. 25 (EU).",
+  "description": "Broad delegation of authority to an AI agent — defines action categories, spending caps, revocation terms, and principal liability. Structured with reference to UETA s. 14 (US) and eIDAS Art. 25 (EU).",
   "price_cents": 200,
   "parameter_schema": {
     "type": "object",

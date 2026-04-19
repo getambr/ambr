@@ -14,7 +14,7 @@
 
 **Slug:** `p1-nda`
 **Name:** Non-Disclosure Agreement (P2P)
-**Description:** Mutual or one-way NDA between two individuals or entities — defines confidential information scope, term, surviving obligations, and remedies. Both parties sign via email magic link (no wallet required). Compliant with UETA/ESIGN, eIDAS Art. 25.
+**Description:** Mutual or one-way NDA between two individuals or entities — defines confidential information scope, term, surviving obligations, and remedies. Both parties sign via email magic link (no wallet required). Structured with reference to UETA/ESIGN and eIDAS Art. 25.
 
 **Price:** 50 cents ($0.50)
 
@@ -99,7 +99,7 @@
 
 **Slug:** `p2-freelance`
 **Name:** Freelance Service Agreement (P2P)
-**Description:** Client engages freelancer for defined deliverables with milestones, payment terms, and IP ownership clause. Both parties sign via email magic link. Compliant with UETA/ESIGN, eIDAS Art. 25.
+**Description:** Client engages freelancer for defined deliverables with milestones, payment terms, and IP ownership clause. Both parties sign via email magic link. Structured with reference to UETA/ESIGN and eIDAS Art. 25.
 
 **Price:** 50 cents ($0.50)
 

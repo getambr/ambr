@@ -54,7 +54,18 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and Next.js internals
-    '/((?!_next/static|_next/image|favicon.ico|apple-icon.png).*)',
+    '/',
+    '/how-it-works',
+    '/use-cases',
+    '/ecosystem',
+    '/waitlist',
+    '/privacy',
+    '/terms',
+    '/docs/:path*',
+    '/dashboard/:path*',
+    '/reader/:path*',
+    '/activate/:path*',
+    '/templates/:path*',
+    '/developers/:path*',
   ],
 };

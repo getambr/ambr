@@ -17,6 +17,7 @@ import {
   decrementCredits,
 } from '@/lib/contract-engine';
 import { rateLimit } from '@/lib/rate-limit';
+import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,6 +44,7 @@ interface ApiKeyContext {
   tier: string;
   principalWallet: string | null;
   delegationScope: { actions: string[]; templates?: string[] } | null;
+  agentDailyLimit: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -311,7 +313,7 @@ async function validateApiKeyDirect(
 
   const { data, error } = await db
     .from('api_keys')
-    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope')
+    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope, agent_daily_limit')
     .eq('key_hash', keyHash)
     .single();
 
@@ -329,6 +331,7 @@ async function validateApiKeyDirect(
     tier: data.tier,
     principalWallet: data.principal_wallet || null,
     delegationScope: data.delegation_scope as { actions: string[]; templates?: string[] } | null,
+    agentDailyLimit: data.agent_daily_limit ?? 10,
   };
 }
 
@@ -434,6 +437,26 @@ async function handleCreateContract(
     };
   }
 
+  // Agent daily limit (delegated agents only)
+  if (apiCtx.principalWallet) {
+    const agentCheck = await checkAgentLimit(
+      apiCtx.keyId,
+      apiCtx.principalWallet,
+      apiCtx.agentDailyLimit,
+    );
+    if (!agentCheck.allowed) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: Agent daily limit reached (${agentCheck.used}/${agentCheck.limit}). Resets at midnight UTC.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
   // Validate args
   const template = args.template as string | undefined;
   const parameters = args.parameters as Record<string, unknown> | undefined;
@@ -523,6 +546,10 @@ async function handleCreateContract(
     });
 
     await decrementCredits(apiCtx.keyId, apiCtx.credits);
+
+    if (apiCtx.principalWallet) {
+      await incrementAgentUsage(apiCtx.keyId, apiCtx.principalWallet);
+    }
 
     const result = {
       contract_id: contract.contract_id,

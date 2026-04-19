@@ -30,7 +30,7 @@ Every template MUST follow the existing d1/c1 pattern:
 
 **Slug:** `a1-service-purchase`
 **Name:** Service Purchase Agreement (Agent-to-Consumer)
-**Description:** An AI agent sells a defined service to a human consumer — covers scope, fees, delivery timeline, refund policy, and mandatory cooling-off period. Compliant with EU Consumer Rights Directive 2011/83/EU, UETA s. 14, and eIDAS Art. 25. Includes EU AI Act Art. 50 transparency disclosure.
+**Description:** An AI agent sells a defined service to a human consumer — covers scope, fees, delivery timeline, refund policy, and mandatory cooling-off period. Structured with reference to EU Consumer Rights Directive 2011/83/EU, UETA s. 14, and eIDAS Art. 25. Includes EU AI Act Art. 50 transparency disclosure.
 
 **Use cases:**
 - AI travel agent books flights for a consumer
@@ -184,7 +184,7 @@ CONTRACT STRUCTURE:
 
 **Slug:** `a2-ai-subscription`
 **Name:** AI-Driven Subscription Agreement
-**Description:** Consumer subscribes to an AI-mediated service with recurring billing — covers monthly fee, SLA, cancellation, auto-renewal controls, and mandatory cooling-off. Compliant with EU Consumer Rights Directive, UETA s. 14, eIDAS Art. 25. No auto-renewal without explicit opt-in per EU directive.
+**Description:** Consumer subscribes to an AI-mediated service with recurring billing — covers monthly fee, SLA, cancellation, auto-renewal controls, and mandatory cooling-off. Structured with reference to EU Consumer Rights Directive, UETA s. 14, and eIDAS Art. 25. No auto-renewal without explicit opt-in per EU directive.
 
 **Price:** 30 cents ($0.30)
 
