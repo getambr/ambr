@@ -118,7 +118,7 @@ export async function GET(request: Request) {
   const apiKey = request.headers.get('x-api-key');
   if (!apiKey) {
     return NextResponse.json(
-      { status: overall, version: '0.2.0', timestamp: new Date().toISOString() },
+      { status: overall, version: '0.3.0', timestamp: new Date().toISOString() },
       { status: overall === 'healthy' ? 200 : 503, headers: { 'Cache-Control': 'public, s-maxage=30' } },
     );
   }
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
   return NextResponse.json(
     {
       status: overall,
-      version: '0.2.0',
+      version: '0.3.0',
       timestamp: new Date().toISOString(),
       total_latency_ms: Date.now() - start,
       checks,
