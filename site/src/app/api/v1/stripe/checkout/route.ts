@@ -1,11 +1,25 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod/v4';
-import { getStripe, TIER_PRICES } from '@/lib/stripe';
+import { getStripe, TIER_PRICES, SUBSCRIPTION_PLANS } from '@/lib/stripe';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { corsOptions } from '@/lib/cors';
 
-const schema = z.object({
+const schema = z.discriminatedUnion('checkout_mode', [
+  z.object({
+    checkout_mode: z.literal('payment'),
+    email: z.email('Valid email required'),
+    tier: z.enum(['startup', 'scale', 'enterprise']),
+    mode: z.enum(['new', 'topup']).optional(),
+  }),
+  z.object({
+    checkout_mode: z.literal('subscription'),
+    email: z.email('Valid email required'),
+    plan: z.enum(['personal', 'business']),
+  }),
+]);
+
+const legacySchema = z.object({
   email: z.email('Valid email required'),
   tier: z.enum(['startup', 'scale', 'enterprise']),
   mode: z.enum(['new', 'topup']).optional(),
@@ -26,7 +40,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const parsed = schema.safeParse(body);
+  const stripe = getStripe();
+  const appUrl = 'https://getamber.dev';
+
+  // Subscription checkout
+  if (body.checkout_mode === 'subscription') {
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'validation_error', details: parsed.error.issues },
+        { status: 400 },
+      );
+    }
+    const data = parsed.data as { checkout_mode: 'subscription'; email: string; plan: string };
+    const planConfig = SUBSCRIPTION_PLANS[data.plan];
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        customer_email: data.email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `Ambr ${planConfig.label} Plan`,
+                description: `${planConfig.contracts_limit} contracts/mo, unlimited AI chat`,
+              },
+              unit_amount: planConfig.cents_monthly,
+              recurring: { interval: 'month' },
+            },
+            quantity: 1,
+          },
+        ],
+        subscription_data: {
+          metadata: { plan: data.plan, email: data.email },
+        },
+        metadata: { plan: data.plan, email: data.email, checkout_mode: 'subscription' },
+        success_url: `${appUrl}/activate?session_id={CHECKOUT_SESSION_ID}&status=success&type=subscription`,
+        cancel_url: `${appUrl}/activate?status=cancelled`,
+      });
+
+      logAudit({
+        event_type: 'stripe_subscription_checkout_created',
+        actor: data.email,
+        details: { plan: data.plan, session_id: session.id },
+        ip_address: ip,
+      });
+
+      return NextResponse.json({ url: session.url });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('Stripe subscription checkout error:', errMsg);
+      return NextResponse.json(
+        { error: 'stripe_error', message: errMsg },
+        { status: 500 },
+      );
+    }
+  }
+
+  // One-time payment checkout (existing flow, backwards compatible)
+  const parsed = legacySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'validation_error', details: parsed.error.issues },
@@ -39,9 +113,6 @@ export async function POST(request: Request) {
   const tierConfig = TIER_PRICES[tier];
 
   try {
-    const stripe = getStripe();
-    const appUrl = 'https://getamber.dev';
-
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: email,

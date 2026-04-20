@@ -62,7 +62,7 @@ export default function PricingSection() {
       <ScrollReveal delay={0.3}>
         <div className="mt-8 text-center">
           <Button href="/activate" variant="secondary">
-            Get Started
+            View All Plans
           </Button>
         </div>
       </ScrollReveal>

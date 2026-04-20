@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getStripe, TIER_PRICES } from '@/lib/stripe';
+import { getStripe, TIER_PRICES, SUBSCRIPTION_PLANS } from '@/lib/stripe';
 import { generateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit } from '@/lib/audit';
+import type Stripe from 'stripe';
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
-  let event;
+  let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
@@ -27,8 +28,146 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  const db = getSupabaseAdmin();
+
+  // ─── Subscription events ───
+
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const plan = subscription.metadata?.plan;
+    const email = subscription.metadata?.email;
+
+    if (!plan || !email) {
+      console.error('Subscription webhook missing metadata:', subscription.id);
+      return NextResponse.json({ received: true });
+    }
+
+    const planConfig = SUBSCRIPTION_PLANS[plan];
+    if (!planConfig) {
+      console.error('Unknown plan in subscription webhook:', plan);
+      return NextResponse.json({ received: true });
+    }
+
+    const customerId = typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer.id;
+
+    const firstItem = subscription.items.data[0];
+
+    const upsertData = {
+      email,
+      plan,
+      status: mapStripeStatus(subscription.status),
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscription.id,
+      stripe_price_id: firstItem?.price?.id || null,
+      contracts_limit: planConfig.contracts_limit,
+      ai_messages_limit: planConfig.ai_messages_limit,
+      current_period_start: firstItem?.current_period_start
+        ? new Date(firstItem.current_period_start * 1000).toISOString()
+        : null,
+      current_period_end: firstItem?.current_period_end
+        ? new Date(firstItem.current_period_end * 1000).toISOString()
+        : null,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: existing } = await db
+      .from('subscriptions')
+      .select('id')
+      .eq('stripe_subscription_id', subscription.id)
+      .single();
+
+    if (existing) {
+      await db
+        .from('subscriptions')
+        .update(upsertData)
+        .eq('stripe_subscription_id', subscription.id);
+    } else {
+      await db.from('subscriptions').insert({
+        ...upsertData,
+        contracts_used: 0,
+        ai_messages_used: 0,
+      });
+    }
+
+    logAudit({
+      event_type: event.type === 'customer.subscription.created'
+        ? 'stripe_subscription_created'
+        : 'stripe_subscription_updated',
+      actor: email,
+      details: { plan, subscription_id: subscription.id, status: subscription.status },
+    });
+
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription;
+
+    await db
+      .from('subscriptions')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('stripe_subscription_id', subscription.id);
+
+    logAudit({
+      event_type: 'stripe_subscription_cancelled',
+      actor: subscription.metadata?.email || 'unknown',
+      details: { subscription_id: subscription.id },
+    });
+
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === 'invoice.paid') {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subDetails = invoice.parent?.subscription_details;
+    const subId = subDetails
+      ? (typeof subDetails.subscription === 'string' ? subDetails.subscription : subDetails.subscription?.id)
+      : null;
+
+    if (subId) {
+      await db
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          contracts_used: 0,
+          ai_messages_used: 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('stripe_subscription_id', subId);
+    }
+
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subDetails = invoice.parent?.subscription_details;
+    const subId = subDetails
+      ? (typeof subDetails.subscription === 'string' ? subDetails.subscription : subDetails.subscription?.id)
+      : null;
+
+    if (subId) {
+      await db
+        .from('subscriptions')
+        .update({ status: 'past_due', updated_at: new Date().toISOString() })
+        .eq('stripe_subscription_id', subId);
+    }
+
+    return NextResponse.json({ received: true });
+  }
+
+  // ─── One-time payment events (existing) ───
+
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    // Skip subscription checkouts — handled by subscription events above
+    if (session.metadata?.checkout_mode === 'subscription') {
+      return NextResponse.json({ received: true });
+    }
 
     if (session.payment_status !== 'paid') {
       return NextResponse.json({ received: true });
@@ -48,8 +187,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    // Check idempotency — don't process the same session twice
-    const db = getSupabaseAdmin();
     const { data: existing } = await db
       .from('api_keys')
       .select('id')
@@ -66,7 +203,6 @@ export async function POST(request: Request) {
       : session.payment_intent?.id;
 
     if (isTopup) {
-      // Top-up: add credits to the most recent active key for this email
       const { data: activeKey } = await db
         .from('api_keys')
         .select('id, credits, key_prefix')
@@ -78,10 +214,9 @@ export async function POST(request: Request) {
 
       if (!activeKey) {
         console.error('Topup but no active key found for:', email);
-        // Fall through to create a new key instead
       } else {
         const newCredits = activeKey.credits === -1
-          ? -1  // already unlimited
+          ? -1
           : activeKey.credits + tierConfig.credits;
 
         const { error: updateError } = await db
@@ -94,7 +229,6 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'DB error' }, { status: 500 });
         }
 
-        // Record the topup as a separate row for payment history (no key_hash = not a login key)
         await db.from('api_keys').insert({
           key_hash: `topup_${session.id}`,
           key_prefix: activeKey.key_prefix,
@@ -104,7 +238,7 @@ export async function POST(request: Request) {
           payment_method: 'stripe',
           stripe_session_id: session.id,
           stripe_payment_intent: paymentIntent,
-          is_active: false, // not a usable key — just a payment record
+          is_active: false,
         });
 
         logAudit({
@@ -117,7 +251,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // New key: generate and store
     const { key, hash, prefix } = generateApiKey();
 
     const { error: insertError } = await db.from('api_keys').insert({
@@ -146,4 +279,15 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+function mapStripeStatus(status: string): 'active' | 'past_due' | 'cancelled' | 'trialing' {
+  switch (status) {
+    case 'active': return 'active';
+    case 'past_due': return 'past_due';
+    case 'canceled': return 'cancelled';
+    case 'trialing': return 'trialing';
+    case 'unpaid': return 'past_due';
+    default: return 'cancelled';
+  }
 }
