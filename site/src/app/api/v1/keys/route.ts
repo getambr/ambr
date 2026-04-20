@@ -9,7 +9,7 @@ import { checkVelocity } from '@/lib/velocity';
 import { corsOptions } from '@/lib/cors';
 
 const TIER_CREDITS: Record<string, number> = {
-  developer: 5,
+  developer: 25,
   startup: 200,
   scale: 1000,
   enterprise: -1, // unlimited — custom pricing
@@ -21,6 +21,25 @@ const TIER_PRICES_USD: Record<string, number> = {
   scale: 199,
   enterprise: 0, // custom
 };
+
+// Disposable / throwaway email domains — block from free tier signup
+// Short pragmatic list; extend as spam patterns emerge.
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com', 'guerrillamail.com', 'guerrillamail.net', 'guerrillamail.org',
+  'tempmail.com', 'temp-mail.org', 'throwawaymail.com', 'maildrop.cc',
+  'yopmail.com', 'sharklasers.com', 'getnada.com', 'nada.email',
+  'trashmail.com', 'trashmail.net', 'mailnesia.com', '10minutemail.com',
+  '10minutemail.net', 'dispostable.com', 'mintemail.com', 'emailondeck.com',
+  'mohmal.com', 'fakemailgenerator.com', 'fakeinbox.com', 'spam4.me',
+  'mytemp.email', 'tempail.com', 'temp-mail.io', 'inboxkitten.com',
+  'burnermail.io', 'tmail.ws', 'mail-temp.com', 'dropmail.me',
+]);
+
+function isDisposableEmail(email: string): boolean {
+  const domain = email.toLowerCase().split('@')[1];
+  if (!domain) return false;
+  return DISPOSABLE_EMAIL_DOMAINS.has(domain);
+}
 
 export async function POST(request: Request) {
   // Rate limit: 3 requests/min per IP
@@ -51,6 +70,20 @@ export async function POST(request: Request) {
 
   const { email, tx_hash, tier } = parsed.data;
   const db = getSupabaseAdmin();
+
+  // Block known disposable email providers (free tier only — paid tiers are self-policing)
+  if (tier === 'developer' && isDisposableEmail(email)) {
+    logAudit({
+      event_type: 'signup_blocked_disposable_email',
+      severity: 'warn',
+      actor: email,
+      ip_address: ip,
+    });
+    return NextResponse.json(
+      { error: 'disposable_email_not_allowed', message: 'Please use a real email address. Disposable email providers are not supported for the free tier.' },
+      { status: 400 },
+    );
+  }
 
   // --- Free Developer tier: no payment required ---
   if (tier === 'developer') {

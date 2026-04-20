@@ -204,7 +204,7 @@ function ActivateContent() {
               Get Your API Key
             </h1>
             <p className="mt-4 text-[#aaa] text-sm font-light">
-              Free developer tier — 5 contracts. Or pay per contract via x402.
+              Free developer tier — 25 contracts. Or pay per contract via x402.
             </p>
           </div>
 

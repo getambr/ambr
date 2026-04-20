@@ -51,7 +51,7 @@ export default function DevelopersPage() {
               Start Building
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-              Free alpha access — 5 contracts, no payment required.
+              Free developer access — 25 contracts, no payment required.
               Full REST API, A2A discovery, and MCP integration.
             </p>
             <div className="mt-8">

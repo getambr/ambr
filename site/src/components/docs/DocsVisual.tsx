@@ -75,7 +75,7 @@ function ActivateWireframe() {
         <div className="border border-amber/20 p-3">
           <div className="font-mono text-[0.6rem] text-amber/50 mb-2">FREE ALPHA</div>
           <div className="h-2 w-24 bg-amber/20 mb-2" />
-          <div className="font-mono text-xs text-[#666]">5 contracts included</div>
+          <div className="font-mono text-xs text-[#666]">25 contracts included</div>
         </div>
         <div className="border border-amber/10 p-3 opacity-50">
           <div className="font-mono text-[0.6rem] text-[#555] mb-2">STARTER -- $29</div>
@@ -403,7 +403,7 @@ function PricingCard() {
             <span className="font-mono text-xs text-amber">FREE</span>
             <span className="font-mono text-[0.6rem] text-emerald-400">ACTIVE</span>
           </div>
-          <div className="font-serif text-xl text-text-primary">5 contracts</div>
+          <div className="font-serif text-xl text-text-primary">25 contracts</div>
           <div className="font-mono text-[0.6rem] text-[#666] mt-1">Email only, no payment</div>
         </div>
         <div className="border border-amber/10 p-3 opacity-40">
@@ -490,7 +490,7 @@ const sectionVisuals: Record<string, () => React.ReactNode> = {
 
 const sectionCaptions: Record<string, string> = {
   'what-is-ambr': 'Dual-format architecture: every contract exists as legal prose and machine-parsable JSON, linked by SHA-256 hash.',
-  'get-api-key': 'Free alpha tier: enter your email to get an API key with 5 contracts. No payment required.',
+  'get-api-key': 'Free developer tier: enter your email to get an API key with 25 contracts. No payment required.',
   'first-contract': 'The API returns a contract object with hash, reader URL, and sign URL for the counterparty.',
   'create': 'POST /v1/contracts generates a Ricardian Contract with unique ID and cryptographic hash.',
   'share': 'The creator sends a reader URL to the counterparty. The share token grants read access without an API key.',

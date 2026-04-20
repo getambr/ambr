@@ -27,7 +27,7 @@ export default function DocsPage() {
             getamber.dev/activate
           </a>
           , enter your email, and receive an API key instantly. The free developer tier
-          includes 5 contracts per account per month with no payment required.
+          includes 25 contracts per account per month with no payment required.
         </p>
       </section>
 
@@ -344,10 +344,11 @@ export default function DocsPage() {
               </tr>
             </thead>
             <tbody className="text-text-secondary">
-              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Delegation (d-series)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$0.50</td><td className="py-2 text-xs">Agent authority setup</td></tr>
-              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Commerce (c-series)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$1.00</td><td className="py-2 text-xs">Agent transactions</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Consumer (a-series, A2C)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$0.20</td><td className="py-2 text-xs">Agent-to-consumer transactions</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Delegation (d1/d2, A2A)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$0.50</td><td className="py-2 text-xs">Agent authority setup</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Commerce (c-series, B2A)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$1.00</td><td className="py-2 text-xs">Agent transactions, SLAs</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Fleet Auth (d3)</td><td className="py-2 pr-4 font-mono text-xs text-amber">$2.50</td><td className="py-2 text-xs">Multi-agent orchestration</td></tr>
-              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">cNFT Minting</td><td className="py-2 pr-4 font-mono text-xs text-amber">$0.25</td><td className="py-2 text-xs">On-chain record (Base L2)</td></tr>
+              <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">cNFT minting (gas)</td><td className="py-2 pr-4 font-mono text-xs text-text-secondary">included</td><td className="py-2 text-xs">Base L2 mint cost absorbed</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Handshake / Sign / Verify</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 text-xs">Lifecycle actions never charged</td></tr>
               <tr className="border-b border-border"><td className="py-2 pr-4 font-mono text-xs">Reader Access</td><td className="py-2 pr-4 font-mono text-xs text-success">Free</td><td className="py-2 text-xs">Counterparties always free</td></tr>
             </tbody>
