@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       key_prefix: prefix,
       email,
       tier: 'developer',
-      credits: 5,
+      credits: 25,
       is_active: true,
       payment_method: 'free',
     });
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       event_type: 'developer_key_claimed',
       severity: 'info',
       actor: email,
-      details: { tier: 'developer', credits: 5 },
+      details: { tier: 'developer', credits: 25 },
       ip_address: ip,
     });
 
@@ -101,8 +101,8 @@ export async function POST(request: Request) {
         api_key: key,
         prefix,
         tier: 'developer',
-        credits: 5,
-        message: 'Free developer key activated — 5 contracts. Save this key — it cannot be retrieved again.',
+        credits: 25,
+        message: 'Free developer key activated — 25 contracts. Save this key — it cannot be retrieved again.',
         docs: 'https://ambr.run/developers',
       },
       { status: 201 },

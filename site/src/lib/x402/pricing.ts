@@ -28,9 +28,9 @@ export async function getTemplatePrice(templateSlug: string): Promise<bigint> {
     'c1-api-access': 1_000000n,       // $1.00
     'c2-compute-sla': 1_000000n,      // $1.00
     'c3-task-execution': 1_000000n,   // $1.00
-    'a1-service-purchase': 300000n,   // $0.30
-    'a2-ai-subscription': 300000n,    // $0.30
-    'a3-warranty-liability': 300000n, // $0.30
+    'a1-service-purchase': 200000n,   // $0.20 (A2C — cheapest tier, covers cost w/ 10x margin)
+    'a2-ai-subscription': 200000n,    // $0.20
+    'a3-warranty-liability': 200000n, // $0.20
     'p1-nda': 500000n,               // $0.50
   };
 
