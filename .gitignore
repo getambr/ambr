@@ -28,10 +28,12 @@ supabase/.temp/
 *.pdf
 *.edoc
 *.7z
+*.rar
 wire-instructions-*.pdf
 AP-JDA-*/
 NDA-*.edoc
 docs/internal/
+outreach/
 
 # Design assets (not for repo)
 Image Assets/
@@ -47,6 +49,10 @@ pricing-rationale.md
 
 # Claude Preview config
 site/.claude/
+
+# Local plugin data
+site/.superpowers/
+.superpowers/
 
 # IDE
 .vscode/

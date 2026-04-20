@@ -17,6 +17,8 @@ import {
   decrementCredits,
 } from '@/lib/contract-engine';
 import { rateLimit } from '@/lib/rate-limit';
+import { linkPaymentToContract } from '@/lib/x402/middleware';
+import type { AuthContext } from '@/lib/adapters/payment/index';
 import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
 
 // ---------------------------------------------------------------------------
@@ -383,35 +385,49 @@ async function handleListTemplates(): Promise<{
 async function handleCreateContract(
   args: Record<string, unknown>,
   apiKey: string | undefined,
+  authCtx?: AuthContext,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
-  // Auth
-  if (!apiKey) {
+  // Auth: prefer authCtx if provided (threaded from route), otherwise validate apiKey
+  let apiKeyCtx: ApiKeyContext | null = null;
+
+  if (authCtx?.type === 'api_key') {
+    // Reconstruct ApiKeyContext from AuthContext for existing code paths
+    apiKeyCtx = {
+      keyId: authCtx.keyId!,
+      email: authCtx.email!,
+      credits: authCtx.credits!,
+      tier: authCtx.tier!,
+      principalWallet: authCtx.principalWallet || null,
+      delegationScope: null,
+      agentDailyLimit: authCtx.agentDailyLimit ?? 10,
+    };
+  } else if (!authCtx && apiKey) {
+    // Fallback: route didn't thread authCtx; validate apiKey ourselves
+    apiKeyCtx = await validateApiKeyDirect(apiKey);
+    if (!apiKeyCtx) {
+      return {
+        content: [{ type: 'text', text: 'Error: Invalid or inactive API key.' }],
+        isError: true,
+      };
+    }
+  } else if (!authCtx) {
     return {
       content: [
         {
           type: 'text',
-          text: 'Error: API key required. Pass X-API-Key header on the HTTP request.',
+          text: 'Error: API key or x402 payment required. Pass X-API-Key header, or send a USDC payment on Base to the recipient address and retry with X-Payment header containing the tx hash.',
         },
       ],
       isError: true,
     };
   }
+  // else: authCtx.type === 'x402' — payment verified at route layer
 
-  const apiCtx = await validateApiKeyDirect(apiKey);
-  if (!apiCtx) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Error: Invalid or inactive API key.',
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  // Rate limit
-  const rl = rateLimit(`mcp:${apiCtx.keyId}`, 10, 60_000);
+  // Rate limit (by key ID for API users, by wallet for x402 payers)
+  const rlKey = apiKeyCtx
+    ? `mcp:${apiKeyCtx.keyId}`
+    : `mcp:x402:${authCtx!.payerWallet}`;
+  const rl = rateLimit(rlKey, 10, 60_000);
   if (!rl.allowed) {
     return {
       content: [
@@ -424,25 +440,25 @@ async function handleCreateContract(
     };
   }
 
-  // Credits
-  if (apiCtx.credits === 0) {
+  // Credits check (API key path only — x402 already paid)
+  if (apiKeyCtx && apiKeyCtx.credits === 0) {
     return {
       content: [
         {
           type: 'text',
-          text: 'Error: No credits remaining. Purchase more at ambr.run.',
+          text: 'Error: No credits remaining. Pay per-contract via x402 (send X-Payment header) or purchase more at ambr.run.',
         },
       ],
       isError: true,
     };
   }
 
-  // Agent daily limit (delegated agents only)
-  if (apiCtx.principalWallet) {
+  // Agent daily limit (delegated agents only, API key path only)
+  if (apiKeyCtx && apiKeyCtx.principalWallet) {
     const agentCheck = await checkAgentLimit(
-      apiCtx.keyId,
-      apiCtx.principalWallet,
-      apiCtx.agentDailyLimit,
+      apiKeyCtx.keyId,
+      apiKeyCtx.principalWallet,
+      apiKeyCtx.agentDailyLimit,
     );
     if (!agentCheck.allowed) {
       return {
@@ -528,6 +544,7 @@ async function handleCreateContract(
 
     const sha256Hash = hashContract(humanReadable, machineReadable);
 
+    const isX402 = authCtx?.type === 'x402';
     const contract = await storeContract({
       contractId,
       templateId: tmpl.id,
@@ -536,7 +553,9 @@ async function handleCreateContract(
       sha256Hash,
       principalDeclaration: principalDecl,
       parameters,
-      apiKeyId: apiCtx.keyId,
+      apiKeyId: apiKeyCtx?.keyId,
+      payerWallet: isX402 ? authCtx!.payerWallet : undefined,
+      paymentMethod: isX402 ? 'x402' : 'api_key',
       parentContractHash: args.parent_contract_hash as string | undefined,
       amendmentType: args.amendment_type as
         | 'original'
@@ -545,11 +564,20 @@ async function handleCreateContract(
         | undefined,
     });
 
-    await decrementCredits(apiCtx.keyId, apiCtx.credits);
-
-    if (apiCtx.principalWallet) {
-      await incrementAgentUsage(apiCtx.keyId, apiCtx.principalWallet);
+    // Post-creation: deduct credits (api_key) or link payment (x402)
+    if (apiKeyCtx) {
+      await decrementCredits(apiKeyCtx.keyId, apiKeyCtx.credits);
+      if (apiKeyCtx.principalWallet) {
+        await incrementAgentUsage(apiKeyCtx.keyId, apiKeyCtx.principalWallet);
+      }
     }
+    if (isX402 && authCtx!.txHash) {
+      await linkPaymentToContract(authCtx!.txHash, contract.id);
+    }
+
+    const creditsLine = apiKeyCtx
+      ? `- **Credits remaining:** ${apiKeyCtx.credits === -1 ? 'unlimited' : apiKeyCtx.credits - 1}`
+      : `- **Payment:** x402 (USDC on Base) \`${authCtx!.txHash}\``;
 
     const result = {
       contract_id: contract.contract_id,
@@ -558,8 +586,6 @@ async function handleCreateContract(
       reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
       sign_url: `https://getamber.dev/api/v1/contracts/${contract.contract_id}/sign`,
       created_at: contract.created_at,
-      credits_remaining:
-        apiCtx.credits === -1 ? 'unlimited' : apiCtx.credits - 1,
     };
 
     return {
@@ -574,7 +600,7 @@ async function handleCreateContract(
             `- **Status:** ${result.status}`,
             `- **Reader URL:** ${result.reader_url}`,
             `- **Sign URL:** ${result.sign_url}`,
-            `- **Credits remaining:** ${result.credits_remaining}`,
+            creditsLine,
             '',
             '**Next step:** Both parties must sign with ECDSA wallet signatures to activate.',
             'POST to the Sign URL with: `{ wallet_address, signature, message }`',
@@ -968,12 +994,13 @@ async function callTool(
   name: string,
   args: Record<string, unknown>,
   apiKey: string | undefined,
+  authCtx?: AuthContext,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   switch (name) {
     case 'ambr_list_templates':
       return handleListTemplates();
     case 'ambr_create_contract':
-      return handleCreateContract(args, apiKey);
+      return handleCreateContract(args, apiKey, authCtx);
     case 'ambr_get_contract':
       return handleGetContract(args, apiKey);
     case 'ambr_get_contract_status':
@@ -1014,6 +1041,7 @@ function jsonRpcError(
 export async function handleMcpMessage(
   body: unknown,
   apiKey: string | undefined,
+  authCtx?: AuthContext,
 ): Promise<JsonRpcResponse | null> {
   if (!body || typeof body !== 'object' || !('method' in body)) {
     return jsonRpcError(null, -32600, 'Invalid Request');
@@ -1049,6 +1077,7 @@ export async function handleMcpMessage(
         params.name,
         params.arguments ?? {},
         apiKey,
+        authCtx,
       );
       return jsonRpcOk(id, result);
     }
