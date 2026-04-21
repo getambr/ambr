@@ -20,8 +20,8 @@ async function getContract(hashOrId: string) {
 
   if (hashOrId.startsWith('amb-')) {
     query = query.eq('contract_id', hashOrId);
-  } else if (/^[a-f0-9]{64}$/.test(hashOrId)) {
-    query = query.eq('sha256_hash', hashOrId);
+  } else if (/^[a-f0-9]{16,64}$/.test(hashOrId)) {
+    query = query.like('sha256_hash', `${hashOrId}%`);
   } else {
     query = query.eq('id', hashOrId);
   }
