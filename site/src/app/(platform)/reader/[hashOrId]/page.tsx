@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { createHash } from 'crypto';
-import { getSupabase } from '@/lib/supabase';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import ContractViewer from './ContractViewer';
 import ExportButtons from './ExportButtons';
@@ -15,7 +14,7 @@ interface Props {
 }
 
 async function getContract(hashOrId: string) {
-  const db = getSupabase();
+  const db = getSupabaseAdmin();
 
   let query = db.from('contracts').select('*');
 
