@@ -753,7 +753,7 @@ function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[
               </div>
               <div className="text-right shrink-0">
                 <p className="text-xs text-text-secondary">{new Date(c.created_at).toLocaleDateString()}</p>
-                <p className="text-xs font-mono text-text-secondary/40">{c.sha256_hash.slice(0, 16)}...</p>
+                <p className="text-xs font-mono text-text-secondary/40">{c.sha256_hash?.slice(0, 16)}...</p>
               </div>
               <ChevronRight className="h-4 w-4 text-text-secondary/30 shrink-0" />
             </button>
@@ -1051,7 +1051,7 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
         <div className="rounded-xl border border-border bg-surface/80 p-5">
           <p className="text-micro mb-3">Contract Info</p>
           <div className="space-y-2.5">
-            <DetailRow label="Hash" value={contract.sha256_hash.slice(0, 32) + '...'} mono />
+            <DetailRow label="Hash" value={(contract.sha256_hash?.slice(0, 32) ?? '') + '...'} mono />
             <DetailRow label="Status" value={contract.status} />
             <DetailRow label="Type" value={contract.amendment_type || 'original'} />
             <DetailRow label="Visibility" value={contract.visibility || 'private'} />
@@ -1067,7 +1067,7 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
             <div className="space-y-2">
               {signatures.map((sig, i) => (
                 <div key={i} className="flex items-center justify-between text-xs">
-                  <span className="font-mono text-text-primary">{sig.signer_wallet.slice(0, 6)}...{sig.signer_wallet.slice(-4)}</span>
+                  <span className="font-mono text-text-primary">{sig.signer_wallet?.slice(0, 6)}...{sig.signer_wallet?.slice(-4)}</span>
                   <span className="text-text-secondary">{new Date(sig.signed_at).toLocaleDateString()}</span>
                 </div>
               ))}
@@ -1118,11 +1118,11 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-text-secondary">
-                      {p.proposer_wallet.slice(0, 6)}...{p.proposer_wallet.slice(-4)}
+                      {p.proposer_wallet?.slice(0, 6)}...{p.proposer_wallet?.slice(-4)}
                     </span>
                     <span className="text-text-secondary/40">→</span>
                     <span className="text-xs font-mono text-text-secondary">
-                      {p.approval_required_from.slice(0, 6)}...{p.approval_required_from.slice(-4)}
+                      {p.approval_required_from?.slice(0, 6)}...{p.approval_required_from?.slice(-4)}
                     </span>
                   </div>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
@@ -1176,7 +1176,7 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
                       {proposalAction?.id === p.id && proposalAction.action === 'rejecting' ? 'Rejecting...' : 'Reject'}
                     </button>
                     <span className="ml-auto text-[10px] text-text-secondary/60">
-                      Requires signature from {p.approval_required_from.slice(0, 6)}...{p.approval_required_from.slice(-4)}
+                      Requires signature from {p.approval_required_from?.slice(0, 6)}...{p.approval_required_from?.slice(-4)}
                     </span>
                   </div>
                 )}
@@ -1897,7 +1897,7 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
                 </div>
                 <p className="text-xs text-text-secondary/70 mb-2">{c.principal_declaration?.principal_name || 'Unknown'}</p>
                 <div className="flex items-center gap-4 text-xs">
-                  <span className="text-text-secondary">Hash: <span className="font-mono text-text-primary">{c.sha256_hash.slice(0, 16)}...</span></span>
+                  <span className="text-text-secondary">Hash: <span className="font-mono text-text-primary">{c.sha256_hash?.slice(0, 16)}...</span></span>
                   <Link href={`/reader/${c.sha256_hash}`} className="text-amber hover:underline inline-flex items-center gap-1">
                     Reader <ExternalLink className="h-3 w-3" />
                   </Link>
