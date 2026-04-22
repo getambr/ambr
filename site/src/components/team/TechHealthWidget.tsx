@@ -13,12 +13,15 @@ interface HealthData {
   status: 'healthy' | 'degraded' | 'unhealthy'
   version: string
   timestamp: string
-  total_latency_ms: number
-  checks: {
+  total_latency_ms?: number
+  checks?: {
     supabase: CheckResult
     base_rpc: CheckResult
     anthropic: CheckResult
     ops_agent: CheckResult
+    resend: CheckResult
+    stripe: CheckResult
+    cnft_contract: CheckResult
   }
 }
 
@@ -33,6 +36,9 @@ const CHECK_LABELS: Record<string, { name: string; desc: string }> = {
   base_rpc: { name: 'Base L2 RPC', desc: 'On-chain verification' },
   anthropic: { name: 'Anthropic API', desc: 'Contract generation' },
   ops_agent: { name: 'Ops Agent', desc: 'Email & calendar' },
+  resend: { name: 'Resend', desc: 'Outbound email delivery' },
+  stripe: { name: 'Stripe', desc: 'Billing & subscriptions' },
+  cnft_contract: { name: 'cNFT Contract', desc: 'Base L2 mint contract' },
 }
 
 export function TechHealthWidget() {
@@ -44,7 +50,12 @@ export function TechHealthWidget() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/health')
+      let apiKey: string | undefined
+      try {
+        const raw = localStorage.getItem('ambr_dashboard_session')
+        if (raw) apiKey = JSON.parse(raw)?.apiKey
+      } catch {}
+      const res = await fetch('/api/health', apiKey ? { headers: { 'x-api-key': apiKey } } : {})
       const json = await res.json()
       setData(json)
     } catch (e) {
@@ -95,7 +106,7 @@ export function TechHealthWidget() {
               System {overallConfig.label}
             </p>
             <p className="text-xs text-text-secondary">
-              v{data.version} &middot; {data.total_latency_ms}ms &middot; {new Date(data.timestamp).toLocaleTimeString()}
+              v{data.version}{data.total_latency_ms != null ? ` · ${data.total_latency_ms}ms` : ''} · {new Date(data.timestamp).toLocaleTimeString()}
             </p>
           </div>
         </div>
@@ -110,7 +121,12 @@ export function TechHealthWidget() {
 
       {/* Individual checks */}
       <div className="grid gap-3 sm:grid-cols-2">
-        {Object.entries(data.checks).map(([key, check]) => {
+        {!data.checks && (
+          <p className="col-span-full rounded-xl border border-border bg-surface p-4 text-xs text-text-secondary">
+            Detailed dependency checks require an authenticated admin session. Sign in with an API key to see per-service latency and status.
+          </p>
+        )}
+        {data.checks && Object.entries(data.checks).map(([key, check]) => {
           const config = STATUS_CONFIG[check.status]
           const Icon = config.icon
           const labels = CHECK_LABELS[key] || { name: key, desc: '' }

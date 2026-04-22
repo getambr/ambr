@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 const BASE_RPC = 'https://mainnet.base.org';
 const TIMEOUT_MS = 5000;
@@ -20,7 +20,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 async function checkSupabase(): Promise<CheckResult> {
   const start = Date.now();
   try {
-    const db = getSupabase();
+    const db = getSupabaseAdmin();
     const result = await withTimeout(
       Promise.resolve(db.from('contracts').select('*', { count: 'exact', head: true })),
       TIMEOUT_MS,
@@ -99,17 +99,106 @@ async function checkOpsAgent(): Promise<CheckResult> {
   }
 }
 
+async function checkResend(): Promise<CheckResult> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return { status: 'down', detail: 'no API key configured' };
+  const start = Date.now();
+  try {
+    const res = await withTimeout(
+      fetch('https://api.resend.com/domains', {
+        headers: { Authorization: `Bearer ${key}` },
+      }),
+      TIMEOUT_MS,
+    );
+    if (!res.ok) {
+      return { status: 'down', latency_ms: Date.now() - start, detail: `HTTP ${res.status}` };
+    }
+    const data = await res.json();
+    const domains = Array.isArray(data?.data) ? data.data : [];
+    const verified = domains.filter((d: { status?: string }) => d.status === 'verified').length;
+    return {
+      status: 'ok',
+      latency_ms: Date.now() - start,
+      detail: `${verified}/${domains.length} verified`,
+    };
+  } catch (e) {
+    return { status: 'down', detail: e instanceof Error ? e.message : 'unknown' };
+  }
+}
+
+async function checkStripe(): Promise<CheckResult> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return { status: 'down', detail: 'no API key configured' };
+  const start = Date.now();
+  try {
+    const res = await withTimeout(
+      fetch('https://api.stripe.com/v1/balance', {
+        headers: { Authorization: `Bearer ${key}` },
+      }),
+      TIMEOUT_MS,
+    );
+    if (!res.ok) {
+      return { status: 'down', latency_ms: Date.now() - start, detail: `HTTP ${res.status}` };
+    }
+    const mode = key.startsWith('sk_live_') ? 'live' : 'test';
+    return { status: 'ok', latency_ms: Date.now() - start, detail: `${mode} mode` };
+  } catch (e) {
+    return { status: 'down', detail: e instanceof Error ? e.message : 'unknown' };
+  }
+}
+
+async function checkCnftContract(): Promise<CheckResult> {
+  const address = process.env.CNFT_CONTRACT_ADDRESS;
+  if (!address) return { status: 'down', detail: 'CNFT_CONTRACT_ADDRESS not set' };
+  const start = Date.now();
+  try {
+    const res = await withTimeout(
+      fetch(BASE_RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'eth_getCode',
+          params: [address, 'latest'],
+        }),
+      }),
+      TIMEOUT_MS,
+    );
+    const data = await res.json();
+    const code: string | undefined = data?.result;
+    if (!code || code === '0x') {
+      return { status: 'down', latency_ms: Date.now() - start, detail: 'no contract code at address' };
+    }
+    const short = `${address.slice(0, 6)}…${address.slice(-4)}`;
+    return { status: 'ok', latency_ms: Date.now() - start, detail: `deployed (${short})` };
+  } catch (e) {
+    return { status: 'down', detail: e instanceof Error ? e.message : 'unknown' };
+  }
+}
+
 export async function GET(request: Request) {
   const start = Date.now();
 
-  const [supabase, baseRpc, anthropic, opsAgent] = await Promise.all([
+  const [supabase, baseRpc, anthropic, opsAgent, resend, stripe, cnft] = await Promise.all([
     checkSupabase(),
     checkBaseRpc(),
     checkAnthropic(),
     checkOpsAgent(),
+    checkResend(),
+    checkStripe(),
+    checkCnftContract(),
   ]);
 
-  const checks = { supabase, base_rpc: baseRpc, anthropic, ops_agent: opsAgent };
+  const checks = {
+    supabase,
+    base_rpc: baseRpc,
+    anthropic,
+    ops_agent: opsAgent,
+    resend,
+    stripe,
+    cnft_contract: cnft,
+  };
   const allOk = Object.values(checks).every((c) => c.status === 'ok');
   const anyDown = Object.values(checks).some((c) => c.status === 'down');
 
@@ -118,7 +207,7 @@ export async function GET(request: Request) {
   const apiKey = request.headers.get('x-api-key');
   if (!apiKey) {
     return NextResponse.json(
-      { status: overall, version: '0.3.0', timestamp: new Date().toISOString() },
+      { status: overall, version: '0.3.1', timestamp: new Date().toISOString() },
       { status: overall === 'healthy' ? 200 : 503, headers: { 'Cache-Control': 'public, s-maxage=30' } },
     );
   }
@@ -126,7 +215,7 @@ export async function GET(request: Request) {
   return NextResponse.json(
     {
       status: overall,
-      version: '0.3.0',
+      version: '0.3.1',
       timestamp: new Date().toISOString(),
       total_latency_ms: Date.now() - start,
       checks,
