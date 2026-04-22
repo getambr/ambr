@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { validateApiKey, isAdmin } from '@/lib/api-auth';
 
 const BASE_RPC = 'https://mainnet.base.org';
 const TIMEOUT_MS = 5000;
@@ -177,8 +178,18 @@ async function checkCnftContract(): Promise<CheckResult> {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const start = Date.now();
+
+  // Detail (per-service latency, counts, Stripe mode, contract totals) is
+  // admin-only. Public callers still get the overall up/down status so
+  // external uptime monitors keep working.
+  const hasApiKey = !!request.headers.get('x-api-key') || !!request.headers.get('authorization');
+  let isAdminCaller = false;
+  if (hasApiKey) {
+    const auth = await validateApiKey(request);
+    isAdminCaller = !!auth && isAdmin(auth.email);
+  }
 
   const [supabase, baseRpc, anthropic, opsAgent, resend, stripe, cnft] = await Promise.all([
     checkSupabase(),
@@ -203,25 +214,25 @@ export async function GET(request: Request) {
   const anyDown = Object.values(checks).some((c) => c.status === 'down');
 
   const overall = anyDown ? 'unhealthy' : allOk ? 'healthy' : 'degraded';
+  const httpStatus = overall === 'healthy' ? 200 : 503;
 
-  const apiKey = request.headers.get('x-api-key');
-  if (!apiKey) {
+  if (!isAdminCaller) {
     return NextResponse.json(
-      { status: overall, version: '0.3.1', timestamp: new Date().toISOString() },
-      { status: overall === 'healthy' ? 200 : 503, headers: { 'Cache-Control': 'public, s-maxage=30' } },
+      { status: overall, version: '0.3.2', timestamp: new Date().toISOString() },
+      { status: httpStatus, headers: { 'Cache-Control': 'public, s-maxage=30' } },
     );
   }
 
   return NextResponse.json(
     {
       status: overall,
-      version: '0.3.1',
+      version: '0.3.2',
       timestamp: new Date().toISOString(),
       total_latency_ms: Date.now() - start,
       checks,
     },
     {
-      status: overall === 'healthy' ? 200 : 503,
+      status: httpStatus,
       headers: { 'Cache-Control': 'no-store' },
     },
   );
