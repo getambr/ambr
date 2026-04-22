@@ -54,8 +54,12 @@ export async function GET(
   const url = new URL(cfg.base)
   url.searchParams.set('action', action)
   url.searchParams.set('key', cfg.key)
+  // Forward the authenticated caller's email so Apps Script can scope list
+  // responses (sent_log, draft_queue) per-user. Clients can't spoof this —
+  // it comes from validateApiKey(), not the request body.
+  url.searchParams.set('caller_email', a.auth.email)
   request.nextUrl.searchParams.forEach((v, k) => {
-    if (k !== 'action' && k !== 'key') url.searchParams.set(k, v)
+    if (k !== 'action' && k !== 'key' && k !== 'caller_email') url.searchParams.set(k, v)
   })
 
   try {
