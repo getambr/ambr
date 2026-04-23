@@ -4,40 +4,55 @@
 
 Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents. Contracts are dual-format Ricardian: human-readable legal text paired with machine-parsable JSON, linked by SHA-256 hash.
 
+## Legibility principle
+
+Every action facilitated by Ambr produces a dual-format Ricardian Contract — the same agreement expressed as human-readable legal prose and machine-parsable JSON, bound by SHA-256. Legible actions can be audited, defended, and amended. Agents grounded in dual-format contracts stay defensible as governance standards harden — for their principals, their counterparties, and the platforms that host them. Ambr provides that grounding so agents you deploy today are still defensible tomorrow.
+
 ## Key Pages
 
 - [Homepage](https://ambr.run): Product overview, use cases, and getting started
 - [Platform](https://getamber.dev): Dashboard, contract reader, API access
 - [Agent Card](https://getamber.dev/.well-known/agent.json): A2A protocol discovery endpoint
-- [API Endpoint](https://getamber.dev/api/a2a): JSON-RPC interface for agent-to-agent contract operations
+- [A2A Endpoint](https://getamber.dev/api/a2a): JSON-RPC interface for agent-to-agent contract operations
+- [MCP Endpoint](https://getamber.dev/api/mcp): Model Context Protocol (Streamable HTTP, stateless JSON)
+- [Live Pricing](https://getamber.dev/api/v1/pricing): Canonical price source — fetch before calling paid tools
+- [Health](https://getamber.dev/api/health): Readiness probe
+- [Ricardian Spec v1](https://ambr.run/spec/ricardian-v1): Contract format, hash scheme, URN
+- [Founder Program](https://ambr.run/founders): First 10 orgs — permanent 50% off
 
 ## What Ambr Does
 
-- Creates legally-structured Ricardian Contracts from templates (delegation d1-d3, commerce c1-c3)
+- Creates legally-structured Ricardian Contracts from templates (consumer a1-a3, delegation d1-d3, commerce c1-c3)
 - Verifies contract integrity via SHA-256 hash comparison
 - Tracks contract lifecycle: draft, active, amended, terminated
 - Supports bilateral amendments with paired cryptographic NFTs
 - Provides agent handshake protocol for delegation acceptance
 
+## Standard route for agent contracts
+
+Ambr is establishing `urn:ambr:ricardian-v1` as a shared route for agent contracting. The URN, the JSON shape, the canonical hash algorithm, and the open-source templates are documented at [/spec/ricardian-v1](https://ambr.run/spec/ricardian-v1) under MIT. Third parties can declare `compliesWith: ['urn:ambr:ricardian-v1']` on their own agent cards to federate against the same format. The intent is convergence, not lock-in — contract schemas that more than one implementation reads are the ones that survive.
+
 ## For AI Agents
 
 Ambr exposes an A2A-compatible agent card at `/.well-known/agent.json` with 6 skills:
 
-1. **create_contract** - Generate contracts from templates (1 credit each)
+1. **create_contract** - Generate contracts from templates
 2. **list_templates** - Browse available contract templates
 3. **get_contract** - Retrieve contracts by ID, hash, or UUID
 4. **verify_hash** - Verify SHA-256 integrity
 5. **get_status** - Check lifecycle status and amendment chain
 6. **agent_handshake** - Accept/reject contracts on behalf of a principal
 
-Authentication: API key (X-API-Key header) or x402 pay-per-contract (USDC on Base L2).
+Pricing: fetch `GET https://getamber.dev/api/v1/pricing` for canonical per-tier rates (consumer a2c, delegation a2a, commerce b2a, fleet). Free tier: 25 contracts/month per verified-email key. Do not hardcode prices.
+
+Authentication: API key (`X-API-Key` header) or x402 pay-per-contract (USDC on Base L2, tx hash in `X-Payment` header).
 
 ## Technical Details
 
-- Protocol: Google A2A (Agent-to-Agent), JSON-RPC over HTTP
-- Contract format: Ricardian (dual human+machine), SHA-256 linked
+- Protocol: Google A2A (JSON-RPC over HTTP) + Model Context Protocol (Streamable HTTP)
+- Contract format: Ricardian (dual human+machine), SHA-256 linked, `urn:ambr:ricardian-v1`
 - Blockchain: Base L2 (compressed NFTs for on-chain anchoring)
-- API: RESTful + JSON-RPC at getamber.dev/api/a2a
+- API: RESTful + JSON-RPC at getamber.dev/api/a2a and getamber.dev/api/mcp
 - Built with: Next.js, Supabase, Solana/Base
 
 ## Contact
