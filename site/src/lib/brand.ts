@@ -14,9 +14,9 @@ export const BRAND = {
     platform: 'https://getamber.dev',
   },
   social: {
-    twitter: 'https://twitter.com/getambr',
-    github: 'https://github.com/getambr',
-    discord: 'https://discord.gg/getambr',
+    twitter: 'https://x.com/ambr_run',
+    github: 'https://github.com/getambr/ambr',
+    discord: 'https://discord.gg/HjvJFfjr',
   },
   emails: {
     privacy: 'privacy@ambr.run',
