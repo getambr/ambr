@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@kynesyslabs/demosdk', '@cryptkeeperzk/snarkjs', 'poseidon-lite'],
+  // Bundle private investor assets into the serverless functions that serve them
+  outputFileTracingIncludes: {
+    '/api/v1/investors/deck': ['./private-assets/investor-deck.pdf'],
+    '/api/v1/investors/model': ['./private-assets/investor-model.xlsx'],
+    '/api/v1/investors/slide/[n]': ['./private-assets/investor-slides/**'],
+  },
   async headers() {
     return [
       {

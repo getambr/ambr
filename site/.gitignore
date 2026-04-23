@@ -45,3 +45,6 @@ next-env.d.ts
 
 # supabase CLI temp files
 supabase/.temp/
+
+# Investor-only assets (served via auth-gated API routes)
+private-assets/
