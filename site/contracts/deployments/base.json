@@ -1,0 +1,16 @@
+{
+  "network": "base",
+  "chainId": 8453,
+  "contract": "AmbrContractNFT",
+  "address": "0x20cEE8DDeb9b700Da6f9E00cd6a430fB351DB250",
+  "token": { "name": "Ambr Contract", "symbol": "AMBR" },
+  "deployer": "0xba594B6ccf7973D280b4CD8778b213f345e41524",
+  "initialOwner": "0xba594B6ccf7973D280b4CD8778b213f345e41524",
+  "deploymentTx": "0x09f3258c27dfd23b17460398a49581a5917dd490e4838ee7461cb30843e780f7",
+  "deployedAt": "2026-03-20T14:42:01Z",
+  "block": 43614187,
+  "basescanUrl": "https://basescan.org/address/0x20cEE8DDeb9b700Da6f9E00cd6a430fB351DB250",
+  "verified": false,
+  "verifyCommand": "cd projects/Amber_protocol/site/contracts && BASESCAN_API_KEY=<key> npm run verify:base 0x20cEE8DDeb9b700Da6f9E00cd6a430fB351DB250 0xba594B6ccf7973D280b4CD8778b213f345e41524",
+  "notes": "Earlier deploys by the same minter (0x19702411d0d1d5de401b38e223d320d1099bbd40 at block 43611384 and 0x58e39515cbfcbc56922870a3f72ef8a99db5c325 at block 43610814) are pre-release iterations, not the live contract. The canonical cNFT address is the one in `address` above."
+}
