@@ -10,7 +10,9 @@
   "deployedAt": "2026-03-20T14:42:01Z",
   "block": 43614187,
   "basescanUrl": "https://basescan.org/address/0x20cEE8DDeb9b700Da6f9E00cd6a430fB351DB250",
-  "verified": false,
-  "verifyCommand": "cd projects/Amber_protocol/site/contracts && BASESCAN_API_KEY=<key> npm run verify:base 0x20cEE8DDeb9b700Da6f9E00cd6a430fB351DB250 0xba594B6ccf7973D280b4CD8778b213f345e41524",
+  "sourceCodeUrl": "https://basescan.org/address/0x20cEE8DDeb9b700Da6f9E00cd6a430fB351DB250#code",
+  "verified": true,
+  "verifiedAt": "2026-04-23T12:20:00Z",
+  "verifyCommand": "cd projects/Amber_protocol/site/contracts && ETHERSCAN_API_KEY=<key> npm run verify:base 0x20cee8ddeb9b700da6f9e00cd6a430fb351db250 0xba594b6ccf7973d280b4cd8778b213f345e41524",
   "notes": "Earlier deploys by the same minter (0x19702411d0d1d5de401b38e223d320d1099bbd40 at block 43611384 and 0x58e39515cbfcbc56922870a3f72ef8a99db5c325 at block 43610814) are pre-release iterations, not the live contract. The canonical cNFT address is the one in `address` above."
 }

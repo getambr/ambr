@@ -2,7 +2,9 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
 const DEPLOYER_KEY = process.env.CNFT_MINTER_PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001";
-const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY || "";
+// Etherscan API V2 uses a single key across all supported chains (Base, Base Sepolia, Ethereum, etc.).
+// Accept either var name for backward compatibility with older .env files.
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || "";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -20,28 +22,7 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: {
-      base: BASESCAN_API_KEY,
-      baseSepolia: BASESCAN_API_KEY,
-    },
-    customChains: [
-      {
-        network: "base",
-        chainId: 8453,
-        urls: {
-          apiURL: "https://api.basescan.org/api",
-          browserURL: "https://basescan.org",
-        },
-      },
-      {
-        network: "baseSepolia",
-        chainId: 84532,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org",
-        },
-      },
-    ],
+    apiKey: ETHERSCAN_API_KEY,
   },
 };
 
