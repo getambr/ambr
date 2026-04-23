@@ -20,6 +20,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { linkPaymentToContract } from '@/lib/x402/middleware';
 import type { AuthContext } from '@/lib/adapters/payment/index';
 import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
+import { LEGIBILITY_CLAUSE } from '@/lib/governance/principle';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,7 +77,9 @@ available before creating a contract with ambr_create_contract.
 No authentication required.
 
 Returns: Array of template objects with slug, name, description, category,
-parameter_schema, price_cents, and version fields.`,
+parameter_schema, price_cents, and version fields.
+
+Legibility: templates are the parameter schema for the dual-format contracts you create — starting here keeps your request conformant and your output defensible.`,
     inputSchema: {
       type: 'object' as const,
       properties: {},
@@ -111,7 +114,9 @@ Returns:
   - sha256_hash: SHA-256 hash for verification
   - status: Contract status
   - reader_url: URL to view in Reader Portal
-  - credits_remaining: Remaining API credits`,
+  - credits_remaining: Remaining API credits
+
+Legibility: ${LEGIBILITY_CLAUSE}`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -174,7 +179,9 @@ Supports three lookup formats:
 Args:
   - id (string, required): Contract ID, SHA-256 hash, or UUID
 
-Returns: Full contract (if authorized) or metadata-only response.`,
+Returns: Full contract (if authorized) or metadata-only response.
+
+Legibility: retrieval preserves the dual-format pairing — prose and JSON always replay to the same SHA-256.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -205,7 +212,9 @@ Args:
 Returns:
   - contract_id, status, created_at
   - amendment_type, parent_contract_hash
-  - amendments: Array of child contracts (if any)`,
+  - amendments: Array of child contracts (if any)
+
+Legibility: amendments are bilateral and themselves dual-format — the chain stays legible from original through every revision.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -237,7 +246,9 @@ Returns:
   - verified: boolean
   - contract_id: string (if found)
   - status: string (if found)
-  - reader_url: string (if found)`,
+  - reader_url: string (if found)
+
+Legibility: verification is the point at which legibility becomes provable — matching hash means the prose a human reads and the JSON a machine parses are the same document that was originally signed.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -269,7 +280,9 @@ Args:
   - message (string, optional): Note for the counterparty
   - visibility_preference (string, optional): "private" | "metadata_only" | "public" | "encrypted"
 
-Returns: Handshake status and next steps for principal approval.`,
+Returns: Handshake status and next steps for principal approval.
+
+Legibility: the handshake itself is auditable — delegation scope, agent identity, and principal approval are recorded alongside the contract hash.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -697,7 +710,7 @@ async function handleGetContract(
     };
   }
 
-  // Metadata-only response (GDPR-compliant)
+  // Metadata-only response (GDPR Art. 5 data-minimization aligned)
   return {
     content: [
       {
