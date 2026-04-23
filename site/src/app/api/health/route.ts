@@ -217,16 +217,37 @@ export async function GET(request: NextRequest) {
   const httpStatus = overall === 'healthy' ? 200 : 503;
 
   if (!isAdminCaller) {
+    const publicServices = Object.fromEntries(
+      Object.entries(checks).map(([k, v]) => [k, v.status]),
+    );
+    const cnftAddress = process.env.CNFT_CONTRACT_ADDRESS;
     return NextResponse.json(
-      { status: overall, version: '0.3.2', timestamp: new Date().toISOString() },
-      { status: httpStatus, headers: { 'Cache-Control': 'public, s-maxage=30' } },
+      {
+        status: overall,
+        version: '0.3.3',
+        timestamp: new Date().toISOString(),
+        services: publicServices,
+        cnft: cnftAddress
+          ? {
+              address: cnftAddress,
+              basescan_url: `https://basescan.org/address/${cnftAddress}`,
+            }
+          : null,
+      },
+      {
+        status: httpStatus,
+        headers: {
+          'Cache-Control': 'public, s-maxage=30',
+          'Access-Control-Allow-Origin': '*',
+        },
+      },
     );
   }
 
   return NextResponse.json(
     {
       status: overall,
-      version: '0.3.2',
+      version: '0.3.3',
       timestamp: new Date().toISOString(),
       total_latency_ms: Date.now() - start,
       checks,

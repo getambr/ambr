@@ -5,7 +5,9 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "deploy:base-sepolia": "npx hardhat run scripts/deploy.ts --network baseSepolia",
-    "deploy:base": "npx hardhat run scripts/deploy.ts --network base"
+    "deploy:base": "npx hardhat run scripts/deploy.ts --network base",
+    "verify:base": "npx hardhat verify --network base",
+    "verify:base-sepolia": "npx hardhat verify --network baseSepolia"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

@@ -132,9 +132,13 @@ export default function Footer() {
           <p className="font-mono text-xs text-[#666]">
             &copy; 2026 Ambr. All rights reserved.
           </p>
-          <p className="mt-4 font-mono text-xs text-amber tracking-widest uppercase">
-            SYS.STATUS: OPERATIONAL
-          </p>
+          <Link
+            href="/status"
+            className="mt-4 inline-flex items-center gap-2 font-mono text-xs text-amber tracking-widest uppercase hover:opacity-80"
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber" aria-hidden />
+            SYS.STATUS
+          </Link>
         </div>
       </div>
     </footer>
