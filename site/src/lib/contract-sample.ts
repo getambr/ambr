@@ -36,7 +36,7 @@ SCOPE OF DELEGATION
 LIABILITY
 6. Principal assumes liability for all purchases within authorized scope
 7. Agent actions outside authorized scope are void and non-binding
-8. Dispute resolution: IETF ADP-compliant arbitration
+8. Dispute resolution: IETF ADP-based arbitration
 
 DURATION
 Start: 2026-02-25T00:00:00Z

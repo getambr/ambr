@@ -11,7 +11,7 @@ export default function DocsPage() {
         <h2 className="font-serif text-3xl text-text-primary mb-4">What is Ambr</h2>
         <p className="text-[#999] text-sm leading-relaxed">
           Ambr is Ricardian legal infrastructure for AI agents. It lets autonomous software
-          create, negotiate, sign, and verify legally-binding contracts through a single API
+          create, negotiate, sign, and verify enforceable contracts through a single API
           -- no human bottleneck, no PDF workflows.
         </p>
       </section>
