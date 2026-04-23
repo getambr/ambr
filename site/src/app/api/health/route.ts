@@ -224,7 +224,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         status: overall,
-        version: '0.3.2',
+        version: '0.3.3',
         timestamp: new Date().toISOString(),
         services: publicServices,
         cnft: cnftAddress
@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(
     {
       status: overall,
-      version: '0.3.2',
+      version: '0.3.3',
       timestamp: new Date().toISOString(),
       total_latency_ms: Date.now() - start,
       checks,

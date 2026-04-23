@@ -2,6 +2,27 @@
 
 All notable changes to Ambr are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [SemVer](https://semver.org/).
 
+## [0.3.3] — 2026-04-23
+
+### Added
+- **Public `/status` page** on ambr.run — per-service status dots (7 services), cNFT contract card linking to BaseScan, 30s auto-refresh. No auth required.
+- **`contracts/deployments/base.json`** — live AmbrContractNFT address, deployment tx, block, and deployer captured in git.
+- **Hardhat `verify:base` / `verify:base-sepolia` scripts** + `etherscan` block and `customChains` for Base mainnet (8453) and Base Sepolia (84532). BaseScan verification is now one command given a `BASESCAN_API_KEY`.
+
+### Changed
+- **`/api/health` public response** now returns per-service status strings and a `cnft` block with BaseScan URL. `Access-Control-Allow-Origin: *` added on the public branch so the marketing domain can fetch the platform domain's health endpoint. Admin response unchanged.
+- **Footer `SYS.STATUS`** is now a live `<Link>` to `/status` (was a static string).
+- **Contract-generation prompts** (`src/lib/llm/prompts.ts`): EU recital reframed around eIDAS Art. 26 Advanced Electronic Signature criteria, with Principal Declaration attributing the wallet signature to the natural/legal person under Art. 3(9). Liability sections reference UCTA s. 11 reasonableness test rather than asserting "UCTA-compliant." GDPR language reframed around Art. 5 principles.
+- **Public copy** in `docs/page.tsx`, `templates/seed-data.ts`, and `contract-sample.ts` — replaced "compliant with" / "legally-binding" / "ADP-compliant" wording with reference-style framing.
+- **A2C backend pricing** (`src/lib/a2a/handler.ts`) aligned to `$0.20` across a1/a2/a3 slugs, matching marketing, x402 middleware, and docs. Dashboard developer-tier display aligned to `25/mo`.
+- **`brand.ts`** social handles aligned to `@ambr_run`, correct GitHub repo URL, and real Discord invite code.
+- **`package.json` bumped to `0.3.3`** to match `/api/health` version string (was 0.3.0 while endpoint reported 0.3.2).
+
+### Fixed
+- **`.env.example`** — documents all previously-undocumented secrets: `BASESCAN_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `ADMIN_SECRET`, `OPS_BASE`, `OPS_KEY`. Fresh clones no longer fail health checks silently.
+
+---
+
 ## [0.3.0] — 2026-04-20
 
 ### Added
