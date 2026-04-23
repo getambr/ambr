@@ -2,6 +2,21 @@
 
 All notable changes to Ambr are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [SemVer](https://semver.org/).
 
+## [0.3.4] — 2026-04-23
+
+### Added
+- **Legibility Principle** as a canonical governance assertion across the discovery surface — MCP tool descriptions, A2A agent card extensions, and `llms.txt` all now carry the clause that agents whose actions are not simultaneously legible to humans and machines are a systemic liability.
+- **Public spec page `/spec/ricardian-v1`** — documents the Ambr dual-format Ricardian contract shape (URN `urn:ambr:ricardian-v1`, MIT-licensed). First public standardization seed; gives third parties a stable URL to federate against.
+- **Extended A2A agent card** (`/.well-known/agent.json`): `platformVersion`, `releasedAt`, `apiVersion`, `additionalInterfaces` (MCP + `/api/health`), `pricing.source` pointing at `/api/v1/pricing`, `compliesWith: ['urn:ambr:ricardian-v1']`, `implementsSpec` link, and `extensions['io.ambr.governance']` holding the principle text.
+- **`src/lib/governance/principle.ts`** — shared source of truth for `LEGIBILITY_CLAUSE`, `LEGIBILITY_PRINCIPLE`, `RICARDIAN_URN`, `GOVERNANCE_NAMESPACE`. Prevents drift between the three surfaces that reference the principle.
+- **`server.json`** — static MCP discovery config alongside the `agent.json` card.
+
+### Changed
+- **`public/llms.txt`**: new "Legibility Principle" section after the tagline; Key Pages expanded with MCP, health, spec, and founder links; free-tier and pricing references aligned with the live `/api/v1/pricing` source of truth.
+- **Every MCP tool description** (`ambr_list_templates`, `ambr_create_contract`, `ambr_get_contract`, `ambr_get_contract_status`, `ambr_verify_hash`, `agent_handshake`) appends the legibility clause so `tools/list` responses carry the principle alongside the schema.
+
+---
+
 ## [0.3.3] — 2026-04-23
 
 ### Added
