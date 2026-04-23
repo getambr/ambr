@@ -87,7 +87,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Tier Info ──────────────────────────────────────────
 const TIER_INFO: Record<string, { label: string; limit: string; overage: string }> = {
-  developer: { label: 'Developer', limit: '5/mo', overage: 'N/A' },
+  developer: { label: 'Developer', limit: '25/mo', overage: 'N/A' },
   startup: { label: 'Startup', limit: '200/mo', overage: '$0.35/contract' },
   scale: { label: 'Scale', limit: '1,000/mo', overage: '$0.25/contract' },
   enterprise: { label: 'Enterprise', limit: 'Unlimited', overage: 'Custom' },
