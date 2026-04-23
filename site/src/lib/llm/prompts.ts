@@ -34,7 +34,7 @@ MANDATORY ELEMENTS (every contract must include):
 ELECTRONIC AGENT FORMATION RECITAL (include in every contract, select by governing_law):
 For Singapore: "This contract is formed pursuant to the Electronic Transactions Act (Cap. 88), Section 15. The parties acknowledge that contracts formed through electronic agents are valid and enforceable."
 For Delaware/US: "This contract is formed pursuant to the Uniform Electronic Transactions Act (UETA) Section 14 and the Electronic Signatures in Global and National Commerce Act (ESIGN). The parties acknowledge that electronic agents may form binding contracts."
-For EU: "This contract is formed in compliance with eIDAS Regulation (EU) 910/2014. The Principal Declaration establishes the legal attribution of the agent's electronic signatures to the principal under Art. 25."
+For EU: "This contract is formed under eIDAS Regulation (EU) 910/2014. The signature satisfies Article 26 criteria for an Advanced Electronic Signature (uniquely linked to the signatory, capable of identifying the signatory, created under the signatory's sole control, and tamper-evident via SHA-256 anchoring). The Principal Declaration attributes the wallet signature to the Principal as the natural or legal person under Article 3(9)."
 For England-Wales/UK: "This contract is formed under English common law principles of agency. Electronic signatures are admissible in evidence pursuant to the Electronic Communications Act 2000, Section 7."
 
 DUAL-FORMAT RECONCILIATION (include in machineReadable):
@@ -87,7 +87,7 @@ CONTRACT STRUCTURE:
 6. DELIVERY — delivery_timeline terms
 7. COOLING-OFF PERIOD — {cooling_off_days} days from signing; how to exercise (email to provider); no penalty for withdrawal
 8. CANCELLATION AND REFUND — refund_policy terms; cancellation must be as easy as purchase; no hidden barriers
-9. LIABILITY — provider liable for agent actions; UCTA-compliant caps (minimum 2x fee); no exclusion of liability for negligence or death (UCTA s. 2)
+9. LIABILITY — provider liable for agent actions; liability caps set per UCTA s. 11 reasonableness test (minimum 2x fee); no exclusion of liability for negligence or death (UCTA s. 2)
 10. DATA PROTECTION — GDPR Art. 13-14 information notice; who processes data, purpose, retention, consumer rights (access, erasure, portability)
 11. CONSUMER RIGHTS NOTICE — reference to applicable consumer protection legislation (Consumer Rights Directive, Consumer Rights Act 2015, UCTA)
 12. DISPUTE RESOLUTION — IETF ADP v1 primary; consumer retains right to small claims court
@@ -260,7 +260,7 @@ CONTRACT STRUCTURE:
   'c2-compute-sla': `${BASE_INSTRUCTIONS}
 
 TEMPLATE: C2 — Compute & Data Processing SLA
-PURPOSE: Service-level agreement for ongoing compute, infrastructure, or data processing services with performance guarantees, auto-scaling terms, and GDPR-compliant data handling.
+PURPOSE: Service-level agreement for ongoing compute, infrastructure, or data processing services with performance guarantees, auto-scaling terms, and data handling structured per GDPR Art. 5 principles.
 
 LEGAL BASIS:
 - EU: GDPR Art. 28 (data processing agreement requirements), Art. 44-49 (cross-border transfers)
@@ -373,7 +373,7 @@ CONTRACT STRUCTURE:
 7. COOLING-OFF PERIOD — {cooling_off_days} days from signing; how to exercise (email to provider); no penalty for withdrawal
 8. CANCELLATION AND REFUND — cancellation_notice_days; cancellation process must be as easy as sign-up; prorated_refund terms; no hidden barriers or retention flows
 9. AUTO-RENEWAL — auto_renew status; if true, explicit consumer consent recorded; renewal notification at least 30 days before; one-click opt-out
-10. LIABILITY — provider liable for agent actions within subscription scope; UCTA-compliant caps (minimum 2x monthly_fee); no exclusion of liability for negligence or death
+10. LIABILITY — provider liable for agent actions within subscription scope; liability caps set per UCTA s. 11 reasonableness test (minimum 2x monthly_fee); no exclusion of liability for negligence or death
 11. DATA PROTECTION — GDPR Art. 13-14 information notice; who processes data, purpose, retention period, consumer rights (access, erasure, portability)
 12. CONSUMER RIGHTS NOTICE — reference to applicable consumer protection law (CRD, CRA, UCTA, FTC rules)
 13. DISPUTE RESOLUTION — IETF ADP v1 primary; consumer retains right to small claims court
