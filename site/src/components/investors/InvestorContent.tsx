@@ -71,7 +71,7 @@ export default async function InvestorContent() {
           <p className="text-lg text-text-secondary leading-relaxed max-w-3xl mb-8">
             700M AI agents are already in production. They transact.
             But no transaction is legally enforceable — there is no agreement layer.
-            Ambr issues Ricardian contracts that agents can sign, verify, and enforce on-chain.
+            Ambr issues Ricardian contracts — human-readable, machine-executable agreements — that agents can sign, verify, and enforce on-chain.
           </p>
 
           <div className="border border-amber/60 bg-amber/5 p-6 max-w-2xl">
@@ -82,7 +82,7 @@ export default async function InvestorContent() {
               $500K pre-seed at $15M cap
             </p>
             <p className="text-sm text-text-secondary">
-              SAFE · Bootstrap M1–M6 · 78% marketing, 18% founder stipends, 1% legal, 3% infra
+              SAFE · Bootstrap (months 1–6) · 78% marketing, 18% founder stipends, 1% legal, 3% infra
             </p>
           </div>
         </section>
@@ -96,9 +96,9 @@ export default async function InvestorContent() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Contracts generated" value={String(stats.total_contracts)} sublabel={`${stats.active_contracts} active`} />
-            <StatCard label="cNFTs on Base L2" value={String(stats.minted_cnfts)} sublabel="on-chain proof" />
+            <StatCard label="Compressed NFTs on Base L2" value={String(stats.minted_cnfts)} sublabel="on-chain proof" />
             <StatCard label="Active API keys" value={String(stats.active_api_keys)} sublabel={`${stats.paying_keys} paid`} />
-            <StatCard label="Contract templates" value={String(stats.templates_available)} sublabel="live on MCP" />
+            <StatCard label="Contract templates" value={String(stats.templates_available)} sublabel="live on MCP (Model Context Protocol)" />
           </div>
 
           <div className="mt-4 text-xs text-text-secondary/70 space-y-1">
@@ -205,6 +205,7 @@ export default async function InvestorContent() {
                 M36 EXIT ARR
               </p>
               <p className="text-3xl text-text-primary font-serif">$450M</p>
+              <p className="text-xs text-text-secondary mt-1">year-3 exit run-rate</p>
             </div>
             <div className="border border-amber/30 bg-surface/80 p-5">
               <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
