@@ -19,7 +19,7 @@ const pricingItems = [
     label: 'Commerce (B2A)',
     price: '$1.00',
     unit: 'per contract',
-    description: 'API access agreements, compute SLAs, and task execution contracts between businesses and agents. x402 or API key payment.',
+    description: 'Business-to-agent authorization — compute SLAs, API access, and task execution contracts between businesses and agents. x402 or API key payment.',
   },
   {
     label: 'Fleet Multi-Agent',
