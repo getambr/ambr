@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': 'attachment; filename="ambr-financial-model-v0.3.6.xlsx"',
+        'Content-Disposition': 'attachment; filename="ambr-financial-model-v0.3.7.xlsx"',
         'Content-Length': String(buffer.length),
         'Cache-Control': 'private, no-store',
       },

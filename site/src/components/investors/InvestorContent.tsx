@@ -158,10 +158,10 @@ export default async function InvestorContent() {
             </a>
             <a
               href="/api/v1/investors/model"
-              download="ambr-financial-model-v0.3.6.xlsx"
+              download="ambr-financial-model-v0.3.7.xlsx"
               className="inline-block rounded-none border border-amber bg-transparent px-4 py-2 text-xs font-mono uppercase tracking-wide text-amber hover:bg-amber/10 transition-colors"
             >
-              Download Financial Model v0.3.6 (xlsx)
+              Download Financial Model v0.3.7 (xlsx)
             </a>
           </div>
         </section>
@@ -169,7 +169,7 @@ export default async function InvestorContent() {
         {/* ───── Financial highlights ───── */}
         <section>
           <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
-            Financial Model · v0.3.6 (Dainis-approved · Real scenario)
+            Financial Model · v0.3.7 (Dainis-approved · Real scenario)
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
             Bootstrap-Funded Path to $450M ARR
@@ -179,8 +179,8 @@ export default async function InvestorContent() {
             <FinancialYearCard
               label="Year 1 · 2026"
               revenue="$2.08M"
-              ebitda="+$1.14M"
-              margin="55% EBITDA"
+              ebitda="+$0.84M"
+              margin="40% EBITDA"
               share="0.2% market share"
             />
             <FinancialYearCard
@@ -193,8 +193,8 @@ export default async function InvestorContent() {
             <FinancialYearCard
               label="Year 3 · 2028"
               revenue="$247M"
-              ebitda="+$172.5M"
-              margin="70% EBITDA"
+              ebitda="+$193.5M"
+              margin="78% EBITDA"
               share="3% market share"
             />
           </div>
@@ -211,7 +211,7 @@ export default async function InvestorContent() {
               <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
                 3-yr Cumulative EBITDA
               </p>
-              <p className="text-3xl text-text-primary font-serif">$200.3M</p>
+              <p className="text-3xl text-text-primary font-serif">$221.0M</p>
             </div>
             <div className="border border-amber/30 bg-surface/80 p-5">
               <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
@@ -223,7 +223,7 @@ export default async function InvestorContent() {
 
           <div className="border border-amber/20 bg-surface/50 p-4">
             <p className="text-xs text-text-secondary leading-relaxed">
-              <strong className="text-text-primary">Assumptions (v0.3.6):</strong>{' '}
+              <strong className="text-text-primary">Assumptions (v0.3.7):</strong>{' '}
               700M agents Jan 2026 (Barclays), 95% CAGR (METR + Gartner), 20% need formal authorization,
               30 contracts/agent/year, $0.50 blended ARPU. Period: 36 months · May 2026 → Apr 2029.
               Methodology: year-end market share × monthly TAM (linear ramp).
