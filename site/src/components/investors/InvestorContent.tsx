@@ -169,7 +169,7 @@ export default async function InvestorContent() {
         {/* ───── Financial highlights ───── */}
         <section>
           <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
-            Financial Model · v0.3.7 (Dainis-approved · Real scenario)
+            Financial Model · v0.3.7
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
             Bootstrap-Funded Path to $450M ARR
