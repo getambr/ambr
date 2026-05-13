@@ -10,7 +10,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { isInvestorAuthenticated } from '@/lib/investor-auth';
 
-const MAX_SLIDE = 14;
+const MAX_SLIDE = 16;
 
 export async function GET(
   request: Request,

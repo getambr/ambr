@@ -6,7 +6,7 @@ import InvestorContent from '@/components/investors/InvestorContent';
 
 export const metadata: Metadata = {
   title: 'Investor Access | Ambr',
-  description: 'Password-gated investor package for Ambr. $500K pre-seed at $15M cap.',
+  description: 'Password-gated investor package for Ambr. $1M seed at $10M cap.',
   robots: { index: false, follow: false },
 };
 

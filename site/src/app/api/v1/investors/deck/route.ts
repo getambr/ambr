@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': 'inline; filename="ambr-pitch-deck.pdf"',
+        'Content-Disposition': 'inline; filename="ambr-pitch-deck-v0.3.9.pdf"',
         'Content-Length': String(buffer.length),
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
