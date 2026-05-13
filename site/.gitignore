@@ -48,3 +48,6 @@ supabase/.temp/
 
 # Investor-only assets (served via auth-gated API routes)
 private-assets/
+
+# Investor-only data (numbers, ask, assumptions — rendered inside auth-gated page)
+private-data/

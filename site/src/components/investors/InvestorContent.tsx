@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
+import { loadInvestorFigures } from '@/lib/investor-figures';
 import InvestorLogoutButton from './InvestorLogoutButton';
 
 // ---------------------------------------------------------------------------
@@ -44,7 +45,7 @@ async function getTractionStats(): Promise<TractionStats> {
 // ---------------------------------------------------------------------------
 
 export default async function InvestorContent() {
-  const stats = await getTractionStats();
+  const [stats, figures] = await Promise.all([getTractionStats(), loadInvestorFigures()]);
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -69,9 +70,7 @@ export default async function InvestorContent() {
             The Contracts Layer for the AI Agent Economy
           </h1>
           <p className="text-lg text-text-secondary leading-relaxed max-w-3xl mb-8">
-            220M+ AI agents are already in production, on track for ~2.1B by 2030. They transact.
-            But no transaction is legally enforceable — there is no agreement layer.
-            Ambr issues Ricardian contracts — human-readable, machine-executable agreements — that agents can sign, verify, and enforce on-chain.
+            {figures.hero}
           </p>
 
           <div className="border border-amber/60 bg-amber/5 p-6 max-w-2xl">
@@ -79,11 +78,13 @@ export default async function InvestorContent() {
               The Ask
             </p>
             <p className="text-3xl text-text-primary font-serif mb-2">
-              $1M seed at $10M cap
+              {figures.ask.headline}
             </p>
-            <p className="text-sm text-text-secondary">
-              SAFE · First $500K covers M1–M6 bootstrap · 78% marketing, 18% founder stipends, 1% legal, 3% infra · Each subsequent $500K unlocks 2× TAM capture
-            </p>
+            {figures.ask.subhead && (
+              <p className="text-sm text-text-secondary">
+                {figures.ask.subhead}
+              </p>
+            )}
           </div>
         </section>
 
@@ -118,49 +119,51 @@ export default async function InvestorContent() {
         {/* ───── Pitch deck ───── */}
         <section>
           <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
-            Pitch Deck · v0.3.9
+            {figures.deck.tag}
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
-            16-slide briefing
+            {figures.deck.title}
           </h2>
 
-          <div className="space-y-4">
-            {Array.from({ length: 16 }, (_, i) => i + 1).map((n) => (
-              <figure
-                key={n}
-                className="border border-amber/40 bg-surface overflow-hidden"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/v1/investors/slide/${n}`}
-                  alt={`Ambr pitch deck · slide ${n} of 16`}
-                  loading={n <= 2 ? 'eager' : 'lazy'}
-                  decoding="async"
-                  className="block w-full h-auto"
-                  width={1280}
-                  height={720}
-                />
-                <figcaption className="px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-amber/70 border-t border-amber/20">
-                  slide {n} / 16
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          {figures.deck.slideCount > 0 && (
+            <div className="space-y-4">
+              {Array.from({ length: figures.deck.slideCount }, (_, i) => i + 1).map((n) => (
+                <figure
+                  key={n}
+                  className="border border-amber/40 bg-surface overflow-hidden"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/v1/investors/slide/${n}`}
+                    alt={`Ambr pitch deck · slide ${n} of ${figures.deck.slideCount}`}
+                    loading={n <= 2 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    className="block w-full h-auto"
+                    width={1280}
+                    height={720}
+                  />
+                  <figcaption className="px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-amber/70 border-t border-amber/20">
+                    slide {n} / {figures.deck.slideCount}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
 
           <div className="mt-4 flex gap-3">
             <a
               href="/api/v1/investors/deck"
-              download="ambr-pitch-deck-v0.3.9.pdf"
+              download={figures.deck.pdfFilename}
               className="inline-block rounded-none bg-amber px-4 py-2 text-xs font-mono uppercase tracking-wide text-background hover:bg-amber-light transition-colors"
             >
               Download Pitch Deck (PDF)
             </a>
             <a
               href="/api/v1/investors/model"
-              download="ambr-financial-model-v0.3.8.xlsx"
+              download={figures.deck.modelFilename}
               className="inline-block rounded-none border border-amber bg-transparent px-4 py-2 text-xs font-mono uppercase tracking-wide text-amber hover:bg-amber/10 transition-colors"
             >
-              Download Financial Model v0.3.8 (xlsx)
+              {figures.deck.modelButtonLabel}
             </a>
           </div>
         </section>
@@ -168,34 +171,16 @@ export default async function InvestorContent() {
         {/* ───── Financial highlights ───── */}
         <section>
           <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
-            Financial Model · v0.3.8
+            {figures.model.tag}
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
-            Bootstrap-Funded Path to $197M ARR
+            {figures.model.title}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <FinancialYearCard
-              label="Year 1 · 2026"
-              revenue="$1.31M"
-              ebitda="−$66K"
-              margin="−5% EBITDA"
-              share="0.2% market share"
-            />
-            <FinancialYearCard
-              label="Year 2 · 2027"
-              revenue="$22.4M"
-              ebitda="+$9.3M"
-              margin="41% EBITDA"
-              share="1% market share"
-            />
-            <FinancialYearCard
-              label="Year 3 · 2028"
-              revenue="$116.7M"
-              ebitda="+$56.5M"
-              margin="48% EBITDA"
-              share="3% market share"
-            />
+            <FinancialYearCard {...figures.model.years.y1} />
+            <FinancialYearCard {...figures.model.years.y2} />
+            <FinancialYearCard {...figures.model.years.y3} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -203,30 +188,26 @@ export default async function InvestorContent() {
               <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
                 M36 Exit ARR
               </p>
-              <p className="text-3xl text-text-primary font-serif">$197M</p>
+              <p className="text-3xl text-text-primary font-serif">{figures.model.m36Arr}</p>
               <p className="text-xs text-text-secondary mt-1">year-3 exit run-rate</p>
             </div>
             <div className="border border-amber/30 bg-surface/80 p-5">
               <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
                 3-yr Cumulative EBITDA
               </p>
-              <p className="text-3xl text-text-primary font-serif">$65.7M</p>
+              <p className="text-3xl text-text-primary font-serif">{figures.model.cumulativeEbitda}</p>
             </div>
             <div className="border border-amber/30 bg-surface/80 p-5">
               <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
                 Peak Monthly Burn
               </p>
-              <p className="text-3xl text-text-primary font-serif">$81.1K</p>
+              <p className="text-3xl text-text-primary font-serif">{figures.model.peakBurn}</p>
             </div>
           </div>
 
           <div className="border border-amber/20 bg-surface/50 p-4">
             <p className="text-xs text-text-secondary leading-relaxed">
-              <strong className="text-text-primary">Assumptions (v0.3.8 · TAM Capture Rebase):</strong>{' '}
-              220M agents Jan 2026, 57% CAGR (→ ~2.1B by 2030), 40% need formal authorization,
-              30 contracts/agent/year, $0.50 blended ARPU. Period: 36 months · May 2026 → Apr 2029.
-              Methodology: year-end market share × monthly TAM (linear ramp).
-              First $500K covers M1–M6 bootstrap. LTV / CAC Y3: 15.2×. Headcount Y3-end: 107. Gross margin 86.3%.
+              {figures.model.assumptions}
             </p>
           </div>
         </section>
@@ -324,9 +305,7 @@ export default async function InvestorContent() {
 
           <div className="border border-amber/40 bg-surface/80 p-6 max-w-2xl">
             <p className="text-sm text-text-secondary mb-4">
-              We&apos;re actively raising the $1M seed at a $10M cap. The fastest path forward is a 30-minute
-              call with Dainis to align on terms, followed by a technical session with Ilvers if you want
-              to see the product in action.
+              {figures.ask.contactCta}
             </p>
             <div className="space-y-2 font-mono text-sm">
               <p>

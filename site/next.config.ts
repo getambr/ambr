@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     '/api/v1/investors/deck': ['./private-assets/investor-deck.pdf'],
     '/api/v1/investors/model': ['./private-assets/investor-model.xlsx'],
     '/api/v1/investors/slide/[n]': ['./private-assets/investor-slides/**'],
+    '/investors': ['./private-data/**'],
   },
   async headers() {
     return [

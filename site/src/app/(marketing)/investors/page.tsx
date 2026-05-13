@@ -1,14 +1,18 @@
 import { headers } from 'next/headers';
 import { Metadata } from 'next';
 import { isInvestorAuthenticated } from '@/lib/investor-auth';
+import { loadInvestorFigures } from '@/lib/investor-figures';
 import InvestorGate from '@/components/investors/InvestorGate';
 import InvestorContent from '@/components/investors/InvestorContent';
 
-export const metadata: Metadata = {
-  title: 'Investor Access | Ambr',
-  description: 'Password-gated investor package for Ambr. $1M seed at $10M cap.',
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const figures = await loadInvestorFigures();
+  return {
+    title: 'Investor Access | Ambr',
+    description: figures.metadataDescription,
+    robots: { index: false, follow: false },
+  };
+}
 
 // Always server-render; never cache (content varies by auth state)
 export const dynamic = 'force-dynamic';
