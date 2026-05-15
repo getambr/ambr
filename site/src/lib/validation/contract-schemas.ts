@@ -21,6 +21,7 @@ export const createContractSchema = z.object({
   visibility: z.enum(['private', 'metadata_only', 'public', 'encrypted']).optional(),
   publish_to: z.array(z.string()).optional(),
   require_zk_identity: z.boolean().optional(),
+  client_draft_id: z.string().min(1).max(128).optional(),
 });
 
 export type CreateContractInput = z.input<typeof createContractSchema>;

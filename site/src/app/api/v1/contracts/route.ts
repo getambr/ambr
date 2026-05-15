@@ -327,6 +327,7 @@ export async function POST(request: Request) {
       oversightThresholdUsd,
       principalApprovalRequired: requiresPrincipalApproval,
       requireZkIdentity: parsed.data.require_zk_identity,
+      clientDraftId: parsed.data.client_draft_id,
     });
 
     // 9. Post-creation: deduct credits or link payment

@@ -19,10 +19,13 @@ import ExportButtons from '@/app/(platform)/reader/[hashOrId]/ExportButtons';
 import { ADMIN_EMAILS } from '@/lib/admin-emails';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import WalletPicker from '@/components/wallet/WalletPicker';
+import DeployChat from '@/components/deploy/DeployChat';
+import DraftsList from '@/components/deploy/DraftsList';
+import AmbrAgentOverlay from '@/components/ambr-agent/AmbrAgentOverlay';
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'health';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'my-drafts' | 'health';
 
 interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
 export interface ContractRow {
@@ -101,6 +104,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'overview' as Section, label: 'Pipeline Overview', icon: BarChart3 },
       { id: 'create' as Section, label: 'Create Contract', icon: Plus },
+      { id: 'my-drafts' as Section, label: 'Drafts', icon: Clock },
       { id: 'contracts' as Section, label: 'All Contracts', icon: FileText },
       { id: 'analytics' as Section, label: 'Analytics', icon: TrendingUp },
     ],
@@ -265,6 +269,7 @@ const MOBILE_TABS = [
 ];
 
 const MORE_ITEMS = [
+  { id: 'my-drafts' as Section, label: 'Drafts', icon: Clock },
   { id: 'agents' as Section, label: 'Agent Setup', icon: Terminal },
   { id: 'account' as Section, label: 'Account', icon: Layers },
 ];
@@ -1960,6 +1965,11 @@ export default function DashboardPage() {
   const [section, setSection] = useState<Section>('overview');
   // mobileOpen removed — replaced by bottom tab bar
   const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null);
+  // Chat-driven deploy state (experimental, admin-gated until v1 ships publicly)
+  const [deployInitialIntent, setDeployInitialIntent] = useState<string | null>(null);
+  const [deployInitialTemplate, setDeployInitialTemplate] = useState<string | null>(null);
+  const [deployDraftIdToResume, setDeployDraftIdToResume] = useState<string | null>(null);
+  const [createManualMode, setCreateManualMode] = useState(false);
   const walletProviders = useWalletProviders();
 
   const isLoggedIn = data?.authMethod != null;
@@ -2095,7 +2105,56 @@ export default function DashboardPage() {
                   exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
 
                   {section === 'overview' && <PipelineOverview contracts={data.contracts} user={data.user} onSelectContract={(c) => { setSelectedContract(c); setSection('contract-detail'); }} />}
-                  {section === 'create' && <ContractBuilder apiKey={apiKey} />}
+                  {section === 'create' && (
+                    (isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' && !createManualMode) ? (
+                      <DeployChat
+                        apiKey={apiKey}
+                        wallet={data.wallet}
+                        userEmail={data.user?.email}
+                        initialIntent={deployInitialIntent}
+                        initialTemplate={deployInitialTemplate}
+                        draftIdToResume={deployDraftIdToResume}
+                        onSwitchToManual={() => setCreateManualMode(true)}
+                        onDeployed={() => {
+                          setDeployInitialIntent(null);
+                          setDeployInitialTemplate(null);
+                          setDeployDraftIdToResume(null);
+                          fetchWithApiKey(apiKey);
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <ContractBuilder apiKey={apiKey} />
+                        {isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' && createManualMode && (
+                          <div className="mt-4 text-center">
+                            <button
+                              onClick={() => setCreateManualMode(false)}
+                              className="text-xs text-amber hover:underline"
+                            >
+                              ← Switch back to Ambr Agent (chat-driven)
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )
+                  )}
+                  {section === 'my-drafts' && (
+                    isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' ? (
+                      <DraftsList
+                        onResumeDraft={(id) => {
+                          setDeployDraftIdToResume(id);
+                          setDeployInitialIntent(null);
+                          setDeployInitialTemplate(null);
+                          setCreateManualMode(false);
+                          setSection('create');
+                        }}
+                      />
+                    ) : (
+                      <div className="rounded-2xl border border-border bg-surface p-8 text-center">
+                        <p className="text-sm text-text-secondary">Drafts (chat-driven contracts) is in experimental preview.</p>
+                      </div>
+                    )
+                  )}
                   {section === 'contracts' && <ContractList contracts={data.contracts} onSelectContract={(c) => { setSelectedContract(c); setSection('contract-detail'); }} />}
                   {section === 'contract-detail' && selectedContract && (
                     <ContractDetail
@@ -2130,6 +2189,25 @@ export default function DashboardPage() {
                 </motion.div>
               </AnimatePresence>
             </div>
+
+            {/* Global Ambr Agent — admin-gated + experimental-flag-gated for now */}
+            {isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' && (
+              <AmbrAgentOverlay
+                apiKey={apiKey}
+                context={{
+                  wallet: data.wallet,
+                  tier: data.user?.tier ?? null,
+                }}
+                hidden={section === 'create'}
+                onHandoffToDeploy={(template, intent) => {
+                  setDeployInitialIntent(intent);
+                  setDeployInitialTemplate(template);
+                  setDeployDraftIdToResume(null);
+                  setCreateManualMode(false);
+                  setSection('create');
+                }}
+              />
+            )}
           </>
         )}
       </main>

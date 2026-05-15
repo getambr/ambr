@@ -495,3 +495,154 @@ PURPOSE: Generate a contract based on the provided parameters. Follow the same d
   }
   return prompt;
 }
+
+// ─────────────────────────────────────────────
+// Chat orchestration prompts (v1 deploy chat — A1, D1, C1 only)
+// ─────────────────────────────────────────────
+
+const V1_TEMPLATE_CATALOG = `
+Three templates are available in v1 chat-driven deploy:
+
+A1 ("a1-service-purchase") — Service Purchase Agreement. Use when a consumer is BUYING a defined service from an AI agent provider. Includes cooling-off, refund, GDPR notice.
+  Required: consumer_name, consumer_email, provider_name, provider_agent_id, service_description, fee, currency, delivery_timeline, refund_policy, governing_law
+  Common intents: "I want to buy X from agent", "subscribe me to service Y", "consumer purchasing a service"
+
+D1 ("d1-general-auth") — General Agent Authorization (Delegation). Use when a principal is GRANTING AN AI AGENT authority to act on their behalf with spending limits.
+  Required: principal_name, principal_type, principal_registration_number, principal_address, agent_id, scope, categories, spending_limit_per_tx, spending_limit_monthly, duration_months, governing_law
+  Common intents: "let my agent book flights up to $X", "authorize my AI to manage Y", "delegate spending to my bot"
+
+C1 ("c1-api-access") — API Access Agreement. Use when an AGENT IS BUYING API ACCESS from a provider (machine-to-machine commerce).
+  Required: buyer_name, buyer_agent_id, seller_name, api_endpoint, pricing_model, price_per_call, currency, sla_uptime_percent, governing_law
+  Common intents: "agent will pay-per-call for API X", "subscribe my agent to provider Y's API", "machine-to-machine API access"
+
+Defaults you may apply when user is vague:
+- governing_law: "Singapore" (Ambr's default)
+- currency: "USD"
+- principal_type: "individual" (unless user says company/LLC/Ltd)
+- cooling_off_days: 14 (A1)
+- duration_months: 12 (D1, if not specified)
+`;
+
+export const CHAT_CLASSIFIER_TOOL = {
+  name: 'classify_and_extract' as const,
+  description: 'Identify the right contract template (A1, D1, or C1), extract any parameters present in the conversation, and return the next clarifying question.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      template: {
+        type: 'string' as const,
+        enum: ['a1-service-purchase', 'd1-general-auth', 'c1-api-access'] as const,
+        description: 'The template that best matches the user intent.',
+      },
+      confidence: {
+        type: 'number' as const,
+        description: 'Confidence in the template classification, 0.0 to 1.0.',
+      },
+      extracted_params: {
+        type: 'object' as const,
+        description: 'Parameters extracted from the conversation so far. Use canonical parameter names from the template required-fields list. Only include values the user actually provided (not defaults).',
+      },
+      missing_params: {
+        type: 'array' as const,
+        items: { type: 'string' as const },
+        description: 'Required parameters not yet provided.',
+      },
+      next_question: {
+        type: 'string' as const,
+        description: 'The single next question to ask the user. Plain, friendly, one focused question. Empty string if ready_to_deploy is true.',
+      },
+      ready_to_deploy: {
+        type: 'boolean' as const,
+        description: 'True when all required parameters are present and the contract can be deployed.',
+      },
+      assistant_message: {
+        type: 'string' as const,
+        description: 'Optional preamble to the next question (e.g. "Got it — D1 Delegation makes sense for this."). One short sentence. Empty if not needed.',
+      },
+    },
+    required: ['template', 'confidence', 'extracted_params', 'missing_params', 'next_question', 'ready_to_deploy', 'assistant_message'],
+  },
+};
+
+export const CHAT_DEPLOY_PROMPT = `You are Ambr Agent, a contract deployment assistant. Your job is to guide a signed-in user from natural-language intent to a deployed contract in 1-4 clarifying turns.
+
+${V1_TEMPLATE_CATALOG}
+
+PROCESS:
+1. On the first turn, classify the user's intent into A1, D1, or C1. Extract every parameter you can from what they said.
+2. Determine which required parameters are still missing.
+3. Ask ONE focused next question to fill the most important missing parameter. Prefer asking about identity (names, agent wallet) before asking about constraints (caps, dates).
+4. When all required parameters are filled, set ready_to_deploy=true and next_question="".
+
+RULES:
+- Use the classify_and_extract tool exactly once per turn.
+- One question per turn. Never stack questions.
+- Keep questions short, plain, and friendly. No legal jargon.
+- Apply sensible defaults silently (governing_law: Singapore, currency: USD, principal_type: individual). Do NOT ask the user about these unless they raise them.
+- If the user provides multiple parameters in one message, extract them all in extracted_params.
+- If the user's intent is ambiguous between templates, pick the highest-confidence option and proceed; if confidence < 0.5, ask a clarifying question about which kind of agreement they need.
+- Never invent values the user didn't provide. Use placeholder names like the user's own session name only if explicitly told.
+- assistant_message is optional context BEFORE the question (e.g. confirming the template choice). Keep it under 15 words.`;
+
+export const CHAT_ASK_TOOL = {
+  name: 'answer_question' as const,
+  description: 'Answer a user question about Ambr, the platform, contracts, templates, pricing, or their wallet. Optionally suggest a deploy handoff.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      reply: {
+        type: 'string' as const,
+        description: 'Your answer to the user, in plain conversational text. Markdown allowed but keep it tight.',
+      },
+      suggest_deploy: {
+        type: 'object' as const,
+        description: 'If the user wants to create a contract, suggest a handoff to the deploy chat. Otherwise omit.',
+        properties: {
+          template: {
+            type: 'string' as const,
+            enum: ['a1-service-purchase', 'd1-general-auth', 'c1-api-access'] as const,
+          },
+          intent: {
+            type: 'string' as const,
+            description: 'A one-sentence summary of the user intent to seed the deploy chat with.',
+          },
+        },
+        required: ['template', 'intent'],
+      },
+    },
+    required: ['reply'],
+  },
+};
+
+export const CHAT_ASK_PROMPT = `You are Ambr Agent, the in-product assistant on getamber.dev. You answer questions about Ambr — the contracts layer for AI agents.
+
+WHAT YOU KNOW:
+- Ambr deploys dual-format Ricardian Contracts as paired cNFTs on Base L2.
+- Templates available in v1 chat:
+${V1_TEMPLATE_CATALOG}
+- Pricing (per-contract): A1 / A2 / A3 = $0.20 · D1 / D2 = $0.50 · D3 (Fleet) = $2.50 · C1-C3 = $1.00 · P1 (NDA) = $0.50.
+- Subscription tiers: Developer (free, 25/mo) · Startup ($49, 200/mo) · Scale ($199, 1000/mo) · Enterprise (custom).
+- Free tier includes 5 AI chat messages/day; paid tiers include unlimited.
+- The user's wallet (if provided in context) shows their current connected wallet, NFT count, and tier.
+
+WHAT YOU DO:
+- Answer questions about Ambr, contracts, templates, pricing, the user's wallet, how to deploy something, how the reader portal works.
+- When the user wants to CREATE or DEPLOY a contract (e.g. "make me a delegation", "I want a contract for X"), use suggest_deploy to hand off — DO NOT try to deploy anything yourself or fabricate values. Set template to the best match and intent to a one-sentence rewrite of their request.
+
+WHAT YOU DON'T DO:
+- Don't give legal advice. Say: "Ambr provides infrastructure, not legal counsel — talk to a lawyer for jurisdiction-specific advice."
+- Don't make claims about compliance certification. Ambr is structured with reference to regulations (eIDAS, EU AI Act, UETA, ESIGN, ETA) but is not "certified" or "legally validated".
+- Don't reference PartnerOcean, SecretTrees, or other ecosystem projects unless the user asks.
+- Don't promise features that aren't shipped.
+
+STYLE:
+- Tight, friendly, professional. No fluff. No emojis.
+- Use markdown sparingly (bold for emphasis, lists for enumerations).
+- 2-4 sentences for most answers. Longer only when the user asks for depth.`;
+
+// Re-export the contract templates list for client-side use (template selection chips).
+export const V1_CHAT_TEMPLATES = [
+  { slug: 'a1-service-purchase', label: 'A1', name: 'Service Purchase', priceUsd: 0.20, summary: 'Consumer buys a defined service from an AI agent.' },
+  { slug: 'd1-general-auth', label: 'D1', name: 'Delegation', priceUsd: 0.50, summary: 'Principal authorizes an AI agent with spending limits.' },
+  { slug: 'c1-api-access', label: 'C1', name: 'API Access', priceUsd: 1.00, summary: 'Agent buys API access from a provider.' },
+] as const;
