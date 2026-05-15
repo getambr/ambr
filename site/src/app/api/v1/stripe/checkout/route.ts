@@ -109,6 +109,21 @@ export async function POST(request: Request) {
   }
 
   const { email, tier, mode } = parsed.data;
+
+  // Enterprise pricing is custom by definition — TIER_PRICES.enterprise has
+  // cents: 0, which would create a $0 Stripe session if we let it through.
+  // /activate routes enterprise to a contact form path; reject any direct API
+  // attempt to checkout an enterprise tier.
+  if (tier === 'enterprise') {
+    return NextResponse.json(
+      {
+        error: 'enterprise_requires_contact',
+        message: 'Enterprise pricing is custom — please use the contact form at /activate or email hello@ambr.run',
+      },
+      { status: 400 },
+    );
+  }
+
   const isTopup = mode === 'topup';
   const tierConfig = TIER_PRICES[tier];
 

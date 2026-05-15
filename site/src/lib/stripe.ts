@@ -12,9 +12,9 @@ export function getStripe(): Stripe {
 }
 
 export const TIER_PRICES: Record<string, { cents: number; credits: number; label: string }> = {
-  startup: { cents: 4900, credits: 200, label: 'Startup' },
-  scale: { cents: 19900, credits: 1000, label: 'Scale' },
-  enterprise: { cents: 0, credits: -1, label: 'Enterprise' }, // custom pricing
+  startup: { cents: 4900, credits: 200, label: 'Starter Pack' },
+  scale: { cents: 19900, credits: 1000, label: 'Scale Pack' },
+  enterprise: { cents: 0, credits: -1, label: 'Enterprise' }, // custom pricing — never billed via checkout, use contact form instead (see checkout route guard)
 };
 
 export const SUBSCRIPTION_PLANS: Record<string, {

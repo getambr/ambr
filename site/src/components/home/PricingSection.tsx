@@ -41,7 +41,7 @@ export default function PricingSection() {
             Transparent Fee Structure
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-text-secondary text-sm">
-            Pay per contract. No subscriptions. Live rates from the platform — see <a href="/api/v1/pricing" className="text-amber hover:underline">/api/v1/pricing</a>.
+            Pay per contract from $0.20 (consumer) to $2.50 (fleet), or subscribe monthly — see <a href="/activate" className="text-amber hover:underline">/activate</a> for plans. Live rates at <a href="/api/v1/pricing" className="text-amber hover:underline">/api/v1/pricing</a>.
           </p>
         </div>
       </ScrollReveal>

@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { SUBSCRIPTION_PLANS } from '@/lib/stripe';
 
 interface TemplateRow {
   slug: string;
@@ -86,6 +87,19 @@ export async function GET() {
     .map((key) => grouped[key])
     .filter(Boolean);
 
+  // Sourced from SUBSCRIPTION_PLANS in @/lib/stripe so this surface can't drift
+  // from what Stripe Checkout actually sells via /api/v1/stripe/checkout.
+  const subscriptions = Object.entries(SUBSCRIPTION_PLANS).map(([slug, plan]) => ({
+    slug,
+    label: plan.label,
+    price_cents_monthly: plan.cents_monthly,
+    price_display_monthly: `$${(plan.cents_monthly / 100).toFixed(plan.cents_monthly % 100 === 0 ? 0 : 2)}/mo`,
+    contracts_per_month: plan.contracts_limit,
+    ai_messages_limit: plan.ai_messages_limit,
+    overage_cents_per_contract: plan.overage_cents,
+    purchase_at: '/activate',
+  }));
+
   return NextResponse.json(
     {
       currency: 'USD',
@@ -95,6 +109,7 @@ export async function GET() {
         { slug: 'starter', price_cents: 4900, credits: 200, label: 'Starter Pack' },
         { slug: 'scale', price_cents: 19900, credits: 1000, label: 'Scale Pack' },
       ],
+      subscriptions,
       free_tier: {
         label: 'Developer',
         credits_per_key: 25,
