@@ -158,13 +158,6 @@ export default async function InvestorContent() {
             >
               Download Pitch Deck (PDF)
             </a>
-            <a
-              href="/api/v1/investors/model"
-              download={figures.deck.modelFilename}
-              className="inline-block rounded-none border border-amber bg-transparent px-4 py-2 text-xs font-mono uppercase tracking-wide text-amber hover:bg-amber/10 transition-colors"
-            >
-              {figures.deck.modelButtonLabel}
-            </a>
           </div>
         </section>
 
@@ -228,7 +221,7 @@ export default async function InvestorContent() {
             <PricingCard tier="Fleet Multi-Agent" price="$2.50" note="99% margin" />
           </div>
           <p className="mt-4 text-xs text-text-secondary/70">
-            Variable cost per contract ~$0.024 (Base L2 gas + Claude Haiku LLM + infra).
+            Variable cost per contract ~$0.012 (Base L2 gas + Claude Haiku LLM + infra).
             Zero direct competitors. Pricing mirrors the natural segmentation Stripe used for credit cards →
             we become the economic substrate for agent commerce.
           </p>
@@ -257,7 +250,7 @@ export default async function InvestorContent() {
             <TeamCard
               name="Bruno Krisjanis"
               role="CBO"
-              detail="Business development, partnerships, ops coordination."
+              detail="Operations + go-to-market. Drives partnerships, customer onboarding, and revenue."
             />
           </div>
         </section>
@@ -270,6 +263,9 @@ export default async function InvestorContent() {
           <h2 className="text-2xl text-text-primary font-serif mb-6">Recently deployed</h2>
 
           <ul className="space-y-3 text-sm text-text-secondary">
+            <li>
+              <strong className="text-text-primary font-mono text-xs">v0.3.9 · May 2026</strong> — Investor package v0.3.9 (16-slide briefing) · pricing reconciliation · A2A agent card live on /.well-known/agent.json · Founder Program live on /founders
+            </li>
             <li>
               <strong className="text-text-primary font-mono text-xs">v0.3.0 · Apr 2026</strong> — MCP x402 paywall, Stripe live, dashboard billing panel, pricing realignment, Founder Program
             </li>
