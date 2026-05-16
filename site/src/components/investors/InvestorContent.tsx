@@ -93,25 +93,19 @@ export default async function InvestorContent() {
           <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
             Live System · Production
           </p>
-          <h2 className="text-2xl text-text-primary font-serif mb-6">Current Traction</h2>
+          <h2 className="text-2xl text-text-primary font-serif mb-6">Production-live since March 2026</h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Contracts generated" value={String(stats.total_contracts)} sublabel={`${stats.active_contracts} active`} />
-            <StatCard label="Compressed NFTs on Base L2" value={String(stats.minted_cnfts)} sublabel="on-chain proof" />
-            <StatCard label="Active API keys" value={String(stats.active_api_keys)} sublabel={`${stats.paying_keys} paid`} />
-            <StatCard label="Contract templates" value={String(stats.templates_available)} sublabel="live on MCP (Model Context Protocol)" />
-          </div>
-
-          <div className="mt-4 text-xs text-text-secondary/70 space-y-1">
+          <div className="border border-amber/30 bg-surface/80 p-5 space-y-3 text-sm text-text-secondary leading-relaxed">
             <p>
-              • MCP endpoint (<code className="text-amber">getamber.dev/api/mcp</code>) receiving{' '}
-              <strong className="text-text-primary">~1.5M requests/week</strong> from AI agent directories and crawlers.
+              <strong className="text-text-primary">Contract engine, MCP server, x402 paywall, and cNFT minting on Base mainnet</strong> are all live in production today.
+              <span className="text-text-secondary/70">{' '}{stats.templates_available} Ricardian contract templates ship as the v0.3.9 baseline — discoverable over MCP, signable in the browser, redeemable on-chain.</span>
             </p>
             <p>
-              • Stripe live + x402 USDC payments live on Base mainnet · HTTP 402 payment instructions wired April 19.
+              MCP endpoint (<code className="text-amber font-mono text-xs">getamber.dev/api/mcp</code>) receiving high-volume crawler + agent-directory traffic.
+              Stripe live and x402 USDC payments wired on Base mainnet.
             </p>
-            <p>
-              • Paying conversions starting now — infrastructure layer complete, distribution phase (seed priority).
+            <p className="text-text-secondary/70">
+              Distribution phase is the seed priority — infrastructure layer is complete and shipping; growth comes from getting agent platforms and fintechs onto the rail.
             </p>
           </div>
         </section>
@@ -125,40 +119,101 @@ export default async function InvestorContent() {
             {figures.deck.title}
           </h2>
 
-          {figures.deck.slideCount > 0 && (
-            <div className="space-y-4">
-              {Array.from({ length: figures.deck.slideCount }, (_, i) => i + 1).map((n) => (
-                <figure
-                  key={n}
-                  className="border border-amber/40 bg-surface overflow-hidden"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/v1/investors/slide/${n}`}
-                    alt={`Ambr pitch deck · slide ${n} of ${figures.deck.slideCount}`}
-                    loading={n <= 2 ? 'eager' : 'lazy'}
-                    decoding="async"
-                    className="block w-full h-auto"
-                    width={1280}
-                    height={720}
-                  />
-                  <figcaption className="px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-amber/70 border-t border-amber/20">
-                    slide {n} / {figures.deck.slideCount}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-2">
+            {/* What's inside — 8 bullets, left side */}
+            <div className="lg:col-span-3">
+              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-amber/80 mb-3">
+                What&apos;s inside
+              </p>
+              <ul className="space-y-2 text-sm text-text-secondary leading-relaxed">
+                <li><strong className="text-text-primary">Problem</strong> — EU AI Act Art. 14 enforces human-oversight thresholds from August 2026. Today&apos;s agent stacks have no primitive that satisfies it.</li>
+                <li><strong className="text-text-primary">Solution</strong> — Authorize / Act / Prove. Ricardian contracts that are human-readable, machine-executable, and redeemable on-chain.</li>
+                <li><strong className="text-text-primary">Standards stack</strong> — MCP x402, Ricardian v1, cNFT mints on Base L2, Stripe + x402 USDC.</li>
+                <li><strong className="text-text-primary">Why now</strong> — Coinbase x402 shipped Q1 2026 · Stripe agent APIs live · 200M+ agents in production today.</li>
+                <li><strong className="text-text-primary">Market curve</strong> — agent population scaling 220M → ~2.1B by 2030. ~40% will need formal authorization.</li>
+                <li><strong className="text-text-primary">Unit economics</strong> — 86.3% gross margin · ~$0.012 variable cost · LTV/CAC 15.2× by Y3.</li>
+                <li><strong className="text-text-primary">P&amp;L</strong> — Y1 −$66K EBITDA bootstrap → Y3 +$56.5M (48% margin). M36 Exit ARR $197M.</li>
+                <li><strong className="text-text-primary">The Ask</strong> — $1M seed at $10M cap · minimum tranche $500K · SAFE.</li>
+              </ul>
 
-          <div className="mt-4 flex gap-3">
-            <a
-              href="/api/v1/investors/deck"
-              download={figures.deck.pdfFilename}
-              className="inline-block rounded-none bg-amber px-4 py-2 text-xs font-mono uppercase tracking-wide text-background hover:bg-amber-light transition-colors"
-            >
-              Download Pitch Deck (PDF)
-            </a>
+              <div className="mt-6 flex gap-3 flex-wrap items-center">
+                <a
+                  href="/api/v1/investors/deck"
+                  download={figures.deck.pdfFilename}
+                  className="inline-block rounded-none bg-amber px-5 py-2.5 text-xs font-mono uppercase tracking-wide text-background hover:bg-amber-light transition-colors"
+                >
+                  Download Full Briefing (PDF · {figures.deck.slideCount} slides)
+                </a>
+                <span className="text-xs text-text-secondary/60 font-mono">~570 KB</span>
+              </div>
+            </div>
+
+            {/* Hero slide preview — right side, slide 1 cover */}
+            <div className="lg:col-span-2">
+              <figure className="border border-amber/40 bg-surface overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/api/v1/investors/slide/1"
+                  alt="Ambr pitch deck · cover"
+                  loading="eager"
+                  decoding="async"
+                  className="block w-full h-auto"
+                  width={1280}
+                  height={720}
+                />
+                <figcaption className="px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-amber/70 border-t border-amber/20">
+                  briefing cover · slide 1 / {figures.deck.slideCount}
+                </figcaption>
+              </figure>
+            </div>
           </div>
+        </section>
+
+        {/* ───── Markets we serve ───── */}
+        <section>
+          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+            Markets we serve
+          </p>
+          <h2 className="text-2xl text-text-primary font-serif mb-6">
+            Six verticals where agent-to-agent and agent-to-consumer commerce is already moving
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MarketCard
+              label="Fintech + neobanks"
+              summary="Embedded finance and AI-driven banking. Agents pay recurring subscriptions, utilities, and services on behalf of users."
+              hook="Lower-cost A2A rails vs card networks; authorization-grade audit trail for autonomous spend."
+            />
+            <MarketCard
+              label="E-commerce + SaaS"
+              summary="Headless commerce, B2B SaaS, infra-as-a-service. Agents provision and renew subscriptions without human input."
+              hook="Agent-first checkout · policy-bound spend limits · replayable proof of authorization."
+            />
+            <MarketCard
+              label="Agentic-commerce platforms"
+              summary="Multi-agent systems, AI-agent marketplaces, agent orchestrators. Agents transact with each other (A2A)."
+              hook="Plug-in A2A rail · identity + consent + policy primitives · skip rolling your own payment stack."
+            />
+            <MarketCard
+              label="Enterprise + B2B marketplaces"
+              summary="Procurement, spend-management, regulated-sector SaaS. Agents negotiate and pay suppliers at scale."
+              hook="Real-time A2A settlement · per-agent budgets and spend caps · audit-grade contract records."
+            />
+            <MarketCard
+              label="Crypto + Web3 / DeFi"
+              summary="Stablecoin rails, DAOs, institutional crypto, agent-native wallets. Programmable money + agent execution."
+              hook="Ricardian contract bridge to L1/L2s · agents pay for compute, storage, oracle services autonomously."
+            />
+            <MarketCard
+              label="Travel + subscription-heavy verticals"
+              summary="Travel-tech, hospitality, subscription aggregators. Agents book and pay under user-defined rules."
+              hook="Fine-grained consent + revocation · recurring A2C flows · authorization legible to the merchant side."
+            />
+          </div>
+
+          <p className="mt-6 text-xs text-text-secondary/60 leading-relaxed">
+            Ambr is the contract layer. It sits between an agent and a counterparty (consumer, merchant, or another agent) and turns &ldquo;the agent did this&rdquo; into a redeemable, replayable, auditable record. The verticals above are the surfaces where that record is most needed first.
+          </p>
         </section>
 
         {/* ───── Financial highlights ───── */}
@@ -405,6 +460,16 @@ function TeamCard({ name, role, detail }: { name: string; role: string; detail: 
       <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">{role}</p>
       <h3 className="text-lg text-text-primary font-serif mb-2">{name}</h3>
       <p className="text-xs text-text-secondary leading-relaxed">{detail}</p>
+    </div>
+  );
+}
+
+function MarketCard({ label, summary, hook }: { label: string; summary: string; hook: string }) {
+  return (
+    <div className="border border-amber/30 bg-surface/80 p-5">
+      <p className="font-mono text-xs uppercase tracking-wider text-amber mb-3">{label}</p>
+      <p className="text-sm text-text-primary leading-relaxed mb-3">{summary}</p>
+      <p className="text-xs text-text-secondary/80 leading-relaxed italic">{hook}</p>
     </div>
   );
 }
