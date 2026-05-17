@@ -10,6 +10,7 @@ import {
   CHAT_ASK_TOOL,
 } from '@/lib/llm/prompts';
 import { validateApiKey, type ApiKeyContext } from '@/lib/api-auth';
+import { checkBetaAccess } from '@/lib/auth/beta-access';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { corsOptions, withCors } from '@/lib/cors';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
@@ -90,7 +91,7 @@ interface UsageLog {
   output_tokens: number | null;
   cost_usd: number | null;
   model: string;
-  status: 'ok' | 'rate_limited' | 'budget_exhausted' | 'injection_blocked' | 'llm_error' | 'validation_error';
+  status: 'ok' | 'rate_limited' | 'budget_exhausted' | 'injection_blocked' | 'llm_error' | 'validation_error' | 'access_denied';
   error_code: string | null;
 }
 
@@ -198,6 +199,38 @@ export async function POST(request: Request) {
   const apiCtx = await validateApiKey(request);
   const ip = getClientIp(request);
   const ident = identityHash(apiCtx?.keyId ?? null, ip);
+
+  // Beta-access gate — first authorization check. Admins (per admin-emails.ts)
+  // and api_keys with beta_features.ai_chat === true pass; everyone else is
+  // rejected with 403 before any LLM call. This closes the gap where the
+  // chat surface was client-side-only gated, so a non-admin with a valid
+  // API key could otherwise have hit /api/v1/chat directly.
+  const accessCheck = checkBetaAccess(apiCtx, 'ai_chat');
+  if (!accessCheck.allowed) {
+    await recordUsage({
+      mode,
+      identity_hash: ident,
+      api_key_id: apiCtx?.keyId ?? null,
+      message_count: messages.length,
+      total_input_chars: messages.reduce((s, m) => s + m.content.length, 0),
+      input_tokens: null,
+      output_tokens: null,
+      cost_usd: null,
+      model: mode === 'deploy' ? CHAT_DEPLOY_MODEL : CHAT_ASK_MODEL,
+      status: 'access_denied',
+      error_code: 'no_beta_access',
+    });
+    return withCors(
+      NextResponse.json(
+        {
+          error: 'access_denied',
+          message: 'Ambr Agent is in private beta. Request access at hello@ambr.run.',
+        },
+        { status: 403 },
+      ),
+      request,
+    );
+  }
 
   // Budget kill-switch — applies to both modes.
   const budget = await isBudgetExhausted();

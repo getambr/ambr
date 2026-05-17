@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
       tier: auth.tier,
       credits: auth.credits,
       key_prefix: 'amb_****',
+      beta_features: auth.betaFeatures,
     },
     wallet: wallet,
     contracts: contracts || [],

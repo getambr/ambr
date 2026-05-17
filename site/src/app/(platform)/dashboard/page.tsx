@@ -9,8 +9,10 @@ import {
   Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
   Calendar, Mail, Users, Lock, Copy, Check, ExternalLink,
   ArrowRight, Clock, Plus, RefreshCw, TrendingUp, Eye, Activity,
+  KeyRound,
 } from 'lucide-react';
 import { AdminSection } from '@/components/dashboard/AdminSection';
+import { BetaAccessSection } from '@/components/dashboard/BetaAccessSection';
 import { TechHealthWidget } from '@/components/team/TechHealthWidget';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
 import { useWalletStatus } from '@/lib/wallet/use-wallet-status';
@@ -25,9 +27,15 @@ import AmbrAgentOverlay from '@/components/ambr-agent/AmbrAgentOverlay';
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'my-drafts' | 'health';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'my-drafts' | 'health' | 'beta-access';
 
-interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
+interface UserInfo {
+  email: string;
+  tier: string;
+  credits: number;
+  key_prefix: string;
+  beta_features?: { ai_chat?: boolean };
+}
 export interface ContractRow {
   contract_id: string; status: string; amendment_type: string; sha256_hash: string;
   created_at: string; updated_at: string | null; template_id: string;
@@ -124,6 +132,7 @@ const NAV_SECTIONS = [
       { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
       { id: 'email' as Section, label: 'Email Triage', icon: Mail },
       { id: 'health' as Section, label: 'System Health', icon: Activity },
+      { id: 'beta-access' as Section, label: 'Beta Access', icon: KeyRound },
     ],
   },
 ];
@@ -1974,6 +1983,14 @@ export default function DashboardPage() {
 
   const isLoggedIn = data?.authMethod != null;
   const isAdmin = data?.user?.email ? ADMIN_EMAILS.includes(data.user.email) : false;
+  // Beta access for Ambr Agent (AI chat). Admins always have it; non-admins
+  // need the explicit `ai_chat` flag in their api_keys.beta_features JSONB.
+  // The env flag remains the top-level kill switch — flip it off to hide
+  // the chat surface for everyone, no rollback commit needed.
+  const hasAiChatBeta = data?.user?.beta_features?.ai_chat === true;
+  const canUseAmbrChat =
+    (isAdmin || hasAiChatBeta) &&
+    process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true';
 
   useEffect(() => {
     const s = loadSession();
@@ -2106,7 +2123,7 @@ export default function DashboardPage() {
 
                   {section === 'overview' && <PipelineOverview contracts={data.contracts} user={data.user} onSelectContract={(c) => { setSelectedContract(c); setSection('contract-detail'); }} />}
                   {section === 'create' && (
-                    (isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' && !createManualMode) ? (
+                    (canUseAmbrChat && !createManualMode) ? (
                       <DeployChat
                         apiKey={apiKey}
                         wallet={data.wallet}
@@ -2125,7 +2142,7 @@ export default function DashboardPage() {
                     ) : (
                       <>
                         <ContractBuilder apiKey={apiKey} />
-                        {isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' && createManualMode && (
+                        {canUseAmbrChat && createManualMode && (
                           <div className="mt-4 text-center">
                             <button
                               onClick={() => setCreateManualMode(false)}
@@ -2139,7 +2156,7 @@ export default function DashboardPage() {
                     )
                   )}
                   {section === 'my-drafts' && (
-                    isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' ? (
+                    canUseAmbrChat ? (
                       <DraftsList
                         onResumeDraft={(id) => {
                           setDeployDraftIdToResume(id);
@@ -2177,6 +2194,11 @@ export default function DashboardPage() {
                     />
                   )}
 
+                  {/* Beta Access — admin-only management surface for granting per-account beta flags */}
+                  {isAdmin && section === 'beta-access' && (
+                    <BetaAccessSection currentUserEmail={data.user?.email} />
+                  )}
+
                   {/* Tech health — Ilvers + Dainis only (Bruno sees business metrics elsewhere) */}
                   {isAdmin && section === 'health' && data.user?.email !== 'brunokrisjanis99@gmail.com' && (
                     <TechHealthWidget />
@@ -2190,8 +2212,8 @@ export default function DashboardPage() {
               </AnimatePresence>
             </div>
 
-            {/* Global Ambr Agent — admin-gated + experimental-flag-gated for now */}
-            {isAdmin && process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true' && (
+            {/* Global Ambr Agent — gated by admin OR per-account ai_chat beta flag, plus the experimental env kill switch */}
+            {canUseAmbrChat && (
               <AmbrAgentOverlay
                 apiKey={apiKey}
                 context={{
