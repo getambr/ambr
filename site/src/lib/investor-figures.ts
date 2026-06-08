@@ -24,6 +24,7 @@ export interface InvestorFigures {
     pdfFilename: string;
     modelFilename: string;
     modelButtonLabel: string;
+    insideBullets: { label: string; body: string }[];
   };
   model: {
     tag: string;
@@ -33,6 +34,11 @@ export interface InvestorFigures {
     cumulativeEbitda: string;
     peakBurn: string;
     assumptions: string;
+  };
+  pricing: {
+    heading: string;
+    tiers: { tier: string; price: string; note: string }[];
+    variableCostNote: string;
   };
 }
 
@@ -52,6 +58,7 @@ const PLACEHOLDER: InvestorFigures = {
     pdfFilename: 'ambr-pitch-deck.pdf',
     modelFilename: 'ambr-financial-model.xlsx',
     modelButtonLabel: 'Download Financial Model (xlsx)',
+    insideBullets: [{ label: 'Briefing contents', body: 'Available after authentication.' }],
   },
   model: {
     tag: 'Financial Model',
@@ -65,6 +72,11 @@ const PLACEHOLDER: InvestorFigures = {
     cumulativeEbitda: '—',
     peakBurn: '—',
     assumptions: 'Detailed assumptions are shared in the gated package.',
+  },
+  pricing: {
+    heading: 'Pricing',
+    tiers: [{ tier: 'Pricing', price: '—', note: 'after authentication' }],
+    variableCostNote: 'Unit economics are shared in the gated package.',
   },
 };
 

@@ -126,14 +126,9 @@ export default async function InvestorContent() {
                 What&apos;s inside
               </p>
               <ul className="space-y-2 text-sm text-text-secondary leading-relaxed">
-                <li><strong className="text-text-primary">Problem</strong> — EU AI Act Art. 14 enforces human-oversight thresholds from August 2026. Today&apos;s agent stacks have no primitive that satisfies it.</li>
-                <li><strong className="text-text-primary">Solution</strong> — Authorize / Act / Prove. Ricardian contracts that are human-readable, machine-executable, and redeemable on-chain.</li>
-                <li><strong className="text-text-primary">Standards stack</strong> — MCP x402, Ricardian v1, cNFT mints on Base L2, Stripe + x402 USDC.</li>
-                <li><strong className="text-text-primary">Why now</strong> — Coinbase x402 shipped Q1 2026 · Stripe agent APIs live · 200M+ agents in production today.</li>
-                <li><strong className="text-text-primary">Market curve</strong> — agent population scaling 220M → ~2.1B by 2030. ~40% will need formal authorization.</li>
-                <li><strong className="text-text-primary">Unit economics</strong> — 86.3% gross margin · ~$0.012 variable cost · LTV/CAC 15.2× by Y3.</li>
-                <li><strong className="text-text-primary">P&amp;L</strong> — Y1 −$66K EBITDA bootstrap → Y3 +$56.5M (48% margin). M36 Exit ARR $197M.</li>
-                <li><strong className="text-text-primary">The Ask</strong> — $1M seed at $10M cap · minimum tranche $500K · SAFE.</li>
+                {figures.deck.insideBullets.map((b) => (
+                  <li key={b.label}><strong className="text-text-primary">{b.label}</strong> — {b.body}</li>
+                ))}
               </ul>
 
               <div className="mt-6 flex gap-3 flex-wrap items-center">
@@ -266,19 +261,16 @@ export default async function InvestorContent() {
             Unit Economics
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
-            Pay per contract · 88–99% margin
+            {figures.pricing.heading}
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <PricingCard tier="Consumer (A2C)" price="$0.20" note="88% margin" />
-            <PricingCard tier="Delegation (A2A)" price="$0.50" note="95% margin" />
-            <PricingCard tier="Commerce (B2A)" price="$1.00" note="98% margin" />
-            <PricingCard tier="Fleet Multi-Agent" price="$2.50" note="99% margin" />
+            {figures.pricing.tiers.map((t) => (
+              <PricingCard key={t.tier} tier={t.tier} price={t.price} note={t.note} />
+            ))}
           </div>
           <p className="mt-4 text-xs text-text-secondary/70">
-            Variable cost per contract ~$0.012 (Base L2 gas + Claude Haiku LLM + infra).
-            Zero direct competitors. Pricing mirrors the natural segmentation Stripe used for credit cards →
-            we become the economic substrate for agent commerce.
+            {figures.pricing.variableCostNote}
           </p>
         </section>
 
