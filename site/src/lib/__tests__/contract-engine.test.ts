@@ -63,8 +63,8 @@ describe('hashContract', () => {
 
   it('handles unicode content', () => {
     const hash = hashContract(
-      'Līgums starp pusēm — šis ir tests ar latviešu valodas burtiem.',
-      { puse_a: 'Jānis', puse_b: 'Pēteris' },
+      'Contrat entre les parties — ceci est un test avec des caractères accentués: àéîöüß.',
+      { partie_a: 'François', partie_b: 'Jürgen' },
     );
     expect(hash).toMatch(/^[a-f0-9]{64}$/);
   });
