@@ -306,3 +306,6 @@ export function buildSignMessage(idOrContractId: string, sha256Hash: string): st
     `Timestamp: ${Date.now()}`,
   ].join('\n');
 }
+
+// x402 agreement extension — attach an Ambr agreement to a 402 handshake.
+export * from './x402';

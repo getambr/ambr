@@ -73,3 +73,31 @@ status.bindingTerms;     // what the agent may / may not do (when visible)
 
 - The SDK never holds keys. `signMessage` is yours (ethers / viem / MetaMask) — Ambr only verifies the ECDSA signature server-side.
 - This module currently lives inside the Ambr app for shared types + testing; it has no app/runtime dependencies and is intended to be extracted to a standalone published package (`@ambr/agent-sdk`).
+
+## x402 — agreement-gated payments
+
+x402 proves payment; it doesn't carry *what the agent agreed to*. The `x402` helpers attach an Ambr agreement to a 402 handshake — **payment + contract in one round-trip**. It's an extension *on top of* x402 (gateway-agnostic), not a separate rail.
+
+**Server** — gate an endpoint on payment *and* an agreement:
+
+```ts
+import { attachAgreement } from '@/lib/sdk';
+
+// `base402` is your normal Ambr 402 body; `agreement` came from createAgreement()
+const gated = attachAgreement(base402, agreement, { terms: machineReadableTerms });
+return new Response(JSON.stringify(gated), { status: 402 });
+```
+
+**Client (agent)** — read what to pay *and* what you're agreeing to:
+
+```ts
+import { AmbrClient, parseContractGated402 } from '@/lib/sdk';
+
+const parsed = parseContractGated402(await res.json());
+if (parsed) {
+  const { payment, agreement } = parsed;
+  const terms = (await new AmbrClient().getStatus(agreement.hash)).bindingTerms;
+  // pay per `payment`, accept `agreement`, then retry with X-Payment + acceptance
+}
+```
+
