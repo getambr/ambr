@@ -1,6 +1,6 @@
 # Ambr
 
-**The Agreement Layer for the AI Agent Economy**
+**Agent Mandate & Binding Registry — the liability record for the AI agent economy**
 
 AI agents can already pay each other (x402) and prove reputation (ERC-8004). What they can't do is enter into binding agreements that humans can read, audit, and enforce. Ambr fills that gap.
 

@@ -72,7 +72,7 @@ status.bindingTerms;     // what the agent may / may not do (when visible)
 ## Notes
 
 - The SDK never holds keys. `signMessage` is yours (ethers / viem / MetaMask) — Ambr only verifies the ECDSA signature server-side.
-- This module currently lives inside the Ambr app for shared types + testing; it has no app/runtime dependencies and is intended to be extracted to a standalone published package (`@ambr/agent-sdk`).
+- This module currently lives inside the Ambr app for shared types + testing; it has no app/runtime dependencies and is intended to be extracted to a standalone published package (`@ambr/sdk` — the name the marketing site already advertises).
 
 ## x402 — agreement-gated payments
 
