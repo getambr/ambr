@@ -17,6 +17,7 @@ export const BRAND = {
     twitter: 'https://x.com/ambr_run',
     github: 'https://github.com/getambr/ambr',
     discord: 'https://discord.gg/HjvJFfjr',
+    linkedin: 'https://www.linkedin.com/company/113122990/',
   },
   emails: {
     privacy: 'privacy@ambr.run',
