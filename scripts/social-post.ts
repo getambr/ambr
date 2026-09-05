@@ -254,8 +254,15 @@ async function postToTwitter(
 
   if (dryRun) {
     console.log("\nDry run complete. Browser left open for inspection.");
-    console.log("Press Ctrl+C to exit.");
-    await sleep(600_000);
+    if (process.env.SOCIAL_POST_NO_HOLD === "1") {
+      // The dispatcher's subprocess timeout is 600s - exactly this sleep. Holding
+      // here made every dry run lose that race and land in `failed` with the
+      // browser's own stderr recorded as the error. Driven runs must not hold.
+      console.log("Not holding the browser open (SOCIAL_POST_NO_HOLD=1).");
+    } else {
+      console.log("Press Ctrl+C to exit.");
+      await sleep(600_000);
+    }
   }
 
   await page.close();
@@ -304,8 +311,15 @@ async function postToLinkedIn(
     console.log("Posted to LinkedIn.");
   } else {
     console.log("\nDry run complete. Browser left open for inspection.");
-    console.log("Press Ctrl+C to exit.");
-    await sleep(600_000);
+    if (process.env.SOCIAL_POST_NO_HOLD === "1") {
+      // The dispatcher's subprocess timeout is 600s - exactly this sleep. Holding
+      // here made every dry run lose that race and land in `failed` with the
+      // browser's own stderr recorded as the error. Driven runs must not hold.
+      console.log("Not holding the browser open (SOCIAL_POST_NO_HOLD=1).");
+    } else {
+      console.log("Press Ctrl+C to exit.");
+      await sleep(600_000);
+    }
   }
 
   await page.close();
