@@ -94,6 +94,10 @@ export interface DraftReplyResponse {
 export interface OutreachContact {
   email: string; name: string; company: string; project: string
   type: string; status: string; nextAction: string; notes: string
+  // Returned on every outreach row.
+  nextDate?: string      // planned follow-up date
+  lastContact?: string   // last send to this contact
+  addedAt?: string       // fallback when nothing has been sent yet
 }
 
 export function getAmbrCalendar(days = 7) {
@@ -142,11 +146,30 @@ export function sendThreadReply(emailId: string, body: string) {
 // Resend with the chosen @ambr.run alias as From: and the per-alias signature
 // appended server-side. The user must own the chosen alias (server-enforced
 // in Apps Script via ALIASES_OWNED_BY).
-export function sendNewEmail(to: string, subject: string, body: string, fromAlias: string) {
+//
+// Attachments are base64 payloads passed through Apps Script to Resend.
+// Resend caps total email size at 40MB; Apps Script rejects combined base64
+// over ~33MB, and the compose UI caps files earlier still.
+export interface EmailAttachment {
+  filename: string
+  content: string // base64, no data: prefix
+  contentType?: string
+}
+
+export function sendNewEmail(
+  to: string,
+  subject: string,
+  body: string,
+  fromAlias: string,
+  attachments?: EmailAttachment[]
+) {
   return opsPost<
     | { sent: true; to: string; from: string; subject: string; resendId: string | null }
     | { error: string }
-  >('send_new_email', { to, subject, body, fromAlias })
+  >('send_new_email', {
+    to, subject, body, fromAlias,
+    ...(attachments && attachments.length ? { attachments } : {}),
+  })
 }
 
 // Generate a cold-email body from scratch using Kimi. The user provides a

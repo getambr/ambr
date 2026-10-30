@@ -16,6 +16,6 @@ CREATE INDEX IF NOT EXISTS idx_team_email ON public.team_members(email);
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
 INSERT INTO public.team_members (email, name, role, ambr_alias) VALUES
-  ('ilvers.sermols@gmail.com', 'Ilvers', 'owner', 'ilvers@ambr.run'),
+  ('ilvers@ambr.run', 'Ilvers', 'owner', 'ilvers@ambr.run'),
   ('dainis@ambr.run', 'Dainis', 'admin', 'dainis@ambr.run')
 ON CONFLICT (email) DO NOTHING;

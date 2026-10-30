@@ -5,6 +5,8 @@
   <url><loc>https://ambr.run/use-cases</loc><priority>0.8</priority></url>
   <url><loc>https://ambr.run/developers</loc><priority>0.8</priority></url>
   <url><loc>https://ambr.run/ecosystem</loc><priority>0.8</priority></url>
+  <url><loc>https://ambr.run/founders</loc><priority>0.7</priority></url>
+  <url><loc>https://ambr.run/spec/ricardian-v1</loc><priority>0.5</priority></url>
   <url><loc>https://ambr.run/waitlist</loc><priority>0.9</priority></url>
   <url><loc>https://ambr.run/privacy</loc><priority>0.3</priority></url>
   <url><loc>https://ambr.run/terms</loc><priority>0.3</priority></url>

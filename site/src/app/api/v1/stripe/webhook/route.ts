@@ -3,6 +3,7 @@ import { getStripe, TIER_PRICES, SUBSCRIPTION_PLANS } from '@/lib/stripe';
 import { generateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { logAudit } from '@/lib/audit';
+import { normalizeEmail } from '@/lib/keys/claim-token';
 import type Stripe from 'stripe';
 
 export async function POST(request: Request) {
@@ -61,7 +62,8 @@ export async function POST(request: Request) {
       stripe_customer_id: customerId,
       stripe_subscription_id: subscription.id,
       stripe_price_id: firstItem?.price?.id || null,
-      contracts_limit: planConfig.contracts_limit,
+      // Column name predates credits; it now holds the plan's monthly credit allowance.
+      contracts_limit: planConfig.credits_per_month,
       ai_messages_limit: planConfig.ai_messages_limit,
       current_period_start: firstItem?.current_period_start
         ? new Date(firstItem.current_period_start * 1000).toISOString()
@@ -137,6 +139,15 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq('stripe_subscription_id', subId);
+
+      // Team plan: each paid invoice grants the monthly credit allowance.
+      // Idempotent by invoice id: grant_credits_once inserts the marker and adds
+      // the credits in one transaction, so a redelivery cannot grant twice and a
+      // failed grant leaves nothing behind for Stripe's retry to trip over.
+      const grant = await grantTeamCredits(db, stripe, invoice.id, subId);
+      if (grant === 'retry') {
+        return NextResponse.json({ error: 'DB error' }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ received: true });
@@ -205,8 +216,8 @@ export async function POST(request: Request) {
     if (isTopup) {
       const { data: activeKey } = await db
         .from('api_keys')
-        .select('id, credits, key_prefix')
-        .eq('email', email)
+        .select('id, key_prefix')
+        .eq('email', normalizeEmail(email))
         .eq('is_active', true)
         .order('last_used_at', { ascending: false, nullsFirst: false })
         .limit(1)
@@ -215,37 +226,41 @@ export async function POST(request: Request) {
       if (!activeKey) {
         console.error('Topup but no active key found for:', email);
       } else {
-        const newCredits = activeKey.credits === -1
-          ? -1
-          : activeKey.credits + tierConfig.credits;
+        // One atomic grant keyed by the checkout session: the marker insert and
+        // the balance update commit together, so a redelivered or racing webhook
+        // credits the pack exactly once.
+        const { data: granted, error: grantError } = await db.rpc('grant_credits_once', {
+          p_marker: session.id,
+          p_api_key_id: activeKey.id,
+          p_amount: tierConfig.credits,
+        });
 
-        const { error: updateError } = await db
-          .from('api_keys')
-          .update({ credits: newCredits })
-          .eq('id', activeKey.id);
-
-        if (updateError) {
-          console.error('Failed to topup credits:', updateError);
+        if (grantError) {
+          console.error('Failed to topup credits:', grantError);
           return NextResponse.json({ error: 'DB error' }, { status: 500 });
         }
 
-        await db.from('api_keys').insert({
-          key_hash: `topup_${session.id}`,
-          key_prefix: activeKey.key_prefix,
-          email,
-          tier,
-          credits: tierConfig.credits,
-          payment_method: 'stripe',
-          stripe_session_id: session.id,
-          stripe_payment_intent: paymentIntent,
-          is_active: false,
-        });
+        if (granted) {
+          // History row only; the marker is what makes the grant idempotent.
+          const { error: historyError } = await db.from('api_keys').insert({
+            key_hash: `topup_${session.id}`,
+            key_prefix: activeKey.key_prefix,
+            email,
+            tier,
+            credits: tierConfig.credits,
+            payment_method: 'stripe',
+            stripe_session_id: session.id,
+            stripe_payment_intent: paymentIntent,
+            is_active: false,
+          });
+          if (historyError) console.error('Topup history row failed:', historyError);
 
-        logAudit({
-          event_type: 'stripe_credits_topup',
-          actor: email,
-          details: { tier, session_id: session.id, key_prefix: activeKey.key_prefix, credits_added: tierConfig.credits, new_total: newCredits },
-        });
+          logAudit({
+            event_type: 'stripe_credits_topup',
+            actor: email,
+            details: { tier, session_id: session.id, key_prefix: activeKey.key_prefix, credits_added: tierConfig.credits },
+          });
+        }
 
         return NextResponse.json({ received: true });
       }
@@ -290,4 +305,67 @@ function mapStripeStatus(status: string): 'active' | 'past_due' | 'cancelled' | 
     case 'unpaid': return 'past_due';
     default: return 'cancelled';
   }
+}
+
+type Db = ReturnType<typeof getSupabaseAdmin>;
+
+/** 'done' = nothing more to do (granted, duplicate, or not a credit plan); 'retry' = ask Stripe to redeliver. */
+async function grantTeamCredits(
+  db: Db,
+  stripe: Stripe,
+  invoiceId: string | undefined,
+  subscriptionId: string,
+): Promise<'done' | 'retry'> {
+  if (!invoiceId) return 'done';
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const plan = subscription.metadata?.plan;
+  const email = subscription.metadata?.email;
+  const planConfig = plan ? SUBSCRIPTION_PLANS[plan] : undefined;
+  if (!planConfig || !email) return 'done';
+
+  const { data: activeKey, error: keyError } = await db
+    .from('api_keys')
+    .select('id, key_prefix')
+    .eq('email', normalizeEmail(email))
+    .eq('is_active', true)
+    .order('last_used_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (keyError) {
+    // A transient DB error is not "no key": ask Stripe to redeliver.
+    console.error('Team grant key lookup failed:', keyError);
+    return 'retry';
+  }
+  if (!activeKey) {
+    // No key to credit yet. Leave a trail; an operator can grant by hand.
+    logAudit({
+      event_type: 'stripe_plan_grant_no_key',
+      actor: email,
+      details: { plan, invoice_id: invoiceId, credits: planConfig.credits_per_month },
+    });
+    return 'done';
+  }
+
+  // One atomic grant keyed by the invoice id: marker insert and balance update
+  // commit together, so a redelivered or racing invoice.paid grants once and a
+  // failure leaves no marker behind (Stripe's retry then grants it).
+  const { data: granted, error: grantError } = await db.rpc('grant_credits_once', {
+    p_marker: invoiceId,
+    p_api_key_id: activeKey.id,
+    p_amount: planConfig.credits_per_month,
+  });
+  if (grantError) {
+    console.error('Invoice credit grant failed:', grantError);
+    return 'retry';
+  }
+  if (!granted) return 'done'; // already granted for this invoice
+
+  logAudit({
+    event_type: 'stripe_plan_credits_granted',
+    actor: email,
+    details: { plan, invoice_id: invoiceId, key_prefix: activeKey.key_prefix, credits_added: planConfig.credits_per_month },
+  });
+  return 'done';
 }

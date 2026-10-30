@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Instrument_Serif } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { BRAND } from '@/lib/brand';
 import './globals.css';
 
 const inter = Inter({
@@ -25,9 +26,13 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: 'Ambr | The Legal Framework for AI Agents Acting in the Real World',
+  metadataBase: new URL('https://ambr.run'),
+  title: 'Ambr — Agent Mandate & Binding Registry | The liability record for autonomous agents',
   description:
-    'Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents — Ricardian Contracts that lawyers can read and agents can parse, with cryptographic verification.',
+    'Ambr is the authorization and liability record for autonomous agents. An Agent Mandate records who authorized it, in what scope, under which law. Readable as prose, executable as code, revocable on record.',
+  alternates: {
+    canonical: 'https://ambr.run',
+  },
   icons: {
     icon: [
       { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
@@ -36,29 +41,29 @@ export const metadata: Metadata = {
     apple: '/apple-icon.png',
   },
   openGraph: {
-    title: 'Ambr | The Legal Framework for AI Agents Acting in the Real World',
+    title: 'Ambr — Agent Mandate & Binding Registry',
     description:
-      'Delegation authority, commerce contracts, and compliance audit trails for AI agents acting in the real world.',
+      'The liability record for autonomous agents. Who authorized it, in what scope, under which law. Revocable on record.',
     url: 'https://ambr.run',
     siteName: 'Ambr',
     type: 'website',
     images: [
       {
-        url: 'https://ambr.run/api/og?title=The+Legal+Framework+for+AI+Agents&label=AMBR+PROTOCOL&description=Delegation+authority%2C+commerce+contracts%2C+and+compliance+audit+trails.&domain=ambr.run',
+        url: 'https://ambr.run/api/og?title=Agent+Mandate+%26+Binding+Registry&label=AMBR&description=The+liability+record+for+autonomous+agents.&domain=ambr.run',
         width: 1200,
         height: 630,
-        alt: 'Ambr — The Agreement Layer for AI Agents',
+        alt: 'Ambr — Agent Mandate & Binding Registry',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@ambr_run',
-    title: 'Ambr | The Legal Framework for AI Agents',
+    title: 'Ambr — Agent Mandate & Binding Registry',
     description:
-      'Delegation authority, commerce contracts, and compliance audit trails for AI agents acting in the real world.',
+      'The liability record for autonomous agents. Revocable on record.',
     images: [
-      'https://ambr.run/api/og?title=The+Legal+Framework+for+AI+Agents&label=AMBR+PROTOCOL&description=Delegation+authority%2C+commerce+contracts%2C+and+compliance+audit+trails.&domain=ambr.run',
+      'https://ambr.run/api/og?title=Agent+Mandate+%26+Binding+Registry&label=AMBR&description=The+liability+record+for+autonomous+agents.&domain=ambr.run',
     ],
   },
 };
@@ -71,7 +76,7 @@ const jsonLd = {
   applicationSubCategory: 'Contract Management',
   operatingSystem: 'Web',
   description:
-    'Legal framework for AI agents — create, sign, and verify Ricardian Contracts for delegation and commerce. Dual-format: human-readable legal text + machine-parsable JSON, linked by SHA-256 hash.',
+    'Authorization and liability record for autonomous agents. Agent Mandates record who authorized an agent, in what scope, under which law. Dual-format: human-readable legal text plus machine-parsable JSON, linked by SHA-256 hash.',
   url: 'https://ambr.run',
   offers: {
     '@type': 'Offer',
@@ -83,14 +88,15 @@ const jsonLd = {
     '@type': 'Organization',
     name: 'Ambr',
     url: 'https://ambr.run',
+    sameAs: [BRAND.social.twitter, BRAND.social.github],
   },
   featureList: [
-    'Ricardian Contract generation',
+    'Agent Mandate generation (dual-format Ricardian contracts)',
     'SHA-256 integrity verification',
-    'A2A protocol support',
-    'Bilateral amendments',
-    'Agent delegation authority',
-    'Compliance audit trails',
+    'A2A and MCP agent protocols',
+    'Declared spending limits, revocable on record',
+    'Bilateral amendments and binding registry record',
+    'Verifiable contract records',
   ],
 };
 

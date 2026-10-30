@@ -4,9 +4,12 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import SectionWrapper from '@/components/ui/SectionWrapper';
-import ScrollReveal from '@/components/ui/ScrollReveal';
+import Reveal from '@/components/ui/Reveal';
 import AmbrCard from '@/components/ui/AmbrCard';
 import Button from '@/components/ui/Button';
+import Eyebrow from '@/components/ui/Eyebrow';
+import { DISPLAY, EDITORIAL } from '@/lib/type';
+import { FREE_TIER_CREDITS, PACKS, TEAM, ENTERPRISE, formatUsd } from '@/lib/pricing';
 
 /* ─── Types ─── */
 
@@ -24,46 +27,37 @@ interface PricingTier {
 
 /* ─── Static data ─── */
 
+const fmt = (n: number) => n.toLocaleString('en-US');
+
 const userPlans = [
   {
-    name: 'Free',
-    price: '$0',
+    name: 'Developer',
+    price: 'Free',
     period: '',
-    contracts: '5 contracts/mo',
-    features: ['5 AI messages/day', 'Basic tracking', 'Email support'],
+    contracts: `${fmt(FREE_TIER_CREDITS)} credits, once per verified key`,
+    features: ['No renewal', 'No card required', 'Email support'],
     cta: 'Get Started',
     action: 'developer' as const,
     featured: false,
   },
   {
-    name: 'Personal',
-    price: '$9',
+    name: TEAM.label,
+    price: formatUsd(TEAM.price_cents_monthly),
     period: '/mo',
-    contracts: '25 contracts/mo',
-    features: ['Unlimited AI chat', 'Full contract tracking', 'Email notifications', '$0.20/contract overage'],
+    contracts: `${fmt(TEAM.credits_per_month)} credits per paid invoice`,
+    features: ['Unlimited AI chat', 'Team sharing', 'Counterparty portal', 'Priority support', 'Overage: buy a pack'],
     cta: 'Subscribe',
     action: 'subscribe' as const,
-    plan: 'personal' as const,
+    plan: TEAM.slug,
     featured: true,
     badge: 'Popular',
   },
   {
-    name: 'Business',
-    price: '$29',
-    period: '/mo',
-    contracts: '100 contracts/mo',
-    features: ['Unlimited AI chat', 'Team sharing', 'Counterparty portal', 'Priority support', '$0.15/contract overage'],
-    cta: 'Subscribe',
-    action: 'subscribe' as const,
-    plan: 'business' as const,
-    featured: false,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    contracts: 'Unlimited',
-    features: ['Dedicated AI', 'Custom SLA', 'Volume pricing', 'SSO + audit logs'],
+    name: ENTERPRISE.label,
+    price: `${formatUsd(ENTERPRISE.price_cents_yearly)}`,
+    period: '/year',
+    contracts: `${fmt(ENTERPRISE.credits)} credits`,
+    features: [...ENTERPRISE.includes],
     cta: 'Contact Us',
     action: 'contact' as const,
     featured: false,
@@ -71,9 +65,15 @@ const userPlans = [
 ];
 
 const packTiers = [
-  { value: 'startup' as const, label: 'Starter Pack', price: '$49', credits: '200 contracts', effective: '$0.245/contract', savings: 'Save vs per-contract' },
-  { value: 'scale' as const, label: 'Scale Pack', price: '$199', credits: '1,000 contracts', effective: '$0.199/contract', savings: 'Best value' },
-  { value: 'enterprise' as const, label: 'Enterprise', price: 'Custom', credits: 'Unlimited contracts', effective: 'Custom pricing', savings: 'Volume SLA' },
+  ...PACKS.map((p) => ({
+    value: p.slug,
+    label: p.label,
+    price: formatUsd(p.price_cents),
+    credits: `${fmt(p.credits)} credits`,
+    effective: p.credits > p.price_cents ? `+${fmt(p.credits - p.price_cents)} bonus credits` : '1 credit = 1 cent',
+    savings: p.slug === 'scale' ? 'Best value' : 'Pay per contract',
+  })),
+  { value: 'enterprise' as const, label: ENTERPRISE.label, price: `${formatUsd(ENTERPRISE.price_cents_yearly)}/yr`, credits: `${fmt(ENTERPRISE.credits)} credits`, effective: 'Contact us', savings: ENTERPRISE.includes.join(', ') },
 ];
 
 /* ─── Page ─── */
@@ -101,7 +101,7 @@ function ActivateContent() {
 
   const [view, setView] = useState<'users' | 'developers'>('users');
   const [tab, setTab] = useState<'developer' | 'crypto' | 'card'>('developer');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'polling' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'polling' | 'success' | 'sent' | 'error'>('idle');
   const [apiKey, setApiKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
@@ -109,7 +109,7 @@ function ActivateContent() {
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
   const [devPricing, setDevPricing] = useState<PricingTier[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<'personal' | 'business' | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'business' | null>(null);
   const [subEmail, setSubEmail] = useState('');
   const [subLoading, setSubLoading] = useState(false);
   const [subError, setSubError] = useState('');
@@ -188,7 +188,7 @@ function ActivateContent() {
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   }
 
-  async function onSubscriptionSubmit(plan: 'personal' | 'business', email: string) {
+  async function onSubscriptionSubmit(plan: 'business', email: string) {
     setSubLoading(true);
     setSubError('');
     try {
@@ -225,8 +225,11 @@ function ActivateContent() {
         setStatus('error');
         return;
       }
-      setApiKey(result.api_key);
-      setStatus('success');
+      // The developer tier no longer returns a key here — it emails a
+      // single-use link that verifies the address and then reveals the key at
+      // /activate/reveal. The response is identical whether or not this email
+      // is already registered, so this branch must not try to tell them apart.
+      setStatus('sent');
     } catch {
       setErrorMessage('Network error. Please try again.');
       setStatus('error');
@@ -293,18 +296,19 @@ function ActivateContent() {
       {/* ─── SECTION 1: Hero ─── */}
       <SectionWrapper>
         <div className="text-center mb-12">
-          <ScrollReveal>
-            <p className="text-micro mb-2">Pricing</p>
-            <h1 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
-              Simple, transparent pricing
+          <Reveal>
+            <Eyebrow className="mb-4">§ 01 — Pricing</Eyebrow>
+            <h1 style={DISPLAY.hero}>
+              Simple, transparent<br />
+              <span style={{ color: EDITORIAL.brass }}>pricing.</span>
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-text-secondary text-sm">
-              Free to start. Scale as you grow. Pay per contract or subscribe for more.
+              Free to start. Scale as you grow. Pay per contract with credits, or subscribe to Team for monthly credits.
             </p>
-          </ScrollReveal>
+          </Reveal>
 
           {/* Toggle */}
-          <ScrollReveal delay={0.1}>
+          <Reveal delay={0.1}>
             <div className="flex justify-center mt-8">
               <div className="inline-flex rounded-none border border-amber/60 bg-surface p-1">
                 <button
@@ -327,14 +331,14 @@ function ActivateContent() {
                 </button>
               </div>
             </div>
-          </ScrollReveal>
+          </Reveal>
         </div>
 
         {/* ─── SECTION 2A: User Plans ─── */}
         {view === 'users' && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {userPlans.map((plan, i) => (
-              <ScrollReveal key={plan.name} delay={i * 0.08}>
+              <Reveal key={plan.name} delay={i * 0.08}>
                 {plan.featured ? (
                   <AmbrCard geoPattern="ellipse" label={plan.name} meta={plan.badge} className="h-full">
                     <div className="py-4">
@@ -358,7 +362,7 @@ function ActivateContent() {
                           className="w-full"
                           onClick={() => {
                             if ('plan' in plan && plan.plan) {
-                              setSelectedPlan(plan.plan as 'personal' | 'business');
+                              setSelectedPlan(plan.plan as 'business');
                               setSubError('');
                               scrollToForm();
                             }
@@ -376,7 +380,7 @@ function ActivateContent() {
                       <span className="text-3xl text-text-primary">{plan.price}</span>
                       {plan.period && <span className="text-sm text-text-secondary">{plan.period}</span>}
                     </div>
-                    <p className="text-sm text-[#999] mt-1">{plan.contracts}</p>
+                    <p className="text-sm text-text-secondary mt-1">{plan.contracts}</p>
                     <ul className="mt-5 space-y-2 flex-1">
                       {plan.features.map((f) => (
                         <li key={f} className="text-sm text-text-secondary flex items-start gap-2">
@@ -409,7 +413,7 @@ function ActivateContent() {
                           size="md"
                           className="w-full"
                           onClick={() => {
-                            setSelectedPlan(plan.plan as 'personal' | 'business');
+                            setSelectedPlan(plan.plan as 'business');
                             setSubError('');
                             scrollToForm();
                           }}
@@ -420,7 +424,7 @@ function ActivateContent() {
                     </div>
                   </div>
                 )}
-              </ScrollReveal>
+              </Reveal>
             ))}
           </div>
         )}
@@ -432,8 +436,8 @@ function ActivateContent() {
             <div className="border border-amber/60 bg-surface p-6 h-full flex flex-col">
               <span className="text-micro">Developer</span>
               <h3 className="text-3xl text-text-primary mt-2">Free</h3>
-              <p className="text-xs text-[#999] mt-1">25 contracts/mo</p>
-              <p className="text-sm text-[#999] mt-4 leading-relaxed flex-1">
+              <p className="text-xs text-text-secondary mt-1">{fmt(FREE_TIER_CREDITS)} credits, once</p>
+              <p className="text-sm text-text-secondary mt-4 leading-relaxed flex-1">
                 Build and test integrations. One key per email. No payment required.
               </p>
               <div className="mt-4">
@@ -443,41 +447,45 @@ function ActivateContent() {
               </div>
             </div>
 
-            {/* Per-contract pricing from API */}
-            {devPricing.map((tier) => (
-              <div key={tier.tier} className="border border-amber/60 bg-surface p-6 h-full flex flex-col">
-                <span className="text-micro">{tier.label}</span>
-                <h3 className="text-3xl text-text-primary mt-2">{tier.price_display}</h3>
-                <p className="text-xs text-[#999] mt-1">per contract</p>
-                <ul className="mt-4 space-y-1 flex-1">
-                  {tier.templates.map((t) => (
-                    <li key={t.slug} className="text-sm text-text-secondary flex items-start gap-2">
-                      <span className="text-amber mt-0.5">+</span>
-                      {t.name}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4">
-                  <Button variant="secondary" size="sm" className="w-full" onClick={() => { setTab('crypto'); scrollToForm(); }}>
-                    Pay per contract
-                  </Button>
+            {/* Per-contract pricing from API — prices live, labels/descriptions
+                mapped locally to the on-pitch authority taxonomy (mirrors
+                MandatePricing on the homepage; template names deliberately
+                not enumerated on this purchase surface). */}
+            {devPricing.map((tier) => {
+              const display = ({
+                consumer: { label: 'Personal', note: 'A person authorizes their own AI agent' },
+                delegation: { label: 'Delegation', note: 'Delegate authority to your agent, with spending caps' },
+                commerce: { label: 'Agent-to-agent', note: 'One agent commissions and pays another' },
+                fleet: { label: 'Fleet · Multi-agent', note: 'Shared budgets & sub-delegation across a fleet' },
+              } as Record<string, { label: string; note: string }>)[tier.tier] ?? { label: tier.label, note: '' };
+              return (
+                <div key={tier.tier} className="border border-amber/60 bg-surface p-6 h-full flex flex-col">
+                  <span className="text-micro">{display.label}</span>
+                  <h3 className="text-3xl text-text-primary mt-2">{tier.price_display}</h3>
+                  <p className="text-xs text-text-secondary mt-1">per contract</p>
+                  <p className="mt-4 text-sm text-text-secondary leading-relaxed flex-1">{display.note}</p>
+                  <div className="mt-4">
+                    <Button variant="secondary" size="sm" className="w-full" onClick={() => { setTab('crypto'); scrollToForm(); }}>
+                      Pay per contract
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Fallback if API hasn't loaded */}
             {devPricing.length === 0 && (
               <>
                 {[
-                  { label: 'Consumer (A2C)', price: '$0.20' },
-                  { label: 'Delegation (A2A)', price: '$0.50' },
-                  { label: 'Commerce (B2A)', price: '$1.00' },
-                  { label: 'Fleet Multi-Agent', price: '$2.50' },
+                  { label: 'Personal', price: '$0.20' },
+                  { label: 'Delegation', price: '$0.50' },
+                  { label: 'Agent-to-agent', price: '$1.00' },
+                  { label: 'Fleet · Multi-agent', price: '$2.50' },
                 ].map((tier) => (
                   <div key={tier.label} className="border border-amber/60 bg-surface p-6 h-full flex flex-col">
                     <span className="text-micro">{tier.label}</span>
                     <h3 className="text-3xl text-text-primary mt-2">{tier.price}</h3>
-                    <p className="text-xs text-[#999] mt-1">per contract</p>
+                    <p className="text-xs text-text-secondary mt-1">per contract</p>
                     <div className="mt-4 flex-1" />
                     <Button variant="secondary" size="sm" className="w-full" onClick={() => { setTab('crypto'); scrollToForm(); }}>
                       Pay per contract
@@ -493,19 +501,19 @@ function ActivateContent() {
       {/* ─── SECTION 3: Credit Packs ─── */}
       {view === 'developers' && (
         <SectionWrapper>
-          <ScrollReveal>
+          <Reveal>
             <div className="text-center mb-8">
-              <p className="text-micro mb-2">Credit Packs</p>
-              <h2 className="text-2xl text-text-primary sm:text-3xl">Buy in bulk</h2>
+              <Eyebrow className="mb-4">§ 02 — Credit Packs</Eyebrow>
+              <h2 style={DISPLAY.section}>Buy in bulk</h2>
               <p className="mt-2 text-text-secondary text-sm">
                 Credits never expire. Use across any contract type.
               </p>
             </div>
-          </ScrollReveal>
+          </Reveal>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 max-w-3xl mx-auto">
             {packTiers.map((pack, i) => (
-              <ScrollReveal key={pack.value} delay={i * 0.08}>
+              <Reveal key={pack.value} delay={i * 0.08}>
                 <div className="border border-amber/60 bg-surface p-6 h-full flex flex-col relative">
                   {/* Corner dots */}
                   <div className="absolute top-2 left-2 w-1.5 h-1.5 bg-amber" />
@@ -515,7 +523,7 @@ function ActivateContent() {
 
                   <span className="text-micro">{pack.label}</span>
                   <h3 className="text-3xl text-text-primary mt-2">{pack.price}</h3>
-                  <p className="text-sm text-[#999] mt-1">{pack.credits}</p>
+                  <p className="text-sm text-text-secondary mt-1">{pack.credits}</p>
                   <p className="text-xs text-amber mt-2">{pack.effective}</p>
                   <p className="text-xs text-text-secondary mt-1">{pack.savings}</p>
                   <div className="mt-4 flex gap-2">
@@ -539,7 +547,7 @@ function ActivateContent() {
                     </Button>
                   </div>
                 </div>
-              </ScrollReveal>
+              </Reveal>
             ))}
           </div>
         </SectionWrapper>
@@ -547,14 +555,14 @@ function ActivateContent() {
 
       {/* ─── SECTION 4: Founder Program Banner ─── */}
       <SectionWrapper>
-        <ScrollReveal>
+        <Reveal>
           <div className="border border-amber/60 bg-amber-glow p-8 text-center max-w-2xl mx-auto relative">
             <div className="absolute top-2 left-2 w-1.5 h-1.5 bg-amber" />
             <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-amber" />
             <div className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-amber" />
             <div className="absolute bottom-2 right-2 w-1.5 h-1.5 bg-amber" />
 
-            <p className="text-micro mb-2">Founding Partner Program</p>
+            <Eyebrow className="mb-4">§ 03 — Founding Partner Program</Eyebrow>
             <h3 className="text-xl text-text-primary sm:text-2xl">
               10 spots — 1,000 free contracts + 50% off forever
             </h3>
@@ -567,7 +575,7 @@ function ActivateContent() {
               </Button>
             </div>
           </div>
-        </ScrollReveal>
+        </Reveal>
       </SectionWrapper>
 
       {/* ─── SECTION 5: Activation Form ─── */}
@@ -577,23 +585,40 @@ function ActivateContent() {
             <div className="mx-auto max-w-lg relative">
 
               {subscriptionSuccess ? (
-                <ScrollReveal>
+                <Reveal>
                   <div className="rounded-none border border-amber/60 bg-amber-glow relative p-6 text-center">
                     <svg className="w-12 h-12 text-amber mx-auto mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <h2 className="text-xl text-text-primary mb-2">Subscription Active</h2>
                     <p className="text-sm text-text-secondary mb-4">
-                      Your subscription is being set up. You&apos;ll receive a confirmation email shortly.
+                      Your subscription is being set up. Stripe will email your receipt.
                     </p>
                     <p className="text-xs text-text-secondary">
                       Manage your subscription anytime from your{' '}
                       <a href="/dashboard" className="text-amber hover:underline">dashboard</a>.
                     </p>
                   </div>
-                </ScrollReveal>
+                </Reveal>
+              ) : status === 'sent' ? (
+                <Reveal>
+                  <div className="rounded-none border border-amber/60 bg-amber-glow relative p-6 text-center">
+                    <svg className="w-12 h-12 text-amber mx-auto mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                    </svg>
+                    <h2 className="text-xl text-text-primary mb-2">Check your email</h2>
+                    <p className="text-sm text-text-secondary mb-4">
+                      We sent a link that verifies your address and reveals your API key.
+                      It works once and expires in 30 minutes.
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      Already had a key? The link will replace it — your current one keeps
+                      working until you confirm.
+                    </p>
+                  </div>
+                </Reveal>
               ) : status === 'success' ? (
-                <ScrollReveal>
+                <Reveal>
                   <div className="rounded-none border border-amber/60 bg-amber-glow relative p-6 text-center">
                     <svg className="w-12 h-12 text-amber mx-auto mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -609,12 +634,16 @@ function ActivateContent() {
                     >
                       {copied ? 'Copied' : 'Copy Key'}
                     </button>
-                    <p className="mt-4 text-xs text-text-secondary">
-                      Use this key in the <code className="text-amber">X-API-Key</code> header when calling the contract API.{' '}
+                    <p className="mt-4 text-sm text-text-primary">
+                      Next: open the <a href="/dashboard" className="text-amber hover:underline">Dashboard</a> and
+                      choose &ldquo;Sign in with your API key&rdquo; — paste this key there.
+                    </p>
+                    <p className="mt-2 text-xs text-text-secondary">
+                      For API calls, send it in the <code className="text-amber">X-API-Key</code> header.{' '}
                       <a href="/developers" className="text-amber hover:underline">View docs</a>
                     </p>
                   </div>
-                </ScrollReveal>
+                </Reveal>
               ) : status === 'polling' ? (
                 <div className="rounded-none border border-amber/60 bg-amber-glow relative p-6 text-center">
                   <div className="w-8 h-8 border-2 border-amber border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -622,19 +651,19 @@ function ActivateContent() {
                 </div>
               ) : view === 'users' && selectedPlan ? (
                 /* Subscription checkout form */
-                <ScrollReveal>
+                <Reveal>
                   <div className="rounded-none border border-amber/60 bg-surface p-6">
                     <div className="text-center mb-6">
-                      <p className="text-micro mb-2">Subscribe</p>
+                      <Eyebrow className="mb-4">§ — Subscribe</Eyebrow>
                       <h3 className="text-xl text-text-primary mb-1">
-                        {selectedPlan === 'personal' ? 'Personal' : 'Business'} Plan
+                        {TEAM.label} Plan
                       </h3>
                       <p className="text-2xl font-serif text-amber">
-                        {selectedPlan === 'personal' ? '$9' : '$29'}
+                        {formatUsd(TEAM.price_cents_monthly)}
                         <span className="text-sm text-text-secondary">/mo</span>
                       </p>
                       <p className="text-xs text-text-secondary mt-2">
-                        {selectedPlan === 'personal' ? '25' : '100'} contracts/mo · Unlimited AI chat
+                        {fmt(TEAM.credits_per_month)} credits per paid invoice · Unlimited AI chat
                       </p>
                     </div>
                     <div className="space-y-4 max-w-sm mx-auto">
@@ -658,7 +687,7 @@ function ActivateContent() {
                         disabled={subLoading || !subEmail}
                         onClick={() => subEmail && onSubscriptionSubmit(selectedPlan, subEmail)}
                       >
-                        {subLoading ? 'Redirecting to checkout...' : `Subscribe — ${selectedPlan === 'personal' ? '$9' : '$29'}/mo`}
+                        {subLoading ? 'Redirecting to checkout...' : `Subscribe — ${formatUsd(TEAM.price_cents_monthly)}/mo`}
                       </Button>
                       <p className="text-center text-xs text-text-secondary">
                         Secure checkout powered by Stripe. Cancel anytime.
@@ -672,12 +701,12 @@ function ActivateContent() {
                       </button>
                     </div>
                   </div>
-                </ScrollReveal>
+                </Reveal>
               ) : (
                 /* Developer activation forms */
-                <ScrollReveal>
+                <Reveal>
                   <div className="text-center mb-6">
-                    <p className="text-micro mb-2">Activate</p>
+                    <Eyebrow className="mb-4">§ — Activate</Eyebrow>
                     <h2 className="text-2xl text-text-primary">Get Your API Key</h2>
                   </div>
 
@@ -718,9 +747,9 @@ function ActivateContent() {
                     <form onSubmit={alphaForm.handleSubmit(onAlphaSubmit)} className="space-y-5">
                       <div className="rounded-none border border-amber/60 bg-amber-glow relative p-4 text-center">
                         <p className="text-micro mb-1">Developer</p>
-                        <p className="text-2xl font-serif text-text-primary">25 Free Contracts</p>
+                        <p className="text-2xl font-serif text-text-primary">{fmt(FREE_TIER_CREDITS)} Free Credits</p>
                         <p className="text-xs text-text-secondary mt-2">
-                          Build and test integrations. One key per email. No payment required.
+                          Build and test integrations. One key per verified email. No payment required.
                         </p>
                       </div>
                       <div>
@@ -739,7 +768,7 @@ function ActivateContent() {
                         <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{errorMessage}</div>
                       )}
                       <Button type="submit" disabled={isLoading} size="lg" className="w-full">
-                        {isLoading ? 'Generating key...' : 'Claim Developer Key'}
+                        {isLoading ? 'Sending link...' : 'Claim Developer Key'}
                       </Button>
                     </form>
                   ) : tab === 'card' && stripeReady ? (
@@ -847,7 +876,7 @@ function ActivateContent() {
                       </p>
                     </form>
                   )}
-                </ScrollReveal>
+                </Reveal>
               )}
             </div>
           </SectionWrapper>

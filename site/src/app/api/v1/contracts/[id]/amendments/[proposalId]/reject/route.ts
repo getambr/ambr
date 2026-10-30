@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { validateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { rateLimit } from '@/lib/rate-limit';
 import { corsOptions } from '@/lib/cors';
 import { getCurrentHolders } from '@/lib/chain/cnft-holders';
@@ -52,13 +53,11 @@ export async function POST(
   let contractQuery = db
     .from('contracts')
     .select('id, contract_id, nft_token_id, nft_counterparty_token_id');
-  if (id.startsWith('amb-')) {
-    contractQuery = contractQuery.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    contractQuery = contractQuery.eq('sha256_hash', id);
-  } else {
-    contractQuery = contractQuery.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  contractQuery = contractQuery.eq(column, id);
 
   const { data: original, error: originalError } = await contractQuery.single();
   if (originalError || !original) {

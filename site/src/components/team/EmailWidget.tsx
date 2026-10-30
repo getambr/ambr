@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronLeft, ChevronDown, Mail, CornerUpLeft, CalendarPlus,
   Sparkles, Send, Check, Loader2, Maximize2, Archive, PenSquare, UserPlus, X,
+  Paperclip,
 } from 'lucide-react'
 import {
   getEmailBody, draftReply, archiveEmail, improveDraft, sendThreadReply,
   sendNewEmail, generateNewDraft, improveCompose,
   getSentLog, assignEmail, getAssignments, approveDraft, updateDraft, archiveDrafts,
-  type EmailBody, type TriagedEmail, type SentEmail, type Draft,
+  type EmailBody, type TriagedEmail, type SentEmail, type Draft, type EmailAttachment,
 } from '@/lib/team-api'
 
 // Render a Gmail thread (one or more messages) as a stack of cards.
@@ -95,71 +96,100 @@ type AliasTab = {
 
 const TIER_1_ALIASES: AliasTab[] = [
   // "All" only shows emails actually addressed to an @ambr.run alias.
-  // Personal Gmail clutter (Kraken, Namecheap, GitHub notifications, etc.)
-  // is intentionally hidden so the dashboard stays focused on company mail.
-  // To see personal Gmail, use Gmail web UI directly.
+  // Anything else is hidden.
   { id: 'all', label: 'All', match: to => !!to && /@ambr\.run/i.test(to) },
   { id: 'ilvers@ambr.run', label: 'Ilvers', match: to => to.includes('ilvers@ambr.run') },
   { id: 'dainis@ambr.run', label: 'Dainis', match: to => to.includes('dainis@ambr.run') },
+  { id: 'bruno@ambr.run', label: 'Bruno', match: to => to.includes('bruno@ambr.run') },
   { id: 'hello@ambr.run', label: 'Hello', match: to => to.includes('hello@ambr.run') },
   { id: 'support@ambr.run', label: 'Support', match: to => to.includes('support@ambr.run') },
   { id: 'legal@ambr.run', label: 'Legal', match: to => to.includes('legal@ambr.run'), p1: true },
   { id: 'privacy@ambr.run', label: 'Privacy', match: to => to.includes('privacy@ambr.run'), p1: true },
   { id: 'security@ambr.run', label: 'Security', match: to => to.includes('security@ambr.run'), p1: true },
+  { id: 'investors@ambr.run', label: 'Investors', match: to => to.includes('investors@ambr.run') },
+  // ops@ had no tab anywhere - real correspondence arriving where nobody
+  // could see it. Shared, not personal:
+  // it is an operational address and the point is that more than one person reads it.
+  { id: 'ops@ambr.run', label: 'Ops', match: to => to.includes('ops@ambr.run') },
   { id: 'outbox', label: 'Outbox', match: () => false },
   { id: 'sent', label: 'Sent', match: () => false },
 ]
 
+// Reading and sending are SEPARATE systems. An alias in ALIASES_OWNED_BY can
+// be sent AS but produces no inbox tab unless it is also listed here AND cleared
+// by getVisibleAliases(). investors@ is sendable-but-invisible without its entry
+// here: if you grant a new alias, do both or the mail has nowhere to land.
+
 // Personal aliases scoped to their owner. Shared aliases are visible to both founders.
-// NOTE: this is frontend-only soft privacy. Anyone with the OPS_KEY can call the
-// backend directly. The real fix is the server proxy refactor (queued separately).
+// NOTE: visibility here is UI-only; access control lives in the ops proxy.
+// Aliases whose INBOX each user may read. Despite the name this is not strictly
+// "personal" — it is the per-user scoped set, so restricted-but-shared aliases
+// (investors@) live here rather than in SHARED_ALIASES, which everyone sees.
+// Keyed by opaque member id, NOT by address. These maps ship to the browser;
+// keying them by real addresses would put those addresses in a public JS chunk.
+// The server supplies the current user's id as user.team_member_id. Values are
+// @ambr.run role addresses, which are already public on the site.
 const PERSONAL_ALIASES_BY_USER: Record<string, string[]> = {
-  'ilvers.sermols@gmail.com': ['ilvers@ambr.run', 'ilvers.sermols@gmail.com'],
-  'dainis@ambr.run': ['dainis@ambr.run'],
+  ilvers: ['ilvers@ambr.run', 'investors@ambr.run'],
+  dainis: ['dainis@ambr.run', 'investors@ambr.run'],
+  bruno: ['bruno@ambr.run'],
 }
 
 const SHARED_ALIASES = [
   'hello@ambr.run', 'support@ambr.run',
-  'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
+  'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run', 'ops@ambr.run',
 ]
 
 // Which @ambr.run aliases each user is allowed to send AS via the dashboard.
 // MUST stay in sync with ALIASES_OWNED_BY in Apps Script Code.gs — the server
 // is the source of truth, this is just a UI hint for the From: chip.
+// Every user who should be able to send MUST have a key here. renderCompose()
+// does `ALIASES_OWNED_BY[user] || []`, so a missing key is not a permissive
+// default — it is an empty From dropdown and no ability to send at all. Being in
+// ADMIN_EMAILS and TEAM_MEMBERS is not enough: every team member needs an entry here.
 const ALIASES_OWNED_BY: Record<string, string[]> = {
-  'ilvers.sermols@gmail.com': [
+  ilvers: [
     'ilvers@ambr.run',
     'hello@ambr.run', 'support@ambr.run',
     'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
+    'investors@ambr.run', 'ops@ambr.run',
   ],
-  'dainis@ambr.run': [
+  dainis: [
     'dainis@ambr.run',
     'hello@ambr.run', 'support@ambr.run',
     'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
-    'investors@ambr.run', 'sales@ambr.run', 'billing@ambr.run',
+    'investors@ambr.run', 'sales@ambr.run', 'billing@ambr.run', 'ops@ambr.run',
+  ],
+  bruno: [
+    'bruno@ambr.run',
+    'hello@ambr.run', 'support@ambr.run',
+    'legal@ambr.run', 'privacy@ambr.run', 'security@ambr.run',
+    'ops@ambr.run',
   ],
 }
 
 const PERSONAL_ALIAS_BY_USER: Record<string, string> = {
-  'ilvers.sermols@gmail.com': 'ilvers@ambr.run',
-  'dainis@ambr.run': 'dainis@ambr.run',
-  'brunokrisjanis99@gmail.com': 'bruno@ambr.run',
+  ilvers: 'ilvers@ambr.run',
+  dainis: 'dainis@ambr.run',
+  bruno: 'bruno@ambr.run',
 }
 
+// `id` replaces the old `email` field. Assignments now travel as ids; the ops
+// proxy converts them to addresses before Apps Script sees them, so stored
+// assignments and their notification emails are untouched.
 const TEAM_MEMBERS = [
-  { email: 'ilvers.sermols@gmail.com', name: 'Ilvers', alias: 'ilvers@ambr.run' },
-  { email: 'dainis@ambr.run', name: 'Dainis', alias: 'dainis@ambr.run' },
-  { email: 'brunokrisjanis99@gmail.com', name: 'Bruno', alias: 'bruno@ambr.run' },
+  { id: 'ilvers', name: 'Ilvers', alias: 'ilvers@ambr.run' },
+  { id: 'dainis', name: 'Dainis', alias: 'dainis@ambr.run' },
+  { id: 'bruno', name: 'Bruno', alias: 'bruno@ambr.run' },
 ]
 
 // Mirrors the server-side resolveFromAlias() in Apps Script Code.gs. Picks
 // which @ambr.run alias the reply will be sent from. Pure UI hint — actual
 // decision is made server-side from the authenticated user's identity.
 // Returns empty string if user is unknown.
-function computeReplyFromAlias(currentUserEmail: string | undefined, originalToHeader: string | undefined): string {
-  if (!currentUserEmail) return ''
-  const sender = currentUserEmail.toLowerCase()
-  const owned = ALIASES_OWNED_BY[sender] || []
+function computeReplyFromAlias(memberId: string | undefined, originalToHeader: string | undefined): string {
+  if (!memberId) return ''
+  const owned = ALIASES_OWNED_BY[memberId] || []
 
   if (originalToHeader) {
     const matches = originalToHeader.toLowerCase().match(/[a-z0-9._-]+@ambr\.run/g) || []
@@ -170,15 +200,15 @@ function computeReplyFromAlias(currentUserEmail: string | undefined, originalToH
     }
   }
 
-  return PERSONAL_ALIAS_BY_USER[sender] || ''
+  return PERSONAL_ALIAS_BY_USER[memberId] || ''
 }
 
-function getVisibleAliases(currentUserEmail?: string): string[] {
-  if (!currentUserEmail) {
+function getVisibleAliases(memberId?: string): string[] {
+  if (!memberId) {
     // Unknown user: defensive fallback. Show only shared aliases, no personal mail.
     return SHARED_ALIASES
   }
-  const personal = PERSONAL_ALIASES_BY_USER[currentUserEmail.toLowerCase()] || []
+  const personal = PERSONAL_ALIASES_BY_USER[memberId] || []
   return [...personal, ...SHARED_ALIASES]
 }
 
@@ -188,12 +218,11 @@ function aliasLabel(toHeader: string): string {
   return match[1].toLowerCase()
 }
 
-function pickDefaultTab(currentUserEmail?: string): string {
-  if (!currentUserEmail) return 'all'
-  const lower = currentUserEmail.toLowerCase()
-  if (lower.startsWith('ilvers')) return 'ilvers@ambr.run'
-  if (lower.startsWith('dainis')) return 'dainis@ambr.run'
-  return 'all'
+function pickDefaultTab(memberId?: string): string {
+  // Was a startsWith() sniff on the address, which both leaked identity into the
+  // logic and silently returned 'all' for anyone whose local-part differed.
+  if (!memberId) return 'all'
+  return PERSONAL_ALIAS_BY_USER[memberId] || 'all'
 }
 
 function extractEmail(input: string): string {
@@ -209,12 +238,22 @@ type DraftState =
   | { phase: 'sending'; draftId: string; subject: string; body: string; autoDrafted?: boolean }
   | { phase: 'error'; message: string }
 
+// An attachment staged in the compose form. `size` is the raw file size in
+// bytes (for display + the combined cap); the wire format drops it.
+type ComposeAttachment = EmailAttachment & { size: number }
+
+// Combined raw-bytes cap across all attachments. Resend caps total email size
+// at 40MB and Apps Script rejects combined base64 over ~33MB (~24MB raw), so
+// 20MB leaves headroom for base64 inflation + body + headers.
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
+
 type ComposeState = {
   to: string
   subject: string
   body: string
   fromAlias: string
   intent: string  // optional Kimi prompt
+  attachments: ComposeAttachment[]
   phase: 'editing' | 'generating' | 'improving' | 'sending' | 'error'
   errorMessage?: string
 }
@@ -232,17 +271,19 @@ export function EmailWidget({
   emails,
   drafts,
   loading,
-  currentUserEmail,
+  memberId,
   onRefresh,
 }: {
   emails: { count: number; emails: TriagedEmail[] } | null
   drafts?: { count: number; drafts: Draft[] } | null
   unread?: { unread: Record<string, number> } | null
   loading: boolean
-  currentUserEmail?: string
+  /** Opaque team member id from the server. Keys every roster lookup below, so
+      no colleague's address needs to exist in this bundle. */
+  memberId?: string
   onRefresh?: () => void
 }) {
-  const [activeTab, setActiveTab] = useState<string>(() => pickDefaultTab(currentUserEmail))
+  const [activeTab, setActiveTab] = useState<string>(() => pickDefaultTab(memberId))
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -359,7 +400,7 @@ export function EmailWidget({
   const allEmails = useMemo(() => emails?.emails || [], [emails])
 
   // Privacy filter: which aliases is this user allowed to see?
-  const visibleAliasIds = useMemo(() => getVisibleAliases(currentUserEmail), [currentUserEmail])
+  const visibleAliasIds = useMemo(() => getVisibleAliases(memberId), [memberId])
 
   // Tabs the user can see (always include 'all' + 'outbox' + 'sent', plus only the aliases in their permitted set)
   const visibleTabs = useMemo(
@@ -392,9 +433,7 @@ export function EmailWidget({
   }, [activeTab])
 
   // Emails the user is permitted to see. Must be addressed to an @ambr.run
-  // alias the user owns. Personal Gmail (Kraken, Namecheap, GitHub, etc.) and
-  // legacy untagged rows are intentionally excluded from the dashboard so it
-  // stays focused on company mail. To see personal Gmail, use Gmail web UI.
+  // alias the user owns. Other mail and legacy untagged rows are hidden.
   const ownedEmails = useMemo(() => {
     return allEmails.filter(e => {
       const to = (e.to_address || '').toLowerCase()
@@ -545,8 +584,8 @@ export function EmailWidget({
   // Open the compose form with empty fields. The default From: alias is
   // the user's personal alias (ilvers@ambr.run or dainis@ambr.run).
   function startCompose() {
-    const defaultAlias = currentUserEmail
-      ? PERSONAL_ALIAS_BY_USER[currentUserEmail.toLowerCase()] || ''
+    const defaultAlias = memberId
+      ? PERSONAL_ALIAS_BY_USER[memberId] || ''
       : ''
     setMode({
       kind: 'composing',
@@ -556,6 +595,7 @@ export function EmailWidget({
         body: '',
         fromAlias: defaultAlias,
         intent: '',
+        attachments: [],
         phase: 'editing',
       },
     })
@@ -605,17 +645,57 @@ export function EmailWidget({
     }
   }
 
+  // Stage files onto the compose form as base64. Rejects the batch if it
+  // would push the combined raw size past MAX_ATTACHMENT_BYTES.
+  async function addComposeAttachments(files: FileList | null) {
+    if (mode.kind !== 'composing' || !files || files.length === 0) return
+    const current = mode.compose.attachments
+    const incoming = Array.from(files)
+    const total = current.reduce((n, a) => n + a.size, 0) + incoming.reduce((n, f) => n + f.size, 0)
+    if (total > MAX_ATTACHMENT_BYTES) {
+      updateCompose({ phase: 'error', errorMessage: `Attachments exceed ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)}MB combined` })
+      return
+    }
+    try {
+      const staged = await Promise.all(incoming.map(f => new Promise<ComposeAttachment>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onerror = () => reject(new Error(`Could not read ${f.name}`))
+        reader.onload = () => {
+          const dataUrl = reader.result as string
+          resolve({
+            filename: f.name,
+            content: dataUrl.slice(dataUrl.indexOf(',') + 1), // strip data:*;base64, prefix
+            contentType: f.type || undefined,
+            size: f.size,
+          })
+        }
+        reader.readAsDataURL(f)
+      })))
+      updateCompose({ attachments: [...current, ...staged], phase: 'editing', errorMessage: undefined })
+    } catch (e) {
+      updateCompose({ phase: 'error', errorMessage: String(e) })
+    }
+  }
+
+  function removeComposeAttachment(index: number) {
+    if (mode.kind !== 'composing') return
+    updateCompose({ attachments: mode.compose.attachments.filter((_, i) => i !== index) })
+  }
+
   // Send the cold email via Resend (Apps Script appends signature server-side).
   async function sendCompose() {
     if (mode.kind !== 'composing') return
-    const { to, subject, body, fromAlias } = mode.compose
+    const { to, subject, body, fromAlias, attachments } = mode.compose
     if (!to.trim() || !subject.trim() || !body.trim() || !fromAlias) {
       updateCompose({ phase: 'error', errorMessage: 'To, Subject, Body, and From are all required' })
       return
     }
     updateCompose({ phase: 'sending', errorMessage: undefined })
     try {
-      const res = await sendNewEmail(to.trim(), subject.trim(), body, fromAlias)
+      const res = await sendNewEmail(
+        to.trim(), subject.trim(), body, fromAlias,
+        attachments.map(({ filename, content, contentType }) => ({ filename, content, contentType }))
+      )
       if ('error' in res) {
         updateCompose({ phase: 'error', errorMessage: res.error })
       } else {
@@ -815,7 +895,7 @@ export function EmailWidget({
                 {/* From: chip — auto-resolved alias the reply will be sent AS.
                     Mirrors the server-side resolveFromAlias() decision. */}
                 {(() => {
-                  const fromAlias = computeReplyFromAlias(currentUserEmail, mode.email.to_address)
+                  const fromAlias = computeReplyFromAlias(memberId, mode.email.to_address)
                   if (!fromAlias) return null
                   return (
                     <div className="mb-2 flex items-center gap-2 rounded border border-amber/20 bg-amber/5 px-2 py-1.5">
@@ -1239,7 +1319,7 @@ export function EmailWidget({
                     {assignments[email.messageId]?.length > 0 && (
                       <span className="mt-0.5 shrink-0 flex items-center gap-0.5">
                         {assignments[email.messageId].map(a => {
-                          const member = TEAM_MEMBERS.find(m => m.email === a)
+                          const member = TEAM_MEMBERS.find(m => m.id === a)
                           return (
                             <span key={a} className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-mono text-indigo-300" title={member?.alias || a}>
                               {member?.name?.charAt(0) || '?'}
@@ -1306,17 +1386,17 @@ export function EmailWidget({
                               </button>
                               {assignDropdown === email.messageId && (
                                 <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-lg border border-border bg-surface-elevated p-1 shadow-lg">
-                                  {TEAM_MEMBERS.filter(m => m.email !== currentUserEmail?.toLowerCase()).map(member => {
-                                    const isAssigned = assignments[email.messageId]?.includes(member.email)
+                                  {TEAM_MEMBERS.filter(m => m.id !== memberId).map(member => {
+                                    const isAssigned = assignments[email.messageId]?.includes(member.id)
                                     return (
                                       <button
-                                        key={member.email}
+                                        key={member.id}
                                         type="button"
                                         onClick={() => {
                                           const current = assignments[email.messageId] || []
                                           const updated = isAssigned
-                                            ? current.filter(e => e !== member.email)
-                                            : [...current, member.email]
+                                            ? current.filter(e => e !== member.id)
+                                            : [...current, member.id]
                                           setAssignments(prev => ({ ...prev, [email.messageId]: updated }))
                                           assignEmail(email.messageId, updated).catch(() => {})
                                         }}
@@ -1387,8 +1467,8 @@ export function EmailWidget({
   // Improve polishes what's typed. Signature is appended server-side via
   // sendNewEmail() so the user never sees the duplication.
   function renderCompose(compose: ComposeState) {
-    const ownedAliases = currentUserEmail
-      ? ALIASES_OWNED_BY[currentUserEmail.toLowerCase()] || []
+    const ownedAliases = memberId
+      ? ALIASES_OWNED_BY[memberId] || []
       : []
     const isBusy = compose.phase === 'sending' || compose.phase === 'generating' || compose.phase === 'improving'
 
@@ -1485,8 +1565,47 @@ export function EmailWidget({
               <Sparkles className="h-3 w-3" />
               {compose.phase === 'improving' ? 'Polishing...' : 'Improve'}
             </button>
+            <label
+              className={`flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-text-secondary hover:border-amber/30 hover:text-amber transition-colors cursor-pointer ${isBusy ? 'pointer-events-none opacity-30' : ''}`}
+              title="Attach files (20MB combined max)"
+            >
+              <Paperclip className="h-3 w-3" />
+              Attach
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                disabled={isBusy}
+                onChange={e => { void addComposeAttachments(e.target.files); e.target.value = '' }}
+              />
+            </label>
             <span className="ml-auto text-[10px] text-text-secondary/60">signature appended automatically</span>
           </div>
+
+          {/* Staged attachments */}
+          {compose.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {compose.attachments.map((att, i) => (
+                <span
+                  key={`${att.filename}-${i}`}
+                  className="flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1 text-[10px] font-mono text-text-secondary"
+                >
+                  <Paperclip className="h-3 w-3 text-amber/70" />
+                  {att.filename}
+                  <span className="text-text-secondary/50">{att.size < 1024 * 1024 ? `${Math.max(1, Math.round(att.size / 1024))}KB` : `${(att.size / 1024 / 1024).toFixed(1)}MB`}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeComposeAttachment(i)}
+                    disabled={isBusy}
+                    className="text-text-secondary/50 hover:text-error transition-colors disabled:opacity-30"
+                    title={`Remove ${att.filename}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Body textarea */}
           <textarea

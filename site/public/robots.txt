@@ -1,26 +1,43 @@
+# robots.txt groups are NOT inherited. A crawler obeys only the most specific
+# user-agent block that matches it and ignores every other block, so a
+# "Disallow: /m/" under "User-agent: *" alone would be invisible to every named
+# agent below — each of which is explicitly allowed the whole site. The rule has
+# to be repeated in every group, and must be repeated again in any group added
+# later. /m/ serves the investor deck over an unguessable link; it is the one
+# path on this site that must never be crawled or ingested.
+
 User-agent: *
 Allow: /
+Disallow: /m/
 
-# AI Crawlers
+# AI Crawlers — deliberately allowed. For a product whose buyers are agents,
+# being readable by agents is the point. The single exception is /m/.
 User-agent: GPTBot
 Allow: /
+Disallow: /m/
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /m/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /m/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /m/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /m/
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /m/
 
 User-agent: cohere-ai
 Allow: /
+Disallow: /m/
 
 Sitemap: https://ambr.run/sitemap.xml

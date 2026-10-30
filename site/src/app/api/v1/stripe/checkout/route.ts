@@ -4,6 +4,7 @@ import { getStripe, TIER_PRICES, SUBSCRIPTION_PLANS } from '@/lib/stripe';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { corsOptions } from '@/lib/cors';
+import { normalizeEmail } from '@/lib/keys/claim-token';
 
 const schema = z.discriminatedUnion('checkout_mode', [
   z.object({
@@ -15,7 +16,7 @@ const schema = z.discriminatedUnion('checkout_mode', [
   z.object({
     checkout_mode: z.literal('subscription'),
     email: z.email('Valid email required'),
-    plan: z.enum(['personal', 'business']),
+    plan: z.enum(['business']),
   }),
 ]);
 
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
       );
     }
     const data = parsed.data as { checkout_mode: 'subscription'; email: string; plan: string };
+    // Webhooks look keys up by this metadata email, and keys are stored normalised.
+    data.email = normalizeEmail(data.email);
     const planConfig = SUBSCRIPTION_PLANS[data.plan];
 
     try {
@@ -65,7 +68,7 @@ export async function POST(request: Request) {
               currency: 'usd',
               product_data: {
                 name: `Ambr ${planConfig.label} Plan`,
-                description: `${planConfig.contracts_limit} contracts/mo, unlimited AI chat`,
+                description: `${planConfig.credits_per_month.toLocaleString('en-US')} credits per month, unlimited AI chat`,
               },
               unit_amount: planConfig.cents_monthly,
               recurring: { interval: 'month' },
@@ -108,7 +111,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const { email, tier, mode } = parsed.data;
+  const { tier, mode } = parsed.data;
+  // Webhooks look keys up by this metadata email, and keys are stored normalised.
+  const email = normalizeEmail(parsed.data.email);
 
   // Enterprise pricing is custom by definition — TIER_PRICES.enterprise has
   // cents: 0, which would create a $0 Stripe session if we let it through.

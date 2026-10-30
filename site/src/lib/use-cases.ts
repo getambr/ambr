@@ -31,10 +31,10 @@ export const useCases: UseCase[] = [
     id: 'agent-procurement',
     title: 'Agent-Executed Procurement',
     scenario:
-      'A company\'s authorized agent negotiates and purchases cloud compute from a vendor. Ambr generates a dual-format Commerce Contract — human-readable for the vendor\'s legal team, machine-parsable JSON for the agent — with payment flowing via x402 V2.',
+      'Under a recorded Delegation mandate with a $2,400/mo cap, a company\'s agent negotiates and purchases cloud compute from a vendor. Ambr generates the dual-format mandate — human-readable for the vendor\'s legal team, machine-parsable JSON for the agent — with payment flowing via x402 V2.',
     parties: ['TechCorp (Principal)', 'Purchasing Agent (Authorized)', 'CloudVendor Inc. (Counterparty)'],
     contractTerms: 'GPU allocation (A100 x4), 99.9% uptime SLA, $2,400/mo pricing, 90-day term, auto-renewal clause',
-    outcome: 'Commerce Contract signed by agent on behalf of TechCorp, cNFT minted, vendor legal team can review via Reader Portal',
+    outcome: 'Mandate signed by the agent on behalf of TechCorp — within its recorded authority — cNFT minted, vendor legal team can review via Reader Portal',
     integrations: {
       payments: 'x402 V2 session-based billing with Nevermined metering',
       reputation: 'ERC-8004 reputation check on vendor before contract signing',
@@ -45,7 +45,7 @@ export const useCases: UseCase[] = [
     id: 'agent-service-agreement',
     title: 'Agent-Signed Service Agreement',
     scenario:
-      'A marketing agency\'s AI agent negotiates and signs a SaaS analytics contract on behalf of the agency. The contract includes data handling terms, SLA guarantees, and an IETF ADP dispute resolution clause — all enforceable under the agency\'s delegation authority.',
+      'Acting under its agency\'s recorded delegation authority, an AI agent negotiates and signs a SaaS analytics agreement on the agency\'s behalf. The mandate records data handling terms, SLA guarantees, and an IETF ADP dispute resolution clause — every commitment traceable to the authority that permitted it.',
     parties: ['BrightStar Agency (Principal)', 'Negotiation Agent (Authorized)', 'AnalyticsPro SaaS (Counterparty)'],
     contractTerms: 'Enterprise tier access, data retention (12 months), GDPR compliance clause, 99.5% uptime SLA, $499/mo',
     outcome: 'Service agreement signed at machine speed, cNFT as proof of agreement, amendment chain for future upgrades',
@@ -61,7 +61,7 @@ export const useCases: UseCase[] = [
     scenario:
       'An enterprise legal team needs to review all contracts their AI agents have executed over the past quarter. Using the Reader Portal, they search by agent wallet, verify on-chain hashes, follow amendment chains, and export PDF reports for regulatory filing.',
     parties: ['Enterprise Legal Team', 'Multiple AI Agents (Company-Authorized)', 'Various Counterparties'],
-    contractTerms: 'All delegation and commerce contracts executed in Q1 2026, including amendments and extensions',
+    contractTerms: 'Every mandate the company\'s agents executed in Q1 2026, including amendments and extensions',
     outcome: 'Full audit trail via Reader Portal — view, verify, print any contract by hash or cNFT ID, follow amendment chains',
     integrations: {
       payments: 'Payment records linked to each contract via x402 V2 transaction metadata',

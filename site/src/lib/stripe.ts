@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { PACKS, TEAM, ENTERPRISE } from './pricing';
 
 let _stripe: Stripe | null = null;
 
@@ -11,31 +12,26 @@ export function getStripe(): Stripe {
   return _stripe;
 }
 
+// Prices and credit amounts live in ./pricing (1 credit = 1 US cent).
 export const TIER_PRICES: Record<string, { cents: number; credits: number; label: string }> = {
-  startup: { cents: 4900, credits: 200, label: 'Starter Pack' },
-  scale: { cents: 19900, credits: 1000, label: 'Scale Pack' },
-  enterprise: { cents: 0, credits: -1, label: 'Enterprise' }, // custom pricing — never billed via checkout, use contact form instead (see checkout route guard)
+  ...Object.fromEntries(
+    PACKS.map((p) => [p.slug, { cents: p.price_cents, credits: p.credits, label: p.label }]),
+  ),
+  enterprise: { cents: 0, credits: ENTERPRISE.credits, label: ENTERPRISE.label }, // contact-only, never billed via checkout (see checkout route guard)
 };
 
+// Keyed by the Stripe subscription metadata `plan` value. `business` is the
+// Team plan; the key is kept so existing subscriptions keep resolving.
 export const SUBSCRIPTION_PLANS: Record<string, {
   cents_monthly: number;
   label: string;
-  contracts_limit: number;
+  credits_per_month: number;
   ai_messages_limit: number;
-  overage_cents: number;
 }> = {
-  personal: {
-    cents_monthly: 900,
-    label: 'Personal',
-    contracts_limit: 25,
-    ai_messages_limit: -1,
-    overage_cents: 20,
-  },
-  business: {
-    cents_monthly: 2900,
-    label: 'Business',
-    contracts_limit: 100,
-    ai_messages_limit: -1,
-    overage_cents: 15,
+  [TEAM.slug]: {
+    cents_monthly: TEAM.price_cents_monthly,
+    label: TEAM.label,
+    credits_per_month: TEAM.credits_per_month,
+    ai_messages_limit: TEAM.ai_messages_limit,
   },
 };

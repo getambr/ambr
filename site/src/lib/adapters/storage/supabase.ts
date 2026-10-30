@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn } from '@/lib/contract/lookup';
 import type { ContractData, StorageAdapter, StorageResult } from './index';
 
 export class SupabaseStorageAdapter implements StorageAdapter {
@@ -39,18 +40,11 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   }
 
   async retrieve(ref: string): Promise<ContractData | null> {
+    const column = contractRefColumn(ref);
+    if (!column) return null;
+
     const db = getSupabaseAdmin();
-    let query = db.from('contracts').select('*');
-
-    if (ref.startsWith('amb-')) {
-      query = query.eq('contract_id', ref);
-    } else if (/^[a-f0-9]{64}$/.test(ref)) {
-      query = query.eq('sha256_hash', ref);
-    } else {
-      query = query.eq('id', ref);
-    }
-
-    const { data, error } = await query.single();
+    const { data, error } = await db.from('contracts').select('*').eq(column, ref).single();
     if (error || !data) return null;
 
     return {

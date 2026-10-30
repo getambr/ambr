@@ -89,8 +89,10 @@ export default function RicardianSpecV1Page() {
                 </li>
                 <li>
                   <code className="text-text-primary">template</code> — template
-                  slug (consumer <code>a1–a3</code>, delegation{' '}
-                  <code>d1–d3</code>, commerce <code>c1–c3</code>)
+                  slug (e.g. <code>d1-general-auth</code> delegation,{' '}
+                  <code>c3-task-execution</code> agent-to-agent, one-sided
+                  power of attorney <code>p2-power-of-attorney</code>; full
+                  catalog via <code>GET /api/v1/templates</code>)
                 </li>
                 <li>
                   <code className="text-text-primary">template_version</code> —
@@ -103,6 +105,14 @@ export default function RicardianSpecV1Page() {
                 <li>
                   <code className="text-text-primary">parameters</code> — object
                   conforming to the template&apos;s parameter schema
+                </li>
+                <li>
+                  <code className="text-text-primary">parameters.governing_law</code>{' '}
+                  — string, required by every template&apos;s parameter schema
+                  (default <code>Singapore</code>). Governing jurisdiction:
+                  Singapore, Delaware, England-Wales or Switzerland. It
+                  appears in the rendered contract as the choice-of-law clause
+                  and selects the electronic-agent formation recital
                 </li>
                 <li>
                   <code className="text-text-primary">sha256</code> — hash of
@@ -130,18 +140,46 @@ export default function RicardianSpecV1Page() {
             <section>
               <h2 className="text-lg text-text-primary mb-3">Hash scheme</h2>
               <p className="mb-3">
-                The <code>sha256</code> field is computed over the concatenation
-                of (a) the UTF-8 bytes of the human-readable prose and (b) the
-                canonical JSON encoding of the machine-readable object with{' '}
-                <code>sha256</code> excluded. Canonical JSON means: keys sorted
-                lexicographically at every depth, no trailing whitespace, no
-                insignificant whitespace between tokens, numbers in shortest
-                round-trip form.
+                The <code>sha256</code> field is computed from two inputs: (a)
+                the human-readable prose exactly as stored, and (b) the
+                machine-readable object with <code>sha256</code> excluded.
+                Canonicalize (b) by sorting object keys lexicographically at
+                every depth — arrays keep their order — and serializing with
+                ECMAScript <code>JSON.stringify</code> (no insignificant
+                whitespace between tokens). Join the two payloads with the
+                literal five-byte separator <code>{'"\\n---\\n"'}</code> (LF,
+                three hyphens, LF), hash the UTF-8 bytes with SHA-256, and
+                encode the digest as 64 lowercase hex characters:
               </p>
+              <pre className="bg-surface-raised p-4 rounded text-xs overflow-x-auto text-text-primary">
+                <code>{`sha256_hex( utf8( prose + "\\n---\\n" + canonical_json ) )`}</code>
+              </pre>
+              <p className="mb-3 mt-3">
+                Reference implementation (Node.js) — any party can recompute
+                the hash without calling Ambr:
+              </p>
+              <pre className="bg-surface-raised p-4 rounded text-xs overflow-x-auto text-text-primary">
+                <code>{`const { createHash } = require('crypto');
+
+const sortKeys = (o) =>
+  Array.isArray(o) ? o.map(sortKeys)
+  : o && typeof o === 'object'
+    ? Object.fromEntries(Object.keys(o).sort().map((k) => [k, sortKeys(o[k])]))
+    : o;
+
+// The API serves machine_readable without an embedded sha256 field. If your
+// copy carries one (per the data model above), exclude it before hashing:
+const { sha256, ...doc } = machineReadable;
+
+const hash = createHash('sha256')
+  .update(prose + '\\n---\\n' + JSON.stringify(sortKeys(doc)), 'utf-8')
+  .digest('hex');`}</code>
+              </pre>
               <p>
                 A verifier recomputes the hash over the two payloads it
                 received. A match proves the prose and the JSON refer to the
-                same agreement — the basis of the legibility guarantee.
+                same agreement — the basis of the legibility guarantee — and
+                requires no trust in Ambr as an intermediary.
               </p>
             </section>
 

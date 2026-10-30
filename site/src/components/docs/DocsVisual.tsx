@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { FREE_TIER_CREDITS, PACKS, TEAM, ENTERPRISE, formatUsd } from '@/lib/pricing';
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+const TEAM_LINE = `${TEAM.label.toUpperCase()} -- ${formatUsd(TEAM.price_cents_monthly)}/mo`;
+const ENTERPRISE_LINE = `${ENTERPRISE.label.toUpperCase()} -- ${formatUsd(ENTERPRISE.price_cents_yearly)}/yr`;
 
 interface DocsVisualProps {
   activeSection: string;
@@ -37,7 +42,7 @@ function ArchitectureDiagram() {
 
         {/* Contract box */}
         <rect x="60" y="64" width="160" height="32" stroke="#c6a87c" strokeWidth="1.5" fill="#c6a87c" fillOpacity="0.08" />
-        <text x="140" y="84" textAnchor="middle" fill="#f4f4f0" fontSize="11" fontFamily="monospace" fontWeight="500">Ricardian Contract</text>
+        <text x="140" y="84" textAnchor="middle" fill="#f4f4f0" fontSize="11" fontFamily="monospace" fontWeight="500">Agent Mandate</text>
 
         {/* Two arrows down */}
         <line x1="100" y1="96" x2="70" y2="130" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
@@ -73,17 +78,17 @@ function ActivateWireframe() {
     <VisualFrame label="// Activate Page">
       <div className="space-y-3">
         <div className="border border-amber/20 p-3">
-          <div className="font-mono text-[0.6rem] text-amber/50 mb-2">FREE ALPHA</div>
+          <div className="font-mono text-[0.6rem] text-amber/50 mb-2">FREE DEVELOPER</div>
           <div className="h-2 w-24 bg-amber/20 mb-2" />
-          <div className="font-mono text-xs text-[#666]">25 contracts included</div>
+          <div className="font-mono text-xs text-[#666]">{fmt(FREE_TIER_CREDITS)} credits, no card</div>
         </div>
         <div className="border border-amber/10 p-3 opacity-50">
-          <div className="font-mono text-[0.6rem] text-[#555] mb-2">STARTER -- $29</div>
+          <div className="font-mono text-[0.6rem] text-[#555] mb-2">{TEAM_LINE}</div>
           <div className="h-2 w-20 bg-white/5 mb-2" />
-          <div className="font-mono text-xs text-[#444]">50 contracts</div>
+          <div className="font-mono text-xs text-[#444]">{fmt(TEAM.credits_per_month)} credits / mo</div>
         </div>
         <div className="border border-amber/10 p-3 opacity-30">
-          <div className="font-mono text-[0.6rem] text-[#444] mb-2">BUILDER -- $99</div>
+          <div className="font-mono text-[0.6rem] text-[#444] mb-2">{ENTERPRISE_LINE}</div>
           <div className="h-2 w-28 bg-white/5" />
         </div>
         <div className="mt-4 border border-amber/20 p-2">
@@ -103,8 +108,8 @@ function ContractResponseCard() {
     <VisualFrame label="// Response">
       <pre className="text-[0.7rem] font-mono leading-relaxed overflow-hidden">
         <span className="text-[#555]">{'{'}</span>{'\n'}
-        <span className="text-amber/70">  &quot;id&quot;</span><span className="text-[#555]">:</span> <span className="text-emerald-400/70">&quot;amb-2026-0042&quot;</span>{'\n'}
-        <span className="text-amber/70">  &quot;hash&quot;</span><span className="text-[#555]">:</span> <span className="text-emerald-400/70">&quot;sha256:9f86d0...&quot;</span>{'\n'}
+        <span className="text-amber/70">  &quot;contract_id&quot;</span><span className="text-[#555]">:</span> <span className="text-emerald-400/70">&quot;amb-2026-0042&quot;</span>{'\n'}
+        <span className="text-amber/70">  &quot;sha256_hash&quot;</span><span className="text-[#555]">:</span> <span className="text-emerald-400/70">&quot;9f86d0...&quot;</span>{'\n'}
         <span className="text-amber/70">  &quot;status&quot;</span><span className="text-[#555]">:</span> <span className="text-emerald-400/70">&quot;draft&quot;</span>{'\n'}
         <span className="text-amber/70">  &quot;reader_url&quot;</span><span className="text-[#555]">:</span>{'\n'}
         <span className="text-emerald-400/70 text-[0.6rem]">    &quot;getamber.dev/reader/...&quot;</span>{'\n'}
@@ -246,6 +251,8 @@ function A2ADiscoveryCard() {
         <span className="text-amber/70">  &quot;skills&quot;</span><span className="text-[#555]">: [</span>{'\n'}
         <span className="text-emerald-400/70">    &quot;create_contract&quot;</span>{'\n'}
         <span className="text-emerald-400/70">    &quot;list_templates&quot;</span>{'\n'}
+        <span className="text-emerald-400/70">    &quot;get_contract&quot;</span>{'\n'}
+        <span className="text-emerald-400/70">    &quot;get_status&quot;</span>{'\n'}
         <span className="text-emerald-400/70">    &quot;verify_hash&quot;</span>{'\n'}
         <span className="text-emerald-400/70">    &quot;agent_handshake&quot;</span>{'\n'}
         <span className="text-[#555]">  ]</span>{'\n'}
@@ -263,7 +270,7 @@ function MCPConfigCard() {
         <span className="text-amber/70">  &quot;mcpServers&quot;</span><span className="text-[#555]">: {'{'}</span>{'\n'}
         <span className="text-amber/70">    &quot;ambr&quot;</span><span className="text-[#555]">: {'{'}</span>{'\n'}
         <span className="text-amber/70">      &quot;url&quot;</span><span className="text-[#555]">:</span>{'\n'}
-        <span className="text-emerald-400/70 text-[0.6rem]">        &quot;getamber.dev/api/v1/mcp&quot;</span>{'\n'}
+        <span className="text-emerald-400/70 text-[0.6rem]">        &quot;getamber.dev/api/mcp&quot;</span>{'\n'}
         <span className="text-amber/70">      &quot;headers&quot;</span><span className="text-[#555]">: {'{'}</span>{'\n'}
         <span className="text-amber/70">        &quot;X-API-Key&quot;</span><span className="text-[#555]">:</span>{'\n'}
         <span className="text-emerald-400/70">          &quot;YOUR_KEY&quot;</span>{'\n'}
@@ -284,11 +291,11 @@ function EndpointsCard() {
     { method: 'POST', path: '/v1/.../sign', label: 'Sign' },
     { method: 'POST', path: '/v1/.../wallet-auth', label: 'Auth' },
     { method: 'GET', path: '/v1/templates', label: 'Templates' },
-    { method: 'POST', path: '/v1/keys/free', label: 'Free Key' },
+    { method: 'POST', path: '/v1/keys', label: 'API Key' },
   ];
 
   return (
-    <VisualFrame label="// 9 Endpoints">
+    <VisualFrame label="// REST API">
       <div className="space-y-1.5">
         {endpoints.map((ep) => (
           <div key={ep.path} className="flex items-center gap-2 py-1 border-b border-amber/5">
@@ -314,7 +321,7 @@ function WalletDashboardVisual() {
           </div>
           <div className="flex-1 border border-amber/10 p-2">
             <div className="font-mono text-[0.55rem] text-[#555]">CREDITS</div>
-            <div className="font-serif text-xl text-[#777]">38</div>
+            <div className="font-serif text-xl text-[#777]">{fmt(FREE_TIER_CREDITS - 20)}</div>
           </div>
         </div>
         <div className="border border-amber/10 p-2">
@@ -396,23 +403,23 @@ function TokensCard() {
 
 function PricingCard() {
   return (
-    <VisualFrame label="// Alpha Access">
+    <VisualFrame label="// Pricing">
       <div className="space-y-3">
         <div className="border border-amber/30 bg-amber/5 p-3">
           <div className="flex justify-between items-baseline mb-1">
-            <span className="font-mono text-xs text-amber">FREE</span>
-            <span className="font-mono text-[0.6rem] text-emerald-400">ACTIVE</span>
+            <span className="font-mono text-xs text-amber">DEVELOPER</span>
+            <span className="font-mono text-[0.6rem] text-emerald-400">FREE</span>
           </div>
-          <div className="font-serif text-xl text-text-primary">25 contracts</div>
-          <div className="font-mono text-[0.6rem] text-[#666] mt-1">Email only, no payment</div>
+          <div className="font-serif text-xl text-text-primary">{fmt(FREE_TIER_CREDITS)} credits</div>
+          <div className="font-mono text-[0.6rem] text-[#666] mt-1">Verified email, no card</div>
         </div>
-        <div className="border border-amber/10 p-3 opacity-40">
-          <div className="font-mono text-xs text-[#555]">STARTER -- $29</div>
-          <div className="font-mono text-[0.6rem] text-[#444]">50 contracts</div>
+        <div className="border border-amber/10 p-3 opacity-50">
+          <div className="font-mono text-xs text-[#555]">{TEAM_LINE}</div>
+          <div className="font-mono text-[0.6rem] text-[#444]">{fmt(TEAM.credits_per_month)} credits / mo</div>
         </div>
-        <div className="border border-amber/10 p-3 opacity-25">
-          <div className="font-mono text-xs text-[#444]">BUILDER -- $99</div>
-          <div className="font-mono text-[0.6rem] text-[#333]">250 contracts</div>
+        <div className="border border-amber/10 p-3 opacity-30">
+          <div className="font-mono text-xs text-[#444]">{ENTERPRISE_LINE}</div>
+          <div className="font-mono text-[0.6rem] text-[#333]">{fmt(ENTERPRISE.credits)} credits</div>
         </div>
       </div>
     </VisualFrame>
@@ -482,7 +489,7 @@ const sectionVisuals: Record<string, () => React.ReactNode> = {
   'wallet-auth': WalletSignVisual,
   'cnft': CNFTVisual,
   'transfers': CNFTVisual,
-  'free-alpha': PricingCard,
+  'pricing': PricingCard,
   'crypto': TokensCard,
   'card': PricingCard,
   'zk-identity': ZKIdentityVisual,
@@ -490,7 +497,7 @@ const sectionVisuals: Record<string, () => React.ReactNode> = {
 
 const sectionCaptions: Record<string, string> = {
   'what-is-ambr': 'Dual-format architecture: every contract exists as legal prose and machine-parsable JSON, linked by SHA-256 hash.',
-  'get-api-key': 'Free developer tier: enter your email to get an API key with 25 contracts. No payment required.',
+  'get-api-key': `Free developer tier: enter your email to get an API key with ${fmt(FREE_TIER_CREDITS)} credits (cents), once. No payment required.`,
   'first-contract': 'The API returns a contract object with hash, reader URL, and sign URL for the counterparty.',
   'create': 'POST /v1/contracts generates a Ricardian Contract with unique ID and cryptographic hash.',
   'share': 'The creator sends a reader URL to the counterparty. The share token grants read access without an API key.',
@@ -499,17 +506,17 @@ const sectionCaptions: Record<string, string> = {
   'verify': 'Compare the SHA-256 hash against the on-chain record to verify the contract has not been tampered with.',
   'a2a-discovery': 'AI agents discover Ambr at /.well-known/agent.json — standard A2A protocol with 6 available skills.',
   'mcp-server': 'Add Ambr to Claude, Cursor, or any MCP-compatible agent with a single JSON config block.',
-  'rest-api': '9 REST endpoints covering contract creation, signing, verification, delegation, and key management.',
-  'x402-payments': 'Pay per contract with any of 7 supported tokens on Base L2. No subscription required.',
+  'rest-api': 'Full REST endpoint reference — mandate creation, signing, verification, revocation, and key management.',
+  'x402-payments': 'Pay per contract with any of 7 supported tokens on Base L2. No account or credits required.',
   'endpoints': 'Full API reference: POST/GET endpoints with API key, x402, share token, or wallet signature auth.',
   'connect-wallet': 'Dashboard supports dual login: API key for developers, wallet connect for on-chain identity.',
   'wallet-auth': 'ECDSA signature proves wallet ownership. Backend checks association via signatures, handshakes, or cNFT.',
   'cnft': 'Each contract is minted as an ERC-721 on Base L2 with its SHA-256 hash stored permanently on-chain.',
   'transfers': 'Counterparty-gated: both the holder and counterparty must approve before an NFT can be transferred.',
   'zk-identity': 'Groth16/BN128 zk-SNARK: prover generates a proof from private inputs, verifier checks it on-chain via Merkle oracle — no personal data on the blockchain.',
-  'free-alpha': 'Developer tier: 5 free contracts. Startup ($49) and Scale ($199) for production workloads. x402 pay-per-contract for agents.',
+  'pricing': `Developer tier: ${fmt(FREE_TIER_CREDITS)} free credits (1 credit = 1 cent), once. ${TEAM.label} (${formatUsd(TEAM.price_cents_monthly)}/mo, ${fmt(TEAM.credits_per_month)} credits), ${PACKS.map((p) => `${p.label} (${formatUsd(p.price_cents)}, ${fmt(p.credits)} credits)`).join(' and ')}, or ${ENTERPRISE.label}. x402 pay-per-contract for agents.`,
   'crypto': '7 tokens accepted on Base L2: stablecoins (USDC, USDbC, DAI) and volatile assets (ETH, WETH, cbETH, cbBTC).',
-  'card': 'Stripe checkout for card payments. Currently in test mode — live payments coming soon.',
+  'card': `Stripe Checkout for ${TEAM.label} and credit packs. Developer tier and x402 crypto need no card.`,
 };
 
 export default function DocsVisual({ activeSection }: DocsVisualProps) {

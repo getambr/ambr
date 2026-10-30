@@ -5,6 +5,32 @@ import {
   activateKeySchema,
 } from '../contract-schemas';
 
+describe('createContractSchema oversight threshold', () => {
+  const base = {
+    template: 'd1-general-auth',
+    parameters: {},
+    principal_declaration: {
+      agent_id: '0xabcdef1234567890abcdef1234567890abcdef12',
+      principal_name: 'Acme',
+      principal_type: 'individual' as const,
+    },
+  };
+
+  it('accepts a declared threshold - this is what lets Article 14 ever fire', () => {
+    const r = createContractSchema.safeParse({ ...base, oversight_threshold_usd: 5000 });
+    expect(r.success).toBe(true);
+  });
+
+  it('is optional, so every existing caller keeps working', () => {
+    expect(createContractSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('rejects zero and negative thresholds, which would gate nothing or everything', () => {
+    expect(createContractSchema.safeParse({ ...base, oversight_threshold_usd: 0 }).success).toBe(false);
+    expect(createContractSchema.safeParse({ ...base, oversight_threshold_usd: -1 }).success).toBe(false);
+  });
+});
+
 describe('principalDeclarationSchema', () => {
   it('accepts valid company declaration', () => {
     const result = principalDeclarationSchema.safeParse({
@@ -17,7 +43,7 @@ describe('principalDeclarationSchema', () => {
 
   it('accepts valid individual declaration', () => {
     const result = principalDeclarationSchema.safeParse({
-      agent_id: 'agent-001',
+      agent_id: '0xabcdef1234567890abcdef1234567890abcdef12',
       principal_name: 'Jane Doe',
       principal_type: 'individual',
     });
@@ -35,7 +61,7 @@ describe('principalDeclarationSchema', () => {
 
   it('rejects empty principal_name', () => {
     const result = principalDeclarationSchema.safeParse({
-      agent_id: '0x1234',
+      agent_id: '0xabcdef1234567890abcdef1234567890abcdef12',
       principal_name: '',
       principal_type: 'company',
     });
@@ -44,7 +70,7 @@ describe('principalDeclarationSchema', () => {
 
   it('rejects invalid principal_type', () => {
     const result = principalDeclarationSchema.safeParse({
-      agent_id: '0x1234',
+      agent_id: '0xabcdef1234567890abcdef1234567890abcdef12',
       principal_name: 'Acme Corp',
       principal_type: 'government',
     });
@@ -53,7 +79,7 @@ describe('principalDeclarationSchema', () => {
 
   it('rejects missing fields', () => {
     const result = principalDeclarationSchema.safeParse({
-      agent_id: '0x1234',
+      agent_id: '0xabcdef1234567890abcdef1234567890abcdef12',
     });
     expect(result.success).toBe(false);
   });
@@ -162,8 +188,8 @@ describe('activateKeySchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts all tier levels', () => {
-    for (const tier of ['developer', 'startup', 'scale', 'enterprise']) {
+  it('accepts the self-serve tier levels', () => {
+    for (const tier of ['developer', 'startup', 'scale']) {
       const result = activateKeySchema.safeParse({
         email: 'user@example.com',
         tx_hash: '0x' + 'b'.repeat(64),

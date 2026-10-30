@@ -22,6 +22,8 @@ Ricardian contract infrastructure for AI agent commerce. Dual-format contracts (
 | `c2-compute-sla` | Commerce | $1.00 |
 | `c3-task-execution` | Commerce | $1.00 |
 
+Credits are cents: 1 credit = 1 US cent, and a contract burns its template price. Free tier: 500 credits once per verified-email key, no renewal. Credit packs, Team and Enterprise: see `GET /api/v1/pricing` (source of truth in `src/lib/pricing.ts`).
+
 ## API
 
 Full REST API at `getamber.dev/api/v1/`:
@@ -40,7 +42,12 @@ Contract schemas reference established legal frameworks:
 - **UETA Section 14** (US) — Electronic agent authority
 - **eIDAS Article 25** (EU) — Electronic signature recognition
 - **Singapore Electronic Transactions Act** — Default governing law
-- **EU AI Act Article 14** — Human oversight method embedded in every contract via `human_oversight_method: "pre-authorized delegation"`
+- **EU AI Act Article 14** — Not a compliance claim. Article 14 obliges providers and deployers
+  of *high-risk* systems, which most agent commerce is not, and pre-authorised delegation is close
+  to the opposite of Art. 14(4), which concerns interrupting a system **in use**. What Ambr produces
+  is evidence for organisations that do carry such duties: a contract exceeding its declared
+  `oversight_threshold_usd` halts at `awaiting_principal_approval` and requires a wallet signature
+  naming the contract hash, from a party that is provably not the agent under oversight.
 
 ## Development
 

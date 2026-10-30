@@ -6,13 +6,18 @@ import {
   GOVERNANCE_NAMESPACE,
   RICARDIAN_URN,
 } from '@/lib/governance/principle';
+import { normalizeBaseUrl } from '@/lib/base-url';
+import { FREE_TIER_CREDITS, CREDIT_UNIT } from '@/lib/pricing';
+import { PLATFORM_VERSION, PLATFORM_RELEASED_AT } from '@/lib/version';
 
 /** A2A Agent Card — /.well-known/agent.json discovery endpoint */
 
-const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL || 'https://getamber.dev';
-const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL || 'https://ambr.run';
-const PLATFORM_VERSION = '0.3.0';
-const PLATFORM_RELEASED_AT = '2026-04-20T00:00:00Z';
+// Normalized, not read raw. A Vercel value holding a literal backslash-n would make
+// this card serve "https://ambr.run\n/llms.txt" and three more like it. This is the
+// document other people's agents read to find us, so a
+// dirty environment variable must not be able to reach it. See @/lib/base-url.
+const PLATFORM_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_PLATFORM_URL, 'https://getamber.dev');
+const MARKETING_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_MARKETING_URL, 'https://ambr.run');
 
 export async function buildAgentCard() {
   // Live stats from Supabase
@@ -36,7 +41,7 @@ export async function buildAgentCard() {
   return {
     name: 'Ambr',
     description:
-      'Legal framework for AI agents — create, sign, and verify Ricardian Contracts for delegation and commerce. Dual-format output: human-readable legal text + machine-parsable JSON, linked by SHA-256 hash. Legible by construction.',
+      'The liability record for autonomous agents. Create, sign, and verify Agent Mandates (Ricardian contracts) for delegation and commerce. Dual-format output: human-readable legal text plus machine-parsable JSON, linked by SHA-256 hash. Legible by construction.',
     url: a2aUrl,
     version: '1.0.0',
     apiVersion: '1.0.0',
@@ -58,7 +63,7 @@ export async function buildAgentCard() {
       {
         url: `${PLATFORM_URL}/api/mcp`,
         kind: 'mcp',
-        protocolVersion: '2025-03-26',
+        protocolVersion: '2026-07-28',
         description: 'Model Context Protocol (Streamable HTTP, stateless JSON mode).',
       },
       {
@@ -77,8 +82,14 @@ export async function buildAgentCard() {
       source: `${PLATFORM_URL}/api/v1/pricing`,
       currency: 'USD',
       unit: 'per contract',
+      // No `contractsPerMonth` field: it would assert a monthly renewal the platform does
+      // not have. The free grant is once per verified-email key and never renews;
+      // `renews: false` is explicit so the ambiguity cannot return.
+      // Credits are cents: 1 credit = 1 US cent, a contract burns its template price.
       freeTier: {
-        contractsPerMonth: 25,
+        creditsPerKey: FREE_TIER_CREDITS,
+        unit: CREDIT_UNIT,
+        renews: false,
         requires: ['verified_email'],
       },
       note: 'Canonical live pricing lives at the source URL. Do not hardcode prices from this card.',
@@ -90,7 +101,7 @@ export async function buildAgentCard() {
         id: 'create_contract',
         name: 'Create Ricardian Contract',
         description:
-          `Generate a legally-structured dual-format Ricardian Contract from a template. Requires template slug, parameters, and principal declaration. Costs 1 credit per contract. ${LEGIBILITY_CLAUSE}`,
+          `Generate a legally-structured dual-format Ricardian Contract from a template. Requires template slug, parameters, and principal declaration. Burns the template price in credits (1 credit = 1 US cent). ${LEGIBILITY_CLAUSE}`,
         tags: ['legal', 'contracts', 'delegation', 'commerce', 'ricardian', 'ai-agents'],
         inputModes: ['application/json'],
         outputModes: ['application/json'],
@@ -176,7 +187,7 @@ export async function buildAgentCard() {
       x402: {
         type: 'http',
         scheme: 'x402',
-        description: 'Pay-per-contract via USDC on Base L2. Send payment, include tx hash in X-Payment header.',
+        description: 'Pay-per-contract with the x402 v2 protocol (USDC on Base, CAIP-2 network eip155:8453). An unauthenticated request gets 402 with a PAYMENT-REQUIRED header; retry with a PAYMENT-SIGNATURE header from a standard x402 client. Facilitator discovery: {facilitator}/discovery/resources.',
       },
     },
     security_schemes: {
@@ -189,7 +200,7 @@ export async function buildAgentCard() {
       x402: {
         type: 'http',
         scheme: 'x402',
-        description: 'Pay-per-contract via USDC on Base L2. Send payment, include tx hash in X-Payment header.',
+        description: 'Pay-per-contract with the x402 v2 protocol (USDC on Base, CAIP-2 network eip155:8453). An unauthenticated request gets 402 with a PAYMENT-REQUIRED header; retry with a PAYMENT-SIGNATURE header from a standard x402 client. Facilitator discovery: {facilitator}/discovery/resources.',
       },
     },
     security: [{ apiKey: [] }, { x402: [] }],

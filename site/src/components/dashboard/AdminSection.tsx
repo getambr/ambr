@@ -23,10 +23,11 @@ interface AdminData {
 
 export function AdminSection({
   activeSection,
-  currentUserEmail,
+  memberId,
 }: {
   activeSection: DashboardSection
-  currentUserEmail?: string
+  /** Opaque member id; forwarded to EmailWidget so no address reaches it. */
+  memberId?: string
 }) {
   const [data, setData] = useState<AdminData>({
     calendar: null, slots: null, emails: null,
@@ -78,7 +79,7 @@ export function AdminSection({
           drafts={data.drafts}
           unread={data.unread}
           loading={loading}
-          currentUserEmail={currentUserEmail}
+          memberId={memberId}
           onRefresh={fetchAll}
         />
       </motion.div>

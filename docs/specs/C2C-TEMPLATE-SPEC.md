@@ -272,7 +272,7 @@
 
 ## Implementation Checklist (for the autonomous dev agent)
 
-- [ ] SQL INSERTs for p1, p2, p3 in seed-data.ts (after a1-a3)
+- [ ] SQL INSERTs for p1, p2, p3 in a new templates migration under `site/supabase/migrations/` (after a1-a3, same pattern as `20260309000000_schema_and_seed.sql`)
 - [ ] Category = "peer" for all three
 - [ ] parameter_schema valid JSON Schema draft-7
 - [ ] LLM prompts in prompts.ts start with `${BASE_INSTRUCTIONS}`

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { corsOptions } from '@/lib/cors';
 
 /**
@@ -57,13 +58,11 @@ export async function POST(
 
   // Lookup contract
   let query = db.from('contracts').select('id, contract_id, status, visibility');
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    query = query.eq('sha256_hash', id);
-  } else {
-    query = query.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  query = query.eq(column, id);
 
   const { data: contract, error: contractError } = await query.single();
 
@@ -102,12 +101,23 @@ export async function POST(
     );
   }
 
-  // Transition to 'handshake' status if first accept and currently draft
+  // Transition to 'handshake' status if first accept and currently draft.
+  // Surface a failure — otherwise the response below would report a status
+  // the database refused to record.
+  let transitioned = false;
   if (intent === 'accept' && contract.status === 'draft') {
-    await db
+    const { error: transitionError } = await db
       .from('contracts')
       .update({ status: 'handshake' })
       .eq('id', contract.id);
+    if (transitionError) {
+      console.error('Handshake status transition failed:', transitionError);
+      return NextResponse.json(
+        { error: 'status_update_failed', message: 'Handshake recorded, but the contract status could not be updated' },
+        { status: 500 },
+      );
+    }
+    transitioned = true;
   }
 
   // Audit log
@@ -142,7 +152,7 @@ export async function POST(
   return NextResponse.json({
     contract_id: contract.contract_id,
     your_intent: intent,
-    status: intent === 'accept' && contract.status === 'draft' ? 'handshake' : contract.status,
+    status: transitioned ? 'handshake' : contract.status,
     visibility: contractVisibility,
     visibility_agreement: visibilityAgreement,
     ...(hasMismatch && {
@@ -171,13 +181,11 @@ export async function GET(
 
   // Lookup contract
   let query = db.from('contracts').select('id, contract_id, status');
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    query = query.eq('sha256_hash', id);
-  } else {
-    query = query.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  query = query.eq(column, id);
 
   const { data: contract, error: contractError } = await query.single();
 

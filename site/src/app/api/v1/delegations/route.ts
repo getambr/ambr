@@ -55,10 +55,31 @@ export async function POST(request: Request) {
     );
   }
 
-  // Verify message contains the API key prefix (prevents replay with unrelated signatures)
-  if (!message.includes(apiCtx.keyId.slice(0, 8)) && !message.includes('Ambr delegation')) {
+  // This must stay a conjunction: the message must name THIS key and state
+  // delegation intent, so a signature is only ever valid for the key it was
+  // made for. Do not accept the key prefix OR the literal string 'Ambr
+  // delegation': the second arm makes the first pointless, since any signature
+  // over any message containing that phrase would bind a wallet to any API key,
+  // and a signature harvested from one integrator's flow could be replayed to
+  // register that wallet against someone else's key.
+  //
+  // It matters more than it looks. api_keys.principal_wallet is the one identity
+  // in the system with a real cryptographic chain: it is what the amendment gate
+  // trusts, and it is the only proven source that still widens a dashboard
+  // query. Everything resting on "this wallet proved itself" rests on this
+  // check.
+  const namesThisKey = message.includes(apiCtx.keyId.slice(0, 8));
+  const statesIntent = /delegat/i.test(message);
+
+  if (!namesThisKey || !statesIntent) {
     return NextResponse.json(
-      { error: 'Message must reference this API key or contain "Ambr delegation"' },
+      {
+        error: 'message_not_bound',
+        message:
+          'The signed message must contain this API key id prefix AND state delegation intent, ' +
+          `e.g. "Ambr delegation for API key ${apiCtx.keyId.slice(0, 8)}". ` +
+          'Both are required: the prefix stops the signature being replayed against another key.',
+      },
       { status: 400 },
     );
   }
@@ -77,7 +98,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to register delegation' }, { status: 500 });
   }
 
-  logAudit({
+  await logAudit({
     event_type: 'delegation_registered',
     actor: wallet_address.toLowerCase(),
     details: { api_key_id: apiCtx.keyId, email: apiCtx.email },
@@ -127,7 +148,7 @@ export async function DELETE(request: Request) {
     })
     .eq('id', apiCtx.keyId);
 
-  logAudit({
+  await logAudit({
     event_type: 'delegation_revoked',
     actor: apiCtx.principalWallet || apiCtx.email,
     details: { api_key_id: apiCtx.keyId },

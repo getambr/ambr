@@ -1,12 +1,17 @@
 import { notFound } from 'next/navigation';
-import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { verifyContractHash } from '@/lib/contract-engine';
 import ContractViewer from './ContractViewer';
+import CapabilitySummary from './CapabilitySummary';
 import ExportButtons from './ExportButtons';
 import SignContract from '@/components/reader/SignContract';
-import NftStatus from '@/components/reader/NftStatus';
+import ContractNftViewer from '@/components/contract/ContractNftViewer';
+import { extractPartyNames } from '@/lib/contract/party-names';
+import { contractRefColumn } from '@/lib/contract/lookup';
+import { isInviteToken, validateShareToken, type ShareAccess } from '@/lib/contract/share-token';
 import ReaderAuthGate from '@/components/reader/ReaderAuthGate';
 import ZKIdentityBadge from '@/components/reader/ZKIdentityBadge';
+import GLEIFVerifiedBadge from '@/components/reader/GLEIFVerifiedBadge';
 
 interface Props {
   params: Promise<{ hashOrId: string }>;
@@ -22,51 +27,14 @@ async function getContract(hashOrId: string) {
     query = query.eq('contract_id', hashOrId);
   } else if (/^[a-f0-9]{16,64}$/.test(hashOrId)) {
     query = query.like('sha256_hash', `${hashOrId}%`);
-  } else {
+  } else if (contractRefColumn(hashOrId) === 'id') {
     query = query.eq('id', hashOrId);
+  } else {
+    return null;
   }
 
   const { data } = await query.single();
   return data;
-}
-
-async function validateShareToken(contractUuid: string, token: string): Promise<boolean> {
-  const db = getSupabaseAdmin();
-  const { data } = await db
-    .from('share_tokens')
-    .select('id, expires_at')
-    .eq('contract_id', contractUuid)
-    .eq('token', token)
-    .single();
-
-  if (!data) return false;
-  if (data.expires_at && new Date(data.expires_at) < new Date()) return false;
-  return true;
-}
-
-function deepSortKeys(obj: unknown): unknown {
-  if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(deepSortKeys);
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(obj as Record<string, unknown>).sort()) {
-    sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
-  }
-  return sorted;
-}
-
-function verifyHash(humanReadable: string, machineReadable: Record<string, unknown>, storedHash: string): boolean {
-  // Try deep-sorted keys first (current canonical method)
-  const deepCanonical = humanReadable + '\n---\n' + JSON.stringify(deepSortKeys(machineReadable));
-  const deepHash = createHash('sha256').update(deepCanonical, 'utf-8').digest('hex');
-  if (deepHash === storedHash) return true;
-
-  // Fallback: shallow top-level sort (legacy contracts hashed before deep-sort fix)
-  const shallowKeys = Object.keys(machineReadable).sort();
-  const shallowObj = Object.fromEntries(shallowKeys.map((k) => [k, machineReadable[k]]));
-  const shallowCanonical = humanReadable + '\n---\n' + JSON.stringify(shallowObj);
-  const shallowHash = createHash('sha256').update(shallowCanonical, 'utf-8').digest('hex');
-
-  return shallowHash === storedHash;
 }
 
 export default async function ReaderPage({ params, searchParams }: Props) {
@@ -78,17 +46,17 @@ export default async function ReaderPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  // Check authorization: share token grants full access
-  let authorized = false;
-  if (token) {
-    authorized = await validateShareToken(contract.id, token);
-  }
+  // Check authorization. A share token grants either 'full' access (the whole
+  // contract incl. the principal's identity) or 'scope' access (only the
+  // capability summary + validity — identity/PII and full prose redacted).
+  const shareAccess: ShareAccess = token ? await validateShareToken(contract.id, token) : null;
+  const authorized = shareAccess === 'full';
+  const scopeOnly = shareAccess === 'scope';
+  // Only an invite made by POST /share lets its holder take an open counterparty
+  // slot; the deployer's own link views the contract and signs nothing.
+  const holdsInvite = authorized && token ? await isInviteToken(contract.id, token) : false;
 
-  const isVerified = verifyHash(
-    contract.human_readable,
-    contract.machine_readable,
-    contract.sha256_hash,
-  );
+  const isVerified = verifyContractHash(contract);
 
   // Fetch existing signatures for display + signing gate
   const { data: signatures } = await getSupabaseAdmin()
@@ -102,6 +70,31 @@ export default async function ReaderPage({ params, searchParams }: Props) {
     signed_at: s.signed_at,
     signer_identity: s.signer_identity ?? null,
   }));
+
+  // DACS-2 Vet — counterparty GLEIF/LEI verifications (best-effort; the
+  // counterparty_verifications table may be absent on prod until the migration
+  // lands). Surfaced as a trust badge next to verified parties in full view.
+  const partyVerifications: { party_role: string; decision: string; legalName: string | null; status: string | null }[] = [];
+  try {
+    const { data: pv } = await getSupabaseAdmin()
+      .from('counterparty_verifications')
+      .select('party_role, decision, verify_result, verified_at')
+      .eq('contract_id', contract.id)
+      .order('verified_at', { ascending: false });
+    const seenRoles = new Set<string>();
+    for (const row of (pv ?? []) as { party_role: string; decision: string; verify_result: { data?: { legalName?: string | null; status?: string | null } } | null }[]) {
+      if (seenRoles.has(row.party_role)) continue; // keep only the latest per role
+      seenRoles.add(row.party_role);
+      partyVerifications.push({
+        party_role: row.party_role,
+        decision: row.decision,
+        legalName: row.verify_result?.data?.legalName ?? null,
+        status: row.verify_result?.data?.status ?? null,
+      });
+    }
+  } catch {
+    /* table absent (migration pending) — degrade silently, fail-open */
+  }
 
   // Phase 6: Public amendment history. Fetch all amendment proposals for
   // this contract so the reader can see the negotiation timeline (pending,
@@ -269,11 +262,20 @@ export default async function ReaderPage({ params, searchParams }: Props) {
               ZK Identity Required
             </span>
           )}
-          {!authorized && (
+          {contract.is_one_sided && (
+            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-400">
+              Power of Attorney
+            </span>
+          )}
+          {scopeOnly ? (
+            <span className="rounded-full border border-amber/30 bg-amber-glow px-3 py-1 text-xs font-medium text-amber">
+              Scope Only
+            </span>
+          ) : !authorized ? (
             <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-400">
               Metadata Only
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* SHA-256 hash */}
@@ -308,6 +310,15 @@ export default async function ReaderPage({ params, searchParams }: Props) {
               </div>
             )}
 
+            {/* Plain-language "what this AI may do" — derived from the signed
+                contract's scope. Renders nothing for non-delegation contracts. */}
+            <CapabilitySummary
+              machineReadable={contract.machine_readable as Record<string, unknown> | null}
+              status={contract.status}
+              revokedAt={contract.revoked_at ?? null}
+              expiryDate={contract.expiry_date ?? null}
+            />
+
             {/* Export buttons — full access only */}
             <ExportButtons
               contractId={contract.contract_id}
@@ -326,20 +337,60 @@ export default async function ReaderPage({ params, searchParams }: Props) {
                   status={contract.status}
                   existingSignatures={existingSignatures}
                   requireZkIdentity={contract.require_zk_identity}
+                  shareToken={holdsInvite ? token : undefined}
                 />
               </div>
             )}
 
-            {/* NFT status — show when minted or minting */}
-            {contract.nft_mint_status && (
-              <div className="mb-6">
-                <NftStatus
-                  mintStatus={contract.nft_mint_status}
-                  tokenId={contract.nft_token_id}
-                  txHash={contract.nft_tx_hash}
-                  holderWallet={contract.nft_holder_wallet}
-                  counterpartyWallet={contract.nft_counterparty_wallet}
-                />
+            {/* Paired cNFT viewer — replaces older NftStatus.
+                Shows full image + BaseScan/OpenSea/Zerion external links so
+                users can verify even when their wallet (e.g. SafePal) doesn't
+                render Base L2 NFTs in-extension. Party names extracted
+                template-aware so each card shows the actual holder. */}
+            {contract.nft_mint_status && (() => {
+              // contract_type holds the template category (consumer,
+              // commerce or delegation), not a slug, so the helper finds
+              // the names through its field-name fallback.
+              const { principalName, counterpartyName } = extractPartyNames(
+                contract.contract_type ?? contract.template_id,
+                contract.parameters as Record<string, unknown> | null,
+              );
+              return (
+                <div className="mb-6">
+                  <ContractNftViewer
+                    sha256Hash={contract.sha256_hash}
+                    mintStatus={contract.nft_mint_status}
+                    tokenId={contract.nft_token_id}
+                    counterpartyTokenId={contract.nft_counterparty_token_id}
+                    holderWallet={contract.nft_holder_wallet}
+                    counterpartyWallet={contract.nft_counterparty_wallet}
+                    txHash={contract.nft_tx_hash}
+                    counterpartyTxHash={contract.nft_counterparty_tx_hash}
+                    principalName={
+                      principalName
+                      ?? (contract.principal_declaration as { principal_name?: string } | null)?.principal_name
+                      ?? null
+                    }
+                    counterpartyName={counterpartyName}
+                    isOneSided={contract.is_one_sided ?? false}
+                  />
+                </div>
+              );
+            })()}
+
+            {/* DACS-2 Vet — counterparty GLEIF verification badges (full view only;
+                renders nothing until a verification exists). */}
+            {partyVerifications.some((v) => v.decision === 'pass' || v.decision === 'fail') && (
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-text-secondary">Counterparty checks:</span>
+                {partyVerifications.map((v) => (
+                  <GLEIFVerifiedBadge
+                    key={v.party_role}
+                    decision={v.decision}
+                    legalName={v.legalName}
+                    status={v.status}
+                  />
+                ))}
               </div>
             )}
 
@@ -349,6 +400,27 @@ export default async function ReaderPage({ params, searchParams }: Props) {
               machineReadable={contract.machine_readable}
             />
           </>
+        ) : scopeOnly ? (
+          /* Scope-only share — shows what the agent may do + validity, with the
+             principal's identity and the full contract prose redacted. The
+             capability panel carries no PII by construction. */
+          <div className="space-y-6 mb-6">
+            <div className="rounded-lg border border-amber/20 bg-surface px-4 py-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="text-amber font-medium">Scope-only view.</span>{' '}
+                This link shows what the agent is authorized to do and whether the
+                authorization is currently valid. The parties&apos; identities and the
+                full contract text are redacted — a signing party can open the full
+                contract by connecting their wallet.
+              </p>
+            </div>
+            <CapabilitySummary
+              machineReadable={contract.machine_readable as Record<string, unknown> | null}
+              status={contract.status}
+              revokedAt={contract.revoked_at ?? null}
+              expiryDate={contract.expiry_date ?? null}
+            />
+          </div>
         ) : (
           /* Unauthenticated: show wallet connect OR metadata-only message */
           <div className="space-y-6 mb-6">

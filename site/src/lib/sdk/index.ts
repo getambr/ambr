@@ -100,8 +100,20 @@ export interface SignOptions {
   /** The signer's wallet address (must match the address recovered from the signature). */
   walletAddress: string;
   signMessage: MessageSigner;
-  /** Optional — if set, the signer is emailed an account-activation link. */
+  /**
+   * Optional — where to send this signer's contract-activation notice once both
+   * parties have signed. Stored as `contracts.counterparty_email`.
+   * No Ambr account is created and no sign-in link is sent.
+   */
   signerEmail?: string;
+  /**
+   * The invite token from POST /share. Needed to fill a counterparty slot the
+   * contract leaves open. With it set, the client's apiKey is not sent: a
+   * request carrying the creating key is never placed as counterparty. Without
+   * it, the apiKey is sent and signs for an open principal slot when the
+   * creating account has no bound wallet.
+   */
+  shareToken?: string;
 }
 
 /** Thrown when create() hits the x402 path with no API key/credits. Carries
@@ -258,12 +270,16 @@ export class AmbrClient {
       `${this.baseUrl}/api/v1/contracts/${encodeURIComponent(idOrHash)}/sign`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.apiKey && !opts.shareToken ? { 'X-API-Key': this.apiKey } : {}),
+        },
         body: JSON.stringify({
           wallet_address: opts.walletAddress,
           signature,
           message,
           ...(opts.signerEmail ? { signer_email: opts.signerEmail } : {}),
+          ...(opts.shareToken ? { share_token: opts.shareToken } : {}),
         }),
       },
     );

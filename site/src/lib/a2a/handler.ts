@@ -10,6 +10,7 @@
 
 import { randomUUID } from 'crypto';
 import { rateLimit } from '@/lib/rate-limit';
+import { getAllPrices } from '@/lib/x402/pricing';
 
 // --- A2A Types (spec: https://a2a-protocol.org/latest/specification/) ---
 
@@ -289,7 +290,7 @@ async function handleSendMessage(
           parts: [
             {
               type: 'text',
-              text: 'Payment required. Options: (1) Send USDC on Base to the recipient wallet and include the tx hash in the X-Payment header, or (2) pass an API key via the X-API-Key header.',
+              text: 'Payment required. Options: (1) Pay per contract with a standard x402 v2 client: POST /api/v1/contracts without a key returns 402 with a PAYMENT-REQUIRED header, then retry with PAYMENT-SIGNATURE, or (2) pass an API key via the X-API-Key header.',
             },
             {
               type: 'data',
@@ -299,19 +300,15 @@ async function handleSendMessage(
                   currency: 'USDC',
                   chain: 'base',
                   recipient: process.env.NEXT_PUBLIC_WALLET_ADDRESS || '',
-                  accepts: ['exact', 'overpay'],
-                  pricing: {
-                    'd1-general-auth': '$2.00',
-                    'd2-limited-service': '$1.50',
-                    'd3-fleet-auth': '$5.00',
-                    'c1-api-access': '$3.00',
-                    'c2-compute-sla': '$4.00',
-                    'c3-task-execution': '$3.50',
-                    'a1-service-purchase': '$0.20',
-                    'a2-ai-subscription': '$0.20',
-                    'a3-warranty-liability': '$0.20',
-                    'p1-nda': '$0.50',
-                  },
+                  scheme: 'exact',
+                  request_header: 'PAYMENT-SIGNATURE',
+                  challenge_header: 'PAYMENT-REQUIRED',
+                  // Canonical per-template prices — derived from the same
+                  // source as /api/v1/pricing. This literal used to be a
+                  // hand-copied map that drifted 3-5x off the real prices and
+                  // omitted p2 entirely (fixed 2026-07-18): never hardcode
+                  // prices here, the agent card even tells consumers not to.
+                  pricing: await getAllPrices(),
                 },
                 alternative: {
                   method: 'api_key',

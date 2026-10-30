@@ -9,18 +9,63 @@
 import { createHash } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
+import { evaluateContractValidity } from '@/lib/contract/validity';
+import { effectivePrincipalWallet, findPartyWalletProblem } from '@/lib/contract/same-wallet';
+import { mcpNextStepLines } from '@/lib/contract/next-step';
+import { accountPrincipalWallet } from '@/lib/contract/account-wallets';
+import { resolveOversight, applyThresholdToDocument } from '@/lib/compliance/oversight-gate';
 import { generateContract } from '@/lib/llm/generate-contract';
 import {
   hashContract,
+  verifyContractHash,
   generateContractId,
   storeContract,
   decrementCredits,
+  grantCredits,
 } from '@/lib/contract-engine';
+import { hasEnoughCredits, UNLIMITED_CREDITS } from '@/lib/credits';
+import { logAudit } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
 import { linkPaymentToContract } from '@/lib/x402/middleware';
+import {
+  generationUnavailableBody,
+  getProviderUnavailableSeconds,
+  recordGenerationFailure,
+  recordGenerationSuccess,
+} from '@/lib/llm/availability';
+import {
+  generationTimeoutBody,
+  paymentStatusUnknownBody,
+  pastSettleDeadline,
+  publicSettleReason,
+} from '@/lib/x402/settle-failure';
+
+/** Keep equal to `maxDuration` in app/api/mcp/route.ts (Next needs that one as a literal). */
+const MCP_MAX_DURATION_SECONDS = 300;
 import type { AuthContext } from '@/lib/adapters/payment/index';
 import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
 import { LEGIBILITY_CLAUSE } from '@/lib/governance/principle';
+import { deriveCapabilities } from '@/lib/contract-capabilities';
+
+/**
+ * Compact, machine-readable "binding terms" block so a counterparty agent can
+ * read exactly what the delegated agent may/may not do and act within it.
+ * Returns an empty array for contracts that carry no delegation-style scope.
+ */
+function bindingTermsBlock(machineReadable: Record<string, unknown> | null): string[] {
+  const cap = deriveCapabilities(machineReadable);
+  if (!cap) return [];
+  return [
+    '',
+    '## Binding Terms (machine-readable)',
+    '',
+    'An agent acting under this contract must stay within these terms:',
+    '```json',
+    JSON.stringify(cap, null, 2),
+    '```',
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +99,24 @@ interface ApiKeyContext {
 // Constants
 // ---------------------------------------------------------------------------
 
+// Newest first. `initialize` negotiates within this set; `server/discover`
+// advertises the whole list.
+//
+// 2026-07-28 is claimed deliberately and it is honest for THIS server: that
+// revision's headline change is making MCP stateless, and this endpoint has been
+// stateless since it was written — no sessions, no Mcp-Session-Id, no
+// server-initiated SSE. It offers only tools, so the parts we do not implement
+// (MRTR, sampling, elicitation, roots, logging) are parts a tools-only server is
+// never asked for.
+const SUPPORTED_PROTOCOL_VERSIONS = [
+  '2026-07-28',
+  '2025-11-25',
+  '2025-06-18',
+  '2025-03-26',
+] as const;
+
+// What `initialize` falls back to when a client asks for something we do not
+// speak. Kept at the oldest for maximum compatibility with existing integrations.
 const PROTOCOL_VERSION = '2025-03-26';
 
 const SERVER_INFO = {
@@ -103,10 +166,15 @@ Requires a valid API key (X-API-Key header on the HTTP request) with available c
 Use ambr_list_templates first to discover templates and their required parameters.
 
 Args:
-  - template (string, required): Template slug (e.g. "c1-agent-delegation")
+  - template (string, required): Template slug (e.g. "d1-general-auth")
   - parameters (object, required): Template-specific parameters matching the schema
   - principal_declaration (object, required): { agent_id, principal_name, principal_type }
+  - principal_wallet (string, optional): the deploying party's own wallet. It must differ from the
+    counterparty wallet in parameters (same_wallet_both_parties otherwise); left out, the first
+    wallet that signs fills the principal side
   - parent_contract_hash (string, optional): SHA-256 hash of parent contract for amendments
+  - oversight_threshold_usd (number, optional): spending level above which work created under
+    this contract needs human approval. Children exceeding it halt at awaiting_principal_approval.
   - amendment_type (string, optional): "original" | "amendment" | "extension"
 
 Returns:
@@ -145,9 +213,21 @@ Legibility: ${LEGIBILITY_CLAUSE}`,
           },
           required: ['agent_id', 'principal_name', 'principal_type'],
         },
+        principal_wallet: {
+          type: 'string',
+          description:
+            "The deploying party's own wallet (0x…). Must differ from the counterparty wallet in parameters.",
+        },
         parent_contract_hash: {
           type: 'string',
           description: 'SHA-256 hash of parent contract (for amendments)',
+        },
+        oversight_threshold_usd: {
+          type: 'number',
+          description:
+            'Spending level above which work created UNDER this contract requires human approval. ' +
+            'A child contract exceeding the parent threshold is held at awaiting_principal_approval ' +
+            'until a human signs, and cannot be signed or activated before then (EU AI Act Art. 14).',
         },
         amendment_type: {
           type: 'string',
@@ -382,7 +462,7 @@ async function handleListTemplates(): Promise<{
     lines.push(`## ${t.name} (\`${t.slug}\`)`);
     lines.push(`- **Category:** ${t.category}`);
     lines.push(`- **Description:** ${t.description}`);
-    lines.push(`- **Cost:** ${t.price_cents / 100} credits`);
+    lines.push(`- **Cost:** ${t.price_cents} credits (1 credit = 1 US cent)`);
     lines.push(`- **Version:** ${t.version}`);
     if (t.parameter_schema) {
       lines.push(
@@ -395,11 +475,42 @@ async function handleListTemplates(): Promise<{
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
+/**
+ * Tool result for a provider usage-limit outage. structuredContent carries the
+ * retry time so /api/mcp can answer HTTP 503 with a Retry-After header.
+ */
+function generationUnavailableResult(retryAfterSeconds: number) {
+  const body = generationUnavailableBody(retryAfterSeconds);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `Error: ${body.error}. ${body.message} Retry after ${retryAfterSeconds}s.`,
+      },
+    ],
+    isError: true,
+    structuredContent: body as Record<string, unknown>,
+  };
+}
+
 async function handleCreateContract(
   args: Record<string, unknown>,
   apiKey: string | undefined,
   authCtx?: AuthContext,
-): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
+  requestStartedAt?: number,
+): Promise<{
+  content: { type: string; text: string }[];
+  isError?: boolean;
+  structuredContent?: Record<string, unknown>;
+}> {
+  // The route's start time when it passed one: payment verification (up to the
+  // facilitator timeout plus a cold start) has already used part of maxDuration
+  // by the time this handler runs.
+  const startedAt = requestStartedAt ?? Date.now();
+  // Provider known to be out of quota: refuse before charging or settling anything.
+  const providerDownSeconds = getProviderUnavailableSeconds();
+  if (providerDownSeconds !== null) return generationUnavailableResult(providerDownSeconds);
+
   // Auth: prefer authCtx if provided (threaded from route), otherwise validate apiKey
   let apiKeyCtx: ApiKeyContext | null = null;
 
@@ -428,7 +539,7 @@ async function handleCreateContract(
       content: [
         {
           type: 'text',
-          text: 'Error: API key or x402 payment required. Pass X-API-Key header, or send a USDC payment on Base to the recipient address and retry with X-Payment header containing the tx hash.',
+          text: 'Error: API key or x402 payment required. Pass X-API-Key header, or pay with a standard x402 v2 client (the 402 response carries a PAYMENT-REQUIRED header; retry with PAYMENT-SIGNATURE).',
         },
       ],
       isError: true,
@@ -447,19 +558,6 @@ async function handleCreateContract(
         {
           type: 'text',
           text: `Error: Rate limit exceeded. Retry after ${Math.ceil((rl.resetAt - Date.now()) / 1000)}s.`,
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  // Credits check (API key path only — x402 already paid)
-  if (apiKeyCtx && apiKeyCtx.credits === 0) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Error: No credits remaining. Pay per-contract via x402 (send X-Payment header) or purchase more at ambr.run.',
         },
       ],
       isError: true,
@@ -521,11 +619,32 @@ async function handleCreateContract(
     };
   }
 
+  const principalWallet = typeof args.principal_wallet === 'string' ? args.principal_wallet.trim() : null;
+  if (principalWallet && !/^0x[a-fA-F0-9]{40}$/.test(principalWallet)) {
+    return {
+      content: [{ type: 'text', text: 'Error: principal_wallet must be a valid Ethereum address.' }],
+      isError: true,
+    };
+  }
+
+  // A contract nobody could sign (one wallet on both sides, or a one-sided
+  // template with no signer wallet): refuse before any credit is burned or
+  // payment settled. (The HTTP route runs the same guard even earlier, before
+  // an x402 payment is verified.)
+  const walletProblem = await findPartyWalletProblem({ template, principal_wallet: principalWallet, parameters });
+  if (walletProblem) {
+    return {
+      content: [{ type: 'text', text: `Error: ${walletProblem.error}. ${walletProblem.message}` }],
+      isError: true,
+      structuredContent: { ...walletProblem },
+    };
+  }
+
   // Lookup template
   const db = getSupabaseAdmin();
   const { data: tmpl } = await db
     .from('templates')
-    .select('id, slug')
+    .select('id, slug, category, price_cents, is_one_sided')
     .eq('slug', template)
     .eq('is_active', true)
     .single();
@@ -542,6 +661,66 @@ async function handleCreateContract(
     };
   }
 
+  // Credits check (API key path only — x402 already paid). 1 credit = 1 cent.
+  const priceCents = tmpl.price_cents as number;
+  if (apiKeyCtx && !hasEnoughCredits(apiKeyCtx.credits, priceCents)) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error: insufficient_credits. This template costs ${priceCents} credits (1 credit = 1 US cent) and the key has ${apiKeyCtx.credits}. Pay per-contract via x402 (PAYMENT-SIGNATURE header) or purchase more at ambr.run.`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  // EU AI Act Article 14. This door must apply the oversight gate: passing
+  // parent_contract_hash through to storeContract without looking at the
+  // parent's threshold would let an agent creating a mandate over MCP or A2A
+  // get a plain draft while the identical request over REST halts for approval.
+  // That is backwards — a person at a dashboard is already the human in the
+  // loop; an agent acting alone is the case Article 14 exists for. Shared
+  // with the REST route so the two cannot diverge. Read-only, so it runs
+  // before any money moves.
+  let oversight: Awaited<ReturnType<typeof resolveOversight>>;
+  try {
+    oversight = await resolveOversight({
+      declaredThresholdUsd:
+        typeof args.oversight_threshold_usd === 'number' ? args.oversight_threshold_usd : null,
+      parentContractHash: (args.parent_contract_hash as string | undefined) ?? null,
+      parameters,
+    });
+  } catch (err) {
+    console.error('[mcp] oversight check failed:', err);
+    return {
+      content: [{ type: 'text', text: 'Error: Contract generation failed. Please try again.' }],
+      isError: true,
+    };
+  }
+
+  // api key: atomic burn before the work, so a call that races the pre-check
+  // above cannot get a contract for free (refunded in the catch below when
+  // generation fails). An x402 payment is NOT taken here: it settles after the
+  // contract has been generated.
+  let burnedBalance: number | null = null;
+  if (apiKeyCtx) {
+    burnedBalance = await decrementCredits(apiKeyCtx.keyId, priceCents);
+    if (burnedBalance === null) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: insufficient_credits. This template costs ${priceCents} credits (1 credit = 1 US cent). Pay per-contract via x402 (PAYMENT-SIGNATURE header) or purchase more at ambr.run.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  let contractStored = false;
+  let x402Settled = false;
   try {
     const contractId = await generateContractId();
     const { humanReadable, machineReadable } = await generateContract({
@@ -554,13 +733,94 @@ async function handleCreateContract(
       },
       contractId,
     });
+    recordGenerationSuccess();
+
+    // Before hashing: the limit must be inside the document the SHA-256 commits to.
+    applyThresholdToDocument(machineReadable as Record<string, unknown>, oversight.oversightThresholdUsd);
 
     const sha256Hash = hashContract(humanReadable, machineReadable);
+
+    // x402: settle the verified payment now that the contract exists. The result
+    // is written onto authCtx (txHash, paymentResponseHeaders) because the route
+    // reads the PAYMENT-RESPONSE header from the same object once this returns.
+    // If it does not settle, the generated contract is discarded and nothing is
+    // stored.
+    if (authCtx?.type === 'x402') {
+      // Never settle when the function could be killed before the insert below.
+      if (pastSettleDeadline(startedAt, MCP_MAX_DURATION_SECONDS)) {
+        await logAudit({
+          event_type: 'x402_generation_failed_not_settled',
+          severity: 'warn',
+          actor: authCtx.payerWallet ?? 'unknown',
+          details: {
+            payer: authCtx.payerWallet,
+            amount_usdc: authCtx.amountUsdc,
+            resource: authCtx.resource,
+            template: tmpl.slug,
+            money_moved: false,
+            reason: 'deadline',
+            elapsed_ms: Date.now() - startedAt,
+            via: 'mcp',
+          },
+        });
+        const body = generationTimeoutBody();
+        return {
+          content: [{ type: 'text', text: `Error: ${body.error}. ${body.message}` }],
+          isError: true,
+          structuredContent: body as Record<string, unknown>,
+        };
+      }
+      const settled = authCtx.settle ? await authCtx.settle() : null;
+      if (!settled || !settled.ok) {
+        // A missing settle() moved nothing; otherwise trust the middleware's flag.
+        const ambiguous = settled?.ambiguous === true;
+        // One audit row per settle failure. The raw reason stays here; the tool
+        // result only ever carries a facilitator code.
+        await logAudit({
+          event_type: 'x402_settle_failed',
+          severity: ambiguous ? 'error' : 'warn',
+          actor: authCtx.payerWallet ?? 'unknown',
+          details: {
+            payer: authCtx.payerWallet,
+            template: tmpl.slug,
+            amount_usdc: authCtx.amountUsdc,
+            resource: authCtx.resource,
+            reason: settled?.reason ?? 'settle unavailable',
+            money_moved: ambiguous ? 'unknown' : false,
+            nonce: settled?.nonce,
+            via: 'mcp',
+          },
+        });
+        if (ambiguous) {
+          const body = paymentStatusUnknownBody(settled?.nonce);
+          return {
+            content: [{ type: 'text', text: `Error: ${body.error}. ${body.message}` }],
+            isError: true,
+            structuredContent: body as Record<string, unknown>,
+          };
+        }
+        const reason = publicSettleReason(settled?.reason);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: payment_settlement_failed${reason ? ` (${reason})` : ''}. The x402 payment did not settle and nothing was charged. Retry with a fresh PAYMENT-SIGNATURE.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      x402Settled = true;
+      authCtx.payerWallet = settled.payerWallet;
+      authCtx.txHash = settled.txHash;
+      authCtx.paymentResponseHeaders = settled.headers;
+    }
 
     const isX402 = authCtx?.type === 'x402';
     const contract = await storeContract({
       contractId,
       templateId: tmpl.id,
+      contractType: tmpl.category,
       humanReadable,
       machineReadable,
       sha256Hash,
@@ -570,6 +830,19 @@ async function handleCreateContract(
       payerWallet: isX402 ? authCtx!.payerWallet : undefined,
       paymentMethod: isX402 ? 'x402' : 'api_key',
       parentContractHash: args.parent_contract_hash as string | undefined,
+      oversightThresholdUsd: oversight.oversightThresholdUsd,
+      principalApprovalRequired: oversight.requiresPrincipalApproval,
+      initialStatus: oversight.requiresPrincipalApproval ? 'awaiting_principal_approval' : undefined,
+      principalWallet: effectivePrincipalWallet(
+        { principal_wallet: principalWallet, parameters },
+        Boolean(tmpl.is_one_sided),
+        // The creating account's wallet when the request names no principal
+        // side (lib/contract/account-wallets.ts); an x402 payer has no account.
+        apiKeyCtx && !principalWallet && !tmpl.is_one_sided
+          ? await accountPrincipalWallet(apiKeyCtx.keyId, principalDecl.agent_id)
+          : null,
+      ),
+      isOneSided: Boolean(tmpl.is_one_sided),
       amendmentType: args.amendment_type as
         | 'original'
         | 'amendment'
@@ -577,57 +850,157 @@ async function handleCreateContract(
         | undefined,
     });
 
-    // Post-creation: deduct credits (api_key) or link payment (x402)
-    if (apiKeyCtx) {
-      await decrementCredits(apiKeyCtx.keyId, apiKeyCtx.credits);
-      if (apiKeyCtx.principalWallet) {
-        await incrementAgentUsage(apiKeyCtx.keyId, apiKeyCtx.principalWallet);
+    contractStored = true;
+
+    // The contract exists from here on: a throw in these steps must not land in
+    // the generation-failed branch and report failure for a stored contract.
+    try {
+      // Post-creation: track agent usage (api_key) or link payment (x402);
+      // credits were burned before generation.
+      if (apiKeyCtx) {
+        if (apiKeyCtx.principalWallet) {
+          await incrementAgentUsage(apiKeyCtx.keyId, apiKeyCtx.principalWallet);
+        }
+      }
+      if (isX402 && authCtx!.txHash) {
+        await linkPaymentToContract(authCtx!.txHash, contract.id);
+      }
+
+      const creditsLine = apiKeyCtx
+        ? `- **Credits remaining:** ${burnedBalance === UNLIMITED_CREDITS ? 'unlimited' : burnedBalance ?? 0}`
+        : `- **Payment:** x402 (USDC on Base) \`${authCtx!.txHash}\``;
+
+      const result = {
+        contract_id: contract.contract_id,
+        sha256_hash: contract.sha256_hash,
+        status: contract.status,
+        reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
+        sign_url: `https://getamber.dev/api/v1/contracts/${contract.contract_id}/sign`,
+        created_at: contract.created_at,
+      };
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: [
+              oversight.requiresPrincipalApproval
+                ? '# Contract Created — Human Approval Required'
+                : '# Contract Created (Draft)',
+              '',
+              `- **Contract ID:** ${result.contract_id}`,
+              `- **SHA-256 Hash:** \`${result.sha256_hash}\``,
+              `- **Status:** ${result.status}`,
+              `- **Reader URL:** ${result.reader_url}`,
+              `- **Sign URL:** ${result.sign_url}`,
+              creditsLine,
+              '',
+              ...(oversight.requiresPrincipalApproval
+                ? [
+                    `- **Oversight threshold:** $${oversight.governingThresholdUsd}`,
+                    `- **This contract's value:** $${oversight.transactionValueUsd}`,
+                    `- **Approve URL:** https://getamber.dev/api/v1/contracts/${result.contract_id}/approve`,
+                    '',
+                    '**This contract cannot proceed to signing yet.** It exceeds the oversight',
+                    'threshold set by its parent mandate, so EU AI Act Article 14 human approval is',
+                    'required first. A human principal must POST a wallet signature to the Approve URL;',
+                    'the signed message must contain the contract SHA-256 hash and state approval intent.',
+                    'An agent cannot clear this gate on its own behalf.',
+                  ]
+                : mcpNextStepLines(Boolean(tmpl.is_one_sided))),
+            ].join('\n'),
+          },
+        ],
+      };
+    } catch (postErr) {
+      console.error('[mcp] post-store step failed', contract.contract_id, postErr);
+      await logAudit({
+        event_type: 'post_store_step_failed',
+        severity: 'error',
+        actor: apiKeyCtx?.keyId ?? authCtx?.payerWallet ?? 'unknown',
+        details: {
+          contract_id: contract.contract_id,
+          tx_hash: authCtx?.txHash,
+          via: 'mcp',
+          message: postErr instanceof Error ? postErr.message : String(postErr),
+        },
+      });
+      return {
+        content: [
+          {
+            type: 'text',
+            text: [
+              '# Contract Created (Draft)',
+              '',
+              `- **Contract ID:** ${contract.contract_id}`,
+              `- **SHA-256 Hash:** \`${contract.sha256_hash}\``,
+              `- **Reader URL:** https://getamber.dev/reader/${contract.sha256_hash}`,
+              `- **Sign URL:** https://getamber.dev/api/v1/contracts/${contract.contract_id}/sign`,
+            ].join('\n'),
+          },
+        ],
+      };
+    }
+  } catch (err) {
+    // Upstream error text stays in the log and the audit details, never in the
+    // tool result.
+    console.error('[mcp] contract creation failed:', err);
+    const failure = recordGenerationFailure(err);
+    const upstream = { error_class: failure.errorClass, error_message: failure.errorMessage.slice(0, 500) };
+    // Credits were burned before generation: give them back. An x402 payment is
+    // settled only after generation, so before that nothing needs refunding.
+    let refundNote = '';
+    if (!contractStored) {
+      if (apiKeyCtx) {
+        const refunded = (await grantCredits(apiKeyCtx.keyId, priceCents)) !== null;
+        await logAudit({
+          event_type: 'credits_refunded_generation_failed',
+          severity: refunded ? 'warn' : 'error',
+          actor: apiKeyCtx.keyId,
+          details: { template: tmpl.slug, credits: priceCents, refunded, via: 'mcp', ...upstream },
+        });
+      } else if (authCtx?.type === 'x402' && x402Settled) {
+        // Narrow case: the payment settled but the contract could not be stored.
+        await logAudit({
+          event_type: 'x402_settled_no_contract',
+          severity: 'error',
+          actor: authCtx.payerWallet ?? 'unknown',
+          details: {
+            tx_hash: authCtx.txHash,
+            payer: authCtx.payerWallet,
+            amount_usdc: authCtx.amountUsdc,
+            resource: authCtx.resource,
+            template: tmpl.slug,
+            via: 'mcp',
+            ...upstream,
+          },
+        });
+        refundNote = ` The payment settled (tx ${authCtx.txHash}); support will refund it.`;
+      } else if (authCtx?.type === 'x402') {
+        await logAudit({
+          event_type: 'x402_generation_failed_not_settled',
+          severity: failure.unavailable ? 'warn' : 'error',
+          actor: authCtx.payerWallet ?? 'unknown',
+          details: {
+            payer: authCtx.payerWallet,
+            amount_usdc: authCtx.amountUsdc,
+            resource: authCtx.resource,
+            template: tmpl.slug,
+            money_moved: false,
+            via: 'mcp',
+            ...upstream,
+          },
+        });
       }
     }
-    if (isX402 && authCtx!.txHash) {
-      await linkPaymentToContract(authCtx!.txHash, contract.id);
-    }
-
-    const creditsLine = apiKeyCtx
-      ? `- **Credits remaining:** ${apiKeyCtx.credits === -1 ? 'unlimited' : apiKeyCtx.credits - 1}`
-      : `- **Payment:** x402 (USDC on Base) \`${authCtx!.txHash}\``;
-
-    const result = {
-      contract_id: contract.contract_id,
-      sha256_hash: contract.sha256_hash,
-      status: contract.status,
-      reader_url: `https://getamber.dev/reader/${contract.sha256_hash}`,
-      sign_url: `https://getamber.dev/api/v1/contracts/${contract.contract_id}/sign`,
-      created_at: contract.created_at,
-    };
-
+    if (failure.unavailable && !refundNote) return generationUnavailableResult(failure.retryAfterSeconds);
     return {
       content: [
         {
           type: 'text',
-          text: [
-            '# Contract Created (Draft)',
-            '',
-            `- **Contract ID:** ${result.contract_id}`,
-            `- **SHA-256 Hash:** \`${result.sha256_hash}\``,
-            `- **Status:** ${result.status}`,
-            `- **Reader URL:** ${result.reader_url}`,
-            `- **Sign URL:** ${result.sign_url}`,
-            creditsLine,
-            '',
-            '**Next step:** Both parties must sign with ECDSA wallet signatures to activate.',
-            'POST to the Sign URL with: `{ wallet_address, signature, message }`',
-            'The message must contain the contract SHA-256 hash.',
-          ].join('\n'),
-        },
-      ],
-    };
-  } catch (err) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error: Contract generation failed. ${err instanceof Error ? err.message : 'Please try again.'}`,
+          text: refundNote
+            ? `Error: The payment settled but the contract could not be stored.${refundNote}`
+            : 'Error: Contract generation failed. Please try again.',
         },
       ],
       isError: true,
@@ -650,13 +1023,14 @@ async function handleGetContract(
   const db = getSupabaseAdmin();
   let query = db.from('contracts').select('*');
 
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    query = query.eq('sha256_hash', id);
-  } else {
-    query = query.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return {
+      content: [{ type: 'text', text: `Error: ${INVALID_CONTRACT_REF.message}` }],
+      isError: true,
+    };
   }
+  query = query.eq(column, id);
 
   const { data: contract, error } = await query.single();
 
@@ -702,6 +1076,7 @@ async function handleGetContract(
             '```json',
             JSON.stringify(contract.machine_readable, null, 2),
             '```',
+            ...bindingTermsBlock(contract.machine_readable),
           ]
             .filter(Boolean)
             .join('\n'),
@@ -710,7 +1085,12 @@ async function handleGetContract(
     };
   }
 
-  // Metadata-only response (GDPR Art. 5 data-minimization aligned)
+  // Metadata-only response (GDPR Art. 5 data-minimization aligned). The binding
+  // terms (what the agent may/may not do) are exposed to unauthenticated callers
+  // only when the contract's visibility is meant to be shareable — so a
+  // counterparty agent can read the scope it must respect without seeing the
+  // full prose / party PII.
+  const termsVisible = contract.visibility === 'public' || contract.visibility === 'metadata_only';
   return {
     content: [
       {
@@ -726,6 +1106,7 @@ async function handleGetContract(
             ? `- **Parent hash:** \`${contract.parent_contract_hash}\``
             : '',
           `- **Reader URL:** https://getamber.dev/reader/${contract.sha256_hash}`,
+          ...(termsVisible ? bindingTermsBlock(contract.machine_readable) : []),
           '',
           '*Full contract text requires authentication. Pass your API key (contract creator) in the X-API-Key HTTP header.*',
         ]
@@ -751,16 +1132,17 @@ async function handleGetContractStatus(
   let query = db
     .from('contracts')
     .select(
-      'contract_id, status, created_at, amendment_type, parent_contract_hash, sha256_hash',
+      'id, contract_id, status, created_at, amendment_type, parent_contract_hash, sha256_hash, revoked_at, revocation_reason, expiry_date, visibility, human_readable, machine_readable, principal_wallet, is_one_sided, parameters',
     );
 
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    query = query.eq('sha256_hash', id);
-  } else {
-    query = query.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return {
+      content: [{ type: 'text', text: `Error: ${INVALID_CONTRACT_REF.message}` }],
+      isError: true,
+    };
   }
+  query = query.eq(column, id);
 
   const { data: contract, error } = await query.single();
 
@@ -778,10 +1160,39 @@ async function handleGetContractStatus(
     .eq('parent_contract_hash', contract.sha256_hash)
     .order('created_at', { ascending: true });
 
+  // Validity is derived at read time by the same rule as GET /contracts/:id/status
+  // (lib/contract/validity.ts): active, not revoked, not expired, every required
+  // signature on file, stored text matching its creation hash.
+  const { data: signatureRows } = await db
+    .from('signatures')
+    .select('signer_wallet')
+    .eq('contract_id', contract.id);
+  const validity = await evaluateContractValidity(
+    db,
+    contract as unknown as Parameters<typeof evaluateContractValidity>[1],
+    (signatureRows ?? []).map((r) => r.signer_wallet as string),
+  );
+  const { isCurrentlyValid, isExpired } = validity;
+  // This handler is reachable without auth — the free-text revocation reason
+  // is only shown for contracts whose metadata is meant to be public.
+  const showReason =
+    contract.visibility === 'public' || contract.visibility === 'metadata_only';
+
   const lines = [
     `# Contract Status: ${contract.contract_id}`,
     '',
     `- **Status:** ${contract.status}`,
+    `- **Currently valid:** ${isCurrentlyValid ? 'yes' : 'no'}`,
+    validity.reasons.length > 0 ? `- **Not valid because:** ${validity.reasons.join(', ')}` : '',
+    validity.missingSigners.length > 0
+      ? `- **Waiting for signature:** ${validity.missingSigners.join(', ')}`
+      : '',
+    contract.revoked_at
+      ? `- **Revoked:** ${contract.revoked_at}${showReason && contract.revocation_reason ? ` — ${contract.revocation_reason}` : ''}`
+      : '',
+    contract.expiry_date
+      ? `- **${isExpired ? 'Expired' : 'Expires'}:** ${contract.expiry_date}`
+      : '',
     `- **Created:** ${contract.created_at}`,
     `- **Amendment type:** ${contract.amendment_type || 'original'}`,
     contract.parent_contract_hash
@@ -821,7 +1232,7 @@ async function handleVerifyHash(
   const db = getSupabaseAdmin();
   const { data: contract } = await db
     .from('contracts')
-    .select('contract_id, status, created_at, sha256_hash')
+    .select('contract_id, status, created_at, sha256_hash, human_readable, machine_readable')
     .eq('sha256_hash', hash)
     .single();
 
@@ -835,6 +1246,26 @@ async function handleVerifyHash(
             '',
             `Hash \`${hash}\` does not match any contract in the Ambr system.`,
             'The document may have been modified or was not created through Ambr.',
+          ].join('\n'),
+        },
+      ],
+    };
+  }
+
+  // The hash is a stored value: check it still describes the stored text, with
+  // the same two-scheme rule as the reader and the status endpoint.
+  if (!verifyContractHash(contract)) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: [
+            '# Hash Verification: MISMATCH',
+            '',
+            `- **Contract ID:** ${contract.contract_id}`,
+            `- **Status:** ${contract.status}`,
+            '',
+            'The hash is on file, but the stored contract text no longer produces it. Do not rely on this contract.',
           ].join('\n'),
         },
       ],
@@ -923,9 +1354,13 @@ async function handleAgentHandshake(
   const db = getSupabaseAdmin();
 
   // Find contract
-  const isHash = /^[a-f0-9]{64}$/.test(contractId);
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(contractId);
-  const column = isHash ? 'sha256_hash' : isUuid ? 'id' : 'contract_id';
+  const column = contractRefColumn(contractId);
+  if (!column) {
+    return {
+      content: [{ type: 'text', text: `Error: ${INVALID_CONTRACT_REF.message}` }],
+      isError: true,
+    };
+  }
 
   const { data: contract } = await db
     .from('contracts')
@@ -970,9 +1405,20 @@ async function handleAgentHandshake(
     };
   }
 
-  // Update contract status to handshake if currently draft and intent is accept
+  // Update contract status to handshake if currently draft and intent is accept.
+  // Surface a failure — otherwise the output below would report a state the
+  // database refused to record.
   if (contract.status === 'draft' && intent === 'accept') {
-    await db.from('contracts').update({ status: 'handshake' }).eq('id', contract.id);
+    const { error: transitionError } = await db
+      .from('contracts')
+      .update({ status: 'handshake' })
+      .eq('id', contract.id);
+    if (transitionError) {
+      return {
+        content: [{ type: 'text', text: `Handshake recorded, but the contract status update failed: ${transitionError.message}` }],
+        isError: true,
+      };
+    }
   }
 
   const readerUrl = `https://getamber.dev/reader/${contract.sha256_hash}`;
@@ -1008,12 +1454,13 @@ async function callTool(
   args: Record<string, unknown>,
   apiKey: string | undefined,
   authCtx?: AuthContext,
+  requestStartedAt?: number,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   switch (name) {
     case 'ambr_list_templates':
       return handleListTemplates();
     case 'ambr_create_contract':
-      return handleCreateContract(args, apiKey, authCtx);
+      return handleCreateContract(args, apiKey, authCtx, requestStartedAt);
     case 'ambr_get_contract':
       return handleGetContract(args, apiKey);
     case 'ambr_get_contract_status':
@@ -1035,7 +1482,15 @@ async function callTool(
 // ---------------------------------------------------------------------------
 
 function jsonRpcOk(id: string | number | null, result: unknown): JsonRpcResponse {
-  return { jsonrpc: '2.0', id: id ?? null, result };
+  // 2026-07-28 requires `resultType` on every result. Older clients ignore the
+  // extra field and newer ones are told to treat its absence as 'complete', so
+  // adding it is safe in both directions. We never return 'input_required' —
+  // that is the MRTR path, and this server does no sampling or elicitation.
+  const body =
+    result && typeof result === 'object' && !Array.isArray(result)
+      ? { resultType: 'complete', ...(result as Record<string, unknown>) }
+      : result;
+  return { jsonrpc: '2.0', id: id ?? null, result: body };
 }
 
 function jsonRpcError(
@@ -1055,6 +1510,7 @@ export async function handleMcpMessage(
   body: unknown,
   apiKey: string | undefined,
   authCtx?: AuthContext,
+  requestStartedAt?: number,
 ): Promise<JsonRpcResponse | null> {
   if (!body || typeof body !== 'object' || !('method' in body)) {
     return jsonRpcError(null, -32600, 'Invalid Request');
@@ -1064,20 +1520,46 @@ export async function handleMcpMessage(
   const id = req.id ?? null;
 
   switch (req.method) {
-    case 'initialize':
+    // 2026-07-28 removes `initialize`, so a client on that revision has no
+    // handshake and learns what we speak from here instead. Without it such a
+    // client has no route to discover the server at all — which is what made the
+    // missing `resultType` matter, since the compatibility rule for omitting it
+    // depends on the client knowing the server is on an earlier revision.
+    case 'server/discover':
       return jsonRpcOk(id, {
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: SERVER_INFO,
+      });
+
+    case 'initialize': {
+      // Negotiate rather than hardcode: answer with the client's version when we
+      // speak it, otherwise with our fallback. Previously this replied
+      // '2025-03-26' even to a client asking for something newer.
+      const asked = (req.params as { protocolVersion?: string } | undefined)
+        ?.protocolVersion;
+      const agreed =
+        asked && (SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(asked)
+          ? asked
+          : PROTOCOL_VERSION;
+      return jsonRpcOk(id, {
+        protocolVersion: agreed,
         capabilities: {
           tools: { listChanged: false },
         },
         serverInfo: SERVER_INFO,
       });
+    }
 
     case 'notifications/initialized':
       return null; // Notification — no response
 
     case 'tools/list':
-      return jsonRpcOk(id, { tools: TOOLS });
+      // ttlMs + cacheScope satisfy CacheableResult in 2026-07-28 and are ignored
+      // by older clients. The tool list is static, so an hour is honest. Public
+      // because the list is identical for every caller — auth affects whether a
+      // tool SUCCEEDS, never whether it is listed.
+      return jsonRpcOk(id, { tools: TOOLS, ttlMs: 3_600_000, cacheScope: 'public' });
 
     case 'tools/call': {
       const params = req.params as
@@ -1091,6 +1573,7 @@ export async function handleMcpMessage(
         params.arguments ?? {},
         apiKey,
         authCtx,
+        requestStartedAt,
       );
       return jsonRpcOk(id, result);
     }

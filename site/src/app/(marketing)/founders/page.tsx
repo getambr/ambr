@@ -1,19 +1,21 @@
 import { Metadata } from 'next';
 import { createOgMetadata } from '@/lib/og/create-og-metadata';
-import SectionWrapper from '@/components/ui/SectionWrapper';
-import ScrollReveal from '@/components/ui/ScrollReveal';
-import Button from '@/components/ui/Button';
+import Reveal from '@/components/ui/Reveal';
+import MagneticButton from '@/components/ui/MagneticButton';
+import Eyebrow from '@/components/ui/Eyebrow';
+import Hairline from '@/components/ui/Hairline';
+import { DISPLAY, MICRO, EDITORIAL, SECTION_PAD, MEASURE, MEASURE_NARROW } from '@/lib/type';
 import FounderEnrollForm from '@/components/founders/FounderEnrollForm';
 import FoundingPartnersList from '@/components/founders/FoundingPartnersList';
 
 export const metadata: Metadata = {
-  title: 'Founder Program | Ambr',
+  title: 'Founder Program | Ambr — Agent Mandate & Binding Registry',
   description:
-    'First 10 organizations joining the Ambr ecosystem. 1,000 free contracts, 50% off per-contract forever, public listing as a founding partner.',
+    'The first 10 organizations building on the Agent Mandate & Binding Registry, the liability record for autonomous agents. 1,000 free contracts, 50% off per-contract forever, public listing as a founding partner.',
   ...createOgMetadata({
     title: 'Founder Program | Ambr',
     description:
-      'First 10 organizations joining the Ambr ecosystem. 1,000 free contracts, 50% off per-contract forever, public listing as a founding partner.',
+      'The first 10 organizations building on the liability record for autonomous agents. 1,000 free contracts, 50% off forever, founding-partner listing.',
     path: '/founders',
     label: 'Founder Program',
     domain: 'ambr.run',
@@ -22,14 +24,14 @@ export const metadata: Metadata = {
 
 const benefits = [
   {
-    label: '1,000 contracts free',
+    label: '24,000 credits free',
     detail:
-      'Enough to build, test, and ship with room to grow — covers early integration plus first real usage. $500 value at per-contract rates.',
+      'Enough to build, test, and ship with room to grow — covers early integration plus first real usage. Granted once.',
   },
   {
-    label: '50% off per-contract forever',
+    label: '50% off self-serve list prices for 24 months',
     detail:
-      'Locked-in discount on Consumer, Delegation, Commerce, and Fleet tiers. No renegotiation, no gotchas. Scales with your usage.',
+      'Locked-in discount on Personal, Delegation, Agent-to-Agent, and Fleet tiers for 24 months. No renegotiation, no gotchas. Scales with your usage.',
   },
   {
     label: 'Public "Founding Partner" listing',
@@ -55,71 +57,133 @@ const benefits = [
 
 export default function FoundersPage() {
   return (
-    <main>
-      <SectionWrapper>
-        <ScrollReveal>
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
-              Founder Program
-            </p>
-            <h1 className="text-4xl text-text-primary sm:text-5xl">
-              First 10 orgs. Permanent 50% off.
+    <main style={{ background: EDITORIAL.bg, color: EDITORIAL.text }}>
+      {/* Hero */}
+      <section className="px-6 pt-40 pb-24 sm:px-10 lg:px-16">
+        <div className={MEASURE}>
+          <Reveal><Eyebrow>§ 01 — Founder Program</Eyebrow></Reveal>
+          <Reveal delay={0.08}>
+            <h1 className="mt-6 max-w-4xl" style={DISPLAY.hero}>
+              First 10 orgs.<br /><span style={{ color: EDITORIAL.brass }}>Permanent 50% off.</span>
             </h1>
-            <p className="mt-4 text-lg text-text-secondary">
-              Ambr is the first Ricardian contract layer for AI agents.
-              Join as a Founding Partner and help shape the standard for
-              agent commerce.
+          </Reveal>
+          <Reveal delay={0.16}>
+            <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
+              Ambr is the Agent Mandate &amp; Binding Registry, the liability record for autonomous
+              agents. Join as a Founding Partner and help shape the standard for agent commerce.
             </p>
-          </div>
-        </ScrollReveal>
-
-        <ScrollReveal>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-            {benefits.map((b) => (
-              <div
-                key={b.label}
-                className="border border-amber/30 bg-surface/80 p-5"
+          </Reveal>
+          <Reveal delay={0.24}>
+            <div className="mt-10 flex flex-wrap items-center gap-7">
+              <MagneticButton href="#apply">Apply to join →</MagneticButton>
+              <a
+                href="/activate"
+                data-cursor
+                className="text-[12px] uppercase transition-colors hover:text-text-primary"
+                style={MICRO.ghost}
               >
-                <h3 className="text-base text-text-primary font-medium mb-2">
-                  {b.label}
-                </h3>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  {b.detail}
-                </p>
-              </div>
+                Start free instead
+              </a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <section className={SECTION_PAD}>
+        <div className={MEASURE}>
+          <Reveal><Hairline /></Reveal>
+          <Reveal delay={0.05}><div className="mt-6"><Eyebrow>§ 02 — What you get</Eyebrow></div></Reveal>
+          <Reveal delay={0.1}>
+            <h2 className="mt-5 max-w-3xl" style={DISPLAY.section}>
+              Founding Partner terms.
+            </h2>
+          </Reveal>
+          <Reveal delay={0.14}>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.detail }}>
+              Locked in for the lifetime of your account. Ten organizations, no renegotiation.
+            </p>
+          </Reveal>
+          <div
+            className="mt-12 grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3"
+            style={{ background: EDITORIAL.gridLine, border: `1px solid ${EDITORIAL.gridLine}` }}
+          >
+            {benefits.map((b, i) => (
+              <Reveal key={b.label} delay={i * 0.06}>
+                <div className="flex h-full flex-col p-7" style={{ background: EDITORIAL.bg }}>
+                  <span className="text-[10px] uppercase" style={MICRO.numeral}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="mt-5" style={DISPLAY.card}>{b.label}</h3>
+                  <p className="mt-3 text-[14px] leading-relaxed" style={{ color: EDITORIAL.detail }}>{b.detail}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
-        </ScrollReveal>
+        </div>
+      </section>
 
-        <ScrollReveal>
-          <div className="border border-amber/60 bg-surface/80 p-6 max-w-2xl mx-auto mb-12">
-            <h2 className="text-xl text-text-primary mb-4">
-              Apply to join
-            </h2>
-            <p className="text-sm text-text-secondary mb-6">
-              Applications are reviewed manually. We look for teams shipping
-              real agent products, not stealth experiments. Approval typically
-              within 48 hours.
-            </p>
-            <FounderEnrollForm />
+      {/* Apply */}
+      <section id="apply" className={SECTION_PAD}>
+        <div className={MEASURE_NARROW}>
+          <Reveal><Hairline /></Reveal>
+          <Reveal delay={0.05}><div className="mt-6"><Eyebrow>§ 03 — Apply</Eyebrow></div></Reveal>
+          <Reveal delay={0.1}>
+            <div className="mt-8 border p-8 sm:p-12" style={{ borderColor: EDITORIAL.panelBorder, background: EDITORIAL.inset }}>
+              <h2 style={DISPLAY.panel}>
+                Apply to join.
+              </h2>
+              <p className="mt-6 max-w-xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
+                Applications are reviewed manually. We look for teams shipping real agent products,
+                not stealth experiments. Approval typically within 48 hours.
+              </p>
+              <div className="mt-8">
+                <FounderEnrollForm />
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Partners */}
+      <section className={SECTION_PAD}>
+        <div className={MEASURE}>
+          <Reveal><Hairline /></Reveal>
+          <Reveal delay={0.05}><div className="mt-6"><Eyebrow>§ 04 — Partners</Eyebrow></div></Reveal>
+          <Reveal delay={0.1}>
+            <div className="mt-8">
+              <FoundingPartnersList />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="px-6 pb-36 pt-8 text-center sm:px-10 lg:px-16">
+        <Reveal>
+          <h2 style={DISPLAY.cta}>
+            Not ready yet?
+          </h2>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
+            Skip the program and start building today with a free developer key.
+          </p>
+        </Reveal>
+        <Reveal delay={0.18}>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-7">
+            <MagneticButton href="/activate">Get free developer key →</MagneticButton>
+            <a
+              href="/developers"
+              data-cursor
+              className="text-[12px] uppercase transition-colors hover:text-text-primary"
+              style={MICRO.ghost}
+            >
+              Read the docs
+            </a>
           </div>
-        </ScrollReveal>
-
-        <ScrollReveal>
-          <FoundingPartnersList />
-        </ScrollReveal>
-
-        <ScrollReveal>
-          <div className="text-center mt-12">
-            <p className="text-sm text-text-secondary mb-4">
-              Not ready for the Founder Program? Start free.
-            </p>
-            <Button href="/activate" variant="secondary">
-              Get Free Developer Key
-            </Button>
-          </div>
-        </ScrollReveal>
-      </SectionWrapper>
+        </Reveal>
+      </section>
     </main>
   );
 }

@@ -11,9 +11,14 @@
 
 const BASE_INSTRUCTIONS = `You are Ambr's contract generation engine. You create dual-format Ricardian Contracts.
 
-OUTPUT FORMAT: You MUST respond with valid JSON only (no markdown, no explanation). The JSON object must have exactly two keys:
-- "humanReadable": A complete legal contract in plain text format
-- "machineReadable": A structured JSON object with all contract terms
+OUTPUT FORMAT: You MUST respond with a valid JSON object — nothing else. No markdown fences, no preamble, no commentary outside the JSON. The JSON object MUST contain exactly these two keys at the top level:
+  - "humanReadable" (string): The complete legal contract text in plain English. Multi-line OK; use \n inside the string for newlines.
+  - "machineReadable" (object): A structured JSON object with all contract terms, parties, amounts, dates, jurisdiction.
+
+Example shape (your actual values will differ):
+{"humanReadable": "AMBER CONTRACT amber-2026-0001\n\nDated: 2026-05-18\n\n1. Parties: ...", "machineReadable": {"contract_id": "amber-2026-0001", "template": "a1-service-purchase", "parties": {"consumer": "Alice", "provider": "Bob"}, "fee": {"amount": 1, "currency": "USDC"}, "governing_law": "Latvia"}}
+
+Begin your response with an opening brace and end with a closing brace. No other characters before or after. The user's deploy WILL FAIL if you respond with any text outside the JSON object.
 
 MANDATORY ELEMENTS (every contract must include):
 1. Contract ID (amber-YYYY-NNNN format) and version
@@ -34,7 +39,7 @@ MANDATORY ELEMENTS (every contract must include):
 ELECTRONIC AGENT FORMATION RECITAL (include in every contract, select by governing_law):
 For Singapore: "This contract is formed pursuant to the Electronic Transactions Act (Cap. 88), Section 15. The parties acknowledge that contracts formed through electronic agents are valid and enforceable."
 For Delaware/US: "This contract is formed pursuant to the Uniform Electronic Transactions Act (UETA) Section 14 and the Electronic Signatures in Global and National Commerce Act (ESIGN). The parties acknowledge that electronic agents may form binding contracts."
-For EU: "This contract is formed under eIDAS Regulation (EU) 910/2014. The signature satisfies Article 26 criteria for an Advanced Electronic Signature (uniquely linked to the signatory, capable of identifying the signatory, created under the signatory's sole control, and tamper-evident via SHA-256 anchoring). The Principal Declaration attributes the wallet signature to the Principal as the natural or legal person under Article 3(9)."
+For EU: "This contract is formed under eIDAS Regulation (EU) 910/2014. Pursuant to Article 25, an electronic signature shall not be denied legal effect solely on the grounds that it is in electronic form. The signature is an ECDSA signature over the SHA-256 hash of this contract, which the parties adopt as their signature; this recital asserts no particular eIDAS assurance level. The Principal Declaration attributes the wallet signature to the Principal as the natural or legal person under Article 3(9)."
 For England-Wales/UK: "This contract is formed under English common law principles of agency. Electronic signatures are admissible in evidence pursuant to the Electronic Communications Act 2000, Section 7."
 
 DUAL-FORMAT RECONCILIATION (include in machineReadable):
@@ -76,10 +81,10 @@ CRITICAL CONSUMER REQUIREMENTS:
 - Cancellation must be as easy as purchase
 
 REQUIRED PARAMETERS: consumer_name, consumer_email, provider_name, provider_agent_id, service_description, fee, currency, delivery_timeline, refund_policy, governing_law
-OPTIONAL PARAMETERS: cooling_off_days (default 14), data_processing_notice, agent_disclosure
+OPTIONAL PARAMETERS: consumer_agent_id (buyer's wallet — auto-filled by the UI from the user's connected wallet; do NOT ASK the user for this field, but DO extract it as consumer_agent_id if the user explicitly provides a different wallet (e.g. "use 0x200B…" or "update buyer wallet to 0x..."). User-provided values always override the auto-fill.), cooling_off_days (jurisdiction-aware: 14 days for EU/UK consumers, 7 days for China, 0 days for US/Singapore/Australia which have no general consumer cooling-off regime; if the user does not specify a value, the server normalizes from governing_law and emits a validation_warning explaining the derived value — do NOT ASK the user for this field unless they bring it up), data_processing_notice, agent_disclosure
 
 CONTRACT STRUCTURE:
-1. RECITALS — identify parties (consumer + AI agent acting for provider); electronic agent formation recital (jurisdiction-specific)
+1. RECITALS — identify parties (consumer + AI agent acting for provider). When consumer_agent_id is provided, include it in the consumer's identification line: "[consumer_name] (wallet [consumer_agent_id])". Electronic agent formation recital (jurisdiction-specific).
 2. PLAIN-LANGUAGE SUMMARY — one paragraph describing what the consumer is getting, for how much, and how to cancel
 3. AGENT DISCLOSURE — EU AI Act Art. 50: "This contract is generated and administered by an AI agent on behalf of [provider_name]. The AI agent operates under the authority of the provider through an Ambr delegation contract."
 4. SERVICE DESCRIPTION — from service_description parameter
@@ -118,19 +123,52 @@ REQUIRED PARAMETERS (provided in user input):
 - spending_limit_per_tx, spending_limit_monthly
 - duration_months, governing_law
 
+CRITICAL — TWO DISTINCT WALLETS:
+- principal_agent_id = the USER's own wallet (the Authorizer, the one granting authority)
+- agent_id           = the AI AGENT's wallet (the Delegatee, a SEPARATE entity acting on the user's behalf)
+
+These MUST ALWAYS be different wallets. Setting both to the same address creates a meaningless
+"I authorize myself" contract that the server will reject.
+
+NEVER suggest, default, or extract the user's own connected wallet as agent_id, even when
+the user says phrases like "use that one", "the one already on the contract", "yes use that",
+"my wallet", or otherwise refers to a wallet visible in prior context. Those phrases almost
+always refer to their PRINCIPAL wallet (already auto-filled), which is a DIFFERENT role from
+the Agent. Do NOT extract agent_id from system context.
+
+When the user appears to want their own wallet as agent_id, or asks "can I be the agent too?",
+respond exactly:
+
+"Just to clarify — D1 Delegation has two distinct roles, each with its own wallet:
+ • Authorizer (you, the principal): your own wallet — you grant the authority
+ • Agent (the AI being delegated to): a SEPARATE wallet — the bot or service you're
+   authorizing to act on your behalf
+
+The agent wallet must be:
+ • Different from your own wallet
+ • On Base L2 mainnet (so it can receive the counterparty cNFT when the contract activates)
+
+What's the AI agent's wallet address? If you don't have one yet, you'll need to set up a
+dedicated wallet for your AI service before this contract makes sense."
+
+ONLY extract agent_id when the user has explicitly provided a wallet address that is DIFFERENT
+from their connected wallet AND from principal_agent_id. If they paste any 0x… that matches
+either, do not extract it — instead surface the clarification above.
+
 OPTIONAL PARAMETERS:
+- principal_agent_id (authorizer's wallet — auto-filled by the UI from the user's connected wallet; do NOT ASK the user for this field, but ALWAYS extract it as principal_agent_id when the user gives a wallet as their own ("my wallet: 0x…", "authorizer wallet 0x…", "use 0x200B…", "update authorizer wallet to 0x…"). A wallet the user labels as the agent's goes in agent_id, never here. User-provided values always override the auto-fill.)
 - requires_approval_above, revocation_notice_hours, sub_delegation_allowed
 
 CONTRACT STRUCTURE:
 1. RECITALS — electronic agent formation recital (jurisdiction-specific), purpose of delegation
-2. PRINCIPAL DECLARATION — full identification, authorization statement: "The Principal hereby authorizes the AI Agent identified by wallet [agent_id] to execute electronic signatures on behalf of the Principal. Any electronic signature created by the Agent shall be deemed the act of the Principal for all legal purposes within the scope defined herein."
+2. PRINCIPAL DECLARATION — full identification. When principal_agent_id is provided, include it: "The Principal, [principal_name] (wallet [principal_agent_id]), hereby authorizes the AI Agent identified by wallet [agent_id] to execute electronic signatures on behalf of the Principal. Any electronic signature created by the Agent shall be deemed the act of the Principal for all legal purposes within the scope defined herein." If principal_agent_id is omitted, omit the parenthetical and the Principal is identified solely by name.
 3. AGENT IDENTIFICATION — wallet address, agent type, platform reference
 4. SCOPE OF DELEGATION — enumerated authorized actions, approved categories, geographic limitations if any
 5. FINANCIAL LIMITS — per-transaction cap, monthly aggregate cap, approval thresholds
 6. ULTRA VIRES CLAUSE — acts outside scope do NOT bind the principal (per EU agency law); third parties must verify agent authority via Ambr reader
 7. LIABILITY — principal fully liable within scope; no party liable for indirect/consequential damages; both liable for gross negligence
 8. DURATION — start date, end date, renewal terms
-9. REVOCATION — method (on-chain revocation tx or API call), notice period, effect on pending transactions
+9. REVOCATION — method (the principal calls the Ambr revoke endpoint; Ambr records the revocation; there is no on-chain revocation transaction), notice period, effect on pending transactions
 10. SUB-DELEGATION — whether permitted, conditions if allowed (per Art. 2305)
 11. REPORTING — agent reporting obligations to principal
 12. DISPUTE RESOLUTION — IETF ADP v1 primary, fallback to jurisdiction courts
@@ -384,6 +422,64 @@ CONTRACT STRUCTURE:
 18. SIGNATURE BLOCK`,
 
   // ─────────────────────────────────────────────
+  // P2: Power of Attorney (one-sided, principal-only signature)
+  // ─────────────────────────────────────────────
+  'p2-power-of-attorney': `${BASE_INSTRUCTIONS}
+
+TEMPLATE: P2 — Power of Attorney
+PURPOSE: Unilateral grant of authority from a principal to their own AI agent. The principal signs once with their own wallet; the AI agent does NOT sign. A single cNFT is minted to the principal as on-chain proof of the authorization. Use this when a user wants to authorize their agent without a counterparty handshake.
+
+LEGAL BASIS:
+- US: Uniform Power of Attorney Act (UPOAA, 2006/2008 — adopted in 28+ states), UETA s. 14 (electronic agent formation), Restatement (Third) of Agency s. 1.01 (manifestation of consent)
+- EU: Member-state mandate/agency law (e.g. Latvian Civil Law Art. 2289 onwards; German BGB §§ 164-181; French Code civil Art. 1984-2010); eIDAS Art. 25
+- SG: ETA s. 15
+- Civil-law jurisdictions: deed/notarial requirements may apply for real-estate or banking POAs — out of scope for digital-agent POAs covered here
+
+CRITICAL — UNILATERAL CONTRACT:
+- This is a ONE-SIDED grant. Only the principal signs. No counterparty signature, no handshake step, no paired cNFT mint. Status moves directly draft → active on the principal's first signature.
+- The agent_id wallet receives no NFT and is NOT asked to sign. It is named in the contract body as the entity whose acts will be attributed to the principal within the granted scope.
+- Treat this as the natural fit when the user says "give my agent power of attorney", "authorize my AI to act on my behalf", "my bot should be able to sign for me", or similar phrasing where no counterparty exists.
+- Reject as the wrong template when the user is contracting WITH another party (use D1, A1, or C1 instead).
+
+WALLET MODEL (different from D1):
+- principal_agent_id = the user's own wallet (the grantor, auto-filled by the UI from the connected wallet)
+- agent_id = the AI agent's wallet. Can be:
+  (a) A SEPARATE wallet — the agent has its own private key, signs as itself (SaaS AI agents). OR
+  (b) The SAME wallet as principal_agent_id — common case, local AI agent that signs from the principal's wallet. The contract acts as a public scope declaration for transactions from that wallet. Same-wallet P2 is fully supported, not an error.
+- When the user says things like "this same one", "the connected one", "my wallet", or otherwise indicates they want their own wallet as the agent — extract agent_id = principal_agent_id and proceed. Don't refuse, don't ask for a separate wallet, don't loop. The server will accept it.
+- The contract text should still name the agent wallet explicitly (even if it's the same as principal). When same-wallet, prefer phrasing like "AI-driven transactions from wallet [principal_agent_id] operate under this declared scope" over "the AI Agent identified by wallet [agent_id]".
+
+REQUIRED PARAMETERS (provided in user input):
+- principal_name, principal_type, principal_registration_number, principal_address
+- agent_id, agent_type
+- scope
+- duration_months, governing_law
+
+OPTIONAL PARAMETERS:
+- principal_agent_id (the user's own signing wallet — auto-filled by the UI, so do NOT ask; ALWAYS extract it when the user gives a wallet as their own, e.g. "my wallet: 0x…". The UI fills it only when no wallet was given. A wallet labelled as the agent's goes in agent_id.)
+- spending_limit_per_tx, spending_limit_monthly (optional caps — narrow the POA if the user wants them)
+- requires_approval_above (threshold above which the agent must escalate back to the principal)
+- revocation_clause (boolean, default true — the principal may revoke at any time)
+
+CONTRACT STRUCTURE:
+1. RECITALS — electronic agent formation recital (jurisdiction-specific); state this is a UNILATERAL Power of Attorney granted by the principal and that the agent's acceptance is implied by acting under the authority granted herein.
+2. PRINCIPAL DECLARATION — full identification. When principal_agent_id is provided, include it: "The Principal, [principal_name] (wallet [principal_agent_id]), hereby grants Power of Attorney to the AI Agent identified by wallet [agent_id]. Any electronic signature or action created by the Agent within the scope defined herein shall be deemed the act of the Principal for all legal purposes."
+3. AGENT IDENTIFICATION — wallet address, agent type, platform reference. State explicitly that the Agent is not a signatory to this instrument; acceptance is by performance.
+4. SCOPE OF AUTHORITY — enumerated authorized actions (from scope parameter); geographic limitations if any; explicit ultra vires statement.
+5. FINANCIAL LIMITS — per-transaction cap, monthly aggregate cap, escalation thresholds (only if the user provided these — otherwise state the POA is general within the stated scope).
+6. ULTRA VIRES CLAUSE — acts outside scope do NOT bind the principal; third parties must verify agent authority via Ambr reader.
+7. LIABILITY — principal fully liable within scope; standard exclusion of indirect/consequential damages; no exclusion of liability for gross negligence or fraud.
+8. DURATION — start date (signing date), term (duration_months), automatic expiry.
+9. REVOCATION — when revocation_clause is true: principal may revoke unilaterally at any time by calling the Ambr revoke endpoint (API), and Ambr records the revocation (Ambr does not record revocations on-chain); notice to the agent is effective upon publication on Ambr; in-flight transactions initiated before revocation are honored, transactions initiated after are ultra vires.
+10. NOTICE TO THIRD PARTIES — third parties dealing with the agent are entitled to rely on this POA so long as it is unrevoked and within scope; reliance is verified by checking the contract hash on Ambr.
+11. REPORTING — agent reporting obligations to the principal (recommended for autonomous agents).
+12. DISPUTE RESOLUTION — IETF ADP v1 primary, fallback to courts of the governing_law jurisdiction.
+13. PRIMACY CLAUSE — human-readable text prevails over machine-readable annex.
+14. SHA-256 HASH — placeholder for verification.
+15. ELECTRONIC SIGNATURE ACKNOWLEDGMENT — principal acknowledges ECDSA signature on Base L2 is binding; this is a one-sided instrument so only the principal's signature is required.
+16. SIGNATURE BLOCK — principal only.`,
+
+  // ─────────────────────────────────────────────
   // A3: AI Agent Warranty and Liability Agreement
   // ─────────────────────────────────────────────
   // ─────────────────────────────────────────────
@@ -495,3 +591,109 @@ PURPOSE: Generate a contract based on the provided parameters. Follow the same d
   }
   return prompt;
 }
+
+// ─────────────────────────────────────────────
+// Chat orchestration prompts (v1 deploy chat — A2A, D1, P2 only)
+// ─────────────────────────────────────────────
+
+// V1 template catalog now lives in ambr-agent-skills.ts as the single source
+// of truth for the agent's domain knowledge. Imported below alongside the
+// assembled prompts.
+import { V1_TEMPLATE_CATALOG, AMBR_AGENT_DEPLOY_PROMPT, AMBR_AGENT_ASK_PROMPT } from './ambr-agent-skills';
+export { V1_TEMPLATE_CATALOG };
+
+export const CHAT_CLASSIFIER_TOOL = {
+  name: 'classify_and_extract' as const,
+  description: 'Identify the right contract template (A2A, D1, or P2), extract any parameters present in the conversation, and return the next clarifying question.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      template: {
+        type: 'string' as const,
+        enum: ['c3-task-execution', 'd1-general-auth', 'p2-power-of-attorney'] as const,
+        description: 'The template that best matches the user intent. OMIT this field entirely (leave undefined) when the user has not yet expressed contract intent — e.g. greetings ("hi", "hello"), check-ins ("all good?", "anyone there?"), or generic platform questions ("what can you do?"). Do NOT guess when uncertain — let the user clarify first. Choose c3-task-execution (shown to users as "A2A — Agent-to-Agent") when two agents transact: a requester agent engages an executor agent for a deliverable/task with payment on completion (phrases like "agent to agent", "my agent hires another agent", "task for another agent", "A2A"). Choose p2-power-of-attorney when the user wants to authorize their own AI agent without a counterparty ("power of attorney", "authorize my agent to act on my behalf", "no second signature"). Choose d1-general-auth for a bilateral delegation involving a counterparty handshake.',
+      },
+      confidence: {
+        type: 'number' as const,
+        description: 'Confidence in the template classification, 0.0 to 1.0. Use 0.0 when template is omitted.',
+      },
+      extracted_params: {
+        type: 'object' as const,
+        description: 'Parameters extracted from the conversation so far. Use canonical parameter names from the template required-fields list. Only include values the user actually provided (not defaults). When the user declines an optional spending cap ("no limit", "no per-transaction limit", "unlimited"), OMIT that field; never write none, no or 0 as a value. Spending caps are plain numbers of dollars.',
+      },
+      missing_params: {
+        type: 'array' as const,
+        items: { type: 'string' as const },
+        description: 'Required parameters not yet provided.',
+      },
+      next_question: {
+        type: 'string' as const,
+        description: 'The single next question to ask the user. Plain, friendly, one focused question. Empty string if ready_to_deploy is true.',
+      },
+      ready_to_deploy: {
+        type: 'boolean' as const,
+        description: 'True when all required parameters are present and the contract can be deployed.',
+      },
+      assistant_message: {
+        type: 'string' as const,
+        description: 'A short, human reply to what the user ACTUALLY said this turn — NOT a canned preamble. RULES: (1) Only acknowledge a captured value (e.g. "Got it — 18 months.") when the user actually gave a NEW field value this turn; NEVER say "Got it" when nothing was captured. (2) If the user made a conversational aside — wants to save/pause, says "testing"/"let me think"/"come back later", or asks a question — respond to THAT naturally (e.g. reassure them their draft auto-saves and they can return anytime) instead of re-asking the field. (3) Never repeat your previous turn\'s wording verbatim; vary it. (4) One short sentence. Empty string if there is nothing to add.',
+      },
+    },
+    // `template` is intentionally NOT required — the model must be allowed to
+    // omit it when intent is ambiguous, so the preview pane stays in the
+    // empty/chip state until the user actually expresses what they want.
+    required: ['confidence', 'extracted_params', 'missing_params', 'next_question', 'ready_to_deploy', 'assistant_message'],
+  },
+};
+
+// Deploy-mode system prompt — assembled from the skills file so identity,
+// capabilities, boundaries, tool selection, and the template catalog live
+// in ONE place. Edits to agent behaviour go in ambr-agent-skills.ts.
+export const CHAT_DEPLOY_PROMPT = AMBR_AGENT_DEPLOY_PROMPT;
+
+export const CHAT_ASK_TOOL = {
+  name: 'answer_question' as const,
+  description: 'Answer a user question about Ambr, the platform, contracts, templates, pricing, or their wallet. Optionally suggest a deploy handoff.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      reply: {
+        type: 'string' as const,
+        description: 'Your answer to the user, in plain conversational text. Markdown allowed but keep it tight.',
+      },
+      suggest_deploy: {
+        type: 'object' as const,
+        description: 'If the user wants to create a contract, suggest a handoff to the deploy chat. Otherwise omit.',
+        properties: {
+          template: {
+            type: 'string' as const,
+            enum: ['c3-task-execution', 'd1-general-auth', 'p2-power-of-attorney'] as const,
+          },
+          intent: {
+            type: 'string' as const,
+            description: 'A one-sentence summary of the user intent to seed the deploy chat with.',
+          },
+        },
+        required: ['template', 'intent'],
+      },
+    },
+    required: ['reply'],
+  },
+};
+
+// Ask-mode system prompt — assembled from the same skills file (identity +
+// platform facts + boundaries + style + V1 catalog). Same source-of-truth
+// guarantee as CHAT_DEPLOY_PROMPT above.
+export const CHAT_ASK_PROMPT = AMBR_AGENT_ASK_PROMPT;
+
+// Re-export the contract templates list for client-side use (template selection chips).
+// `parties` is the plain-English party-pair shown under the chip name so testers
+// don't have to decode "A2C"/"A2A"/"B2A" abbreviations. Avoid abstract legal terms
+// (Principal / Consumer / Counterparty) — use the role names people actually expect.
+// Tester feedback 2026-05-19: "don't quite get the idea of A2C... is the agent one party
+// or representing a principal?" — answered by surfacing parties directly on the chip.
+export const V1_CHAT_TEMPLATES = [
+  { slug: 'c3-task-execution',   label: 'A2A', name: 'Agent-to-Agent',    priceUsd: 1.00, parties: 'Agent — Agent',                summary: 'Two AI agents transact: a requester engages an executor for a defined task/deliverable, payment on completion. Both agents sign.' },
+  { slug: 'd1-general-auth',     label: 'D1', name: 'Delegation',         priceUsd: 0.50, parties: 'You + your AI agent (both sign)',  summary: 'Two-sided: you and your agent each sign, so the agent gets its own on-chain proof it can act for you — useful when it must show that to others. Optional spending limits.' },
+  { slug: 'p2-power-of-attorney',label: 'P2', name: 'Power of Attorney',  priceUsd: 0.20, parties: 'You only — one signature',       summary: 'One-sided: you sign once and it activates instantly — the fastest way to authorize your own agent. No second signature. Optional spending caps.' },
+] as const;

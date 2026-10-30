@@ -25,7 +25,6 @@ const TRANSFER_TOPIC =
 const TIER_AMOUNTS: Record<string, number> = {
   startup: 49,
   scale: 199,
-  enterprise: 500, // minimum for custom enterprise
 };
 
 interface PaymentVerification {

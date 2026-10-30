@@ -1,0 +1,25 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "contract": "AmbrContractNFTV2",
+  "address": "0x58E39515cbfCbc56922870A3f72eF8A99db5C325",
+  "token": { "name": "Ambr Contract", "symbol": "AMBR" },
+  "deployer": "0xba594B6ccf7973D280b4CD8778b213f345e41524",
+  "initialOwner": "0xba594B6ccf7973D280b4CD8778b213f345e41524",
+  "deploymentTx": "0x88a3e0b398e50a87335aa8fc966c14955dddac1043a7a7f6fcac6574c486ad11",
+  "deployedAt": "2026-07-02T09:00:00Z",
+  "basescanUrl": "https://sepolia.basescan.org/address/0x58E39515cbfCbc56922870A3f72eF8A99db5C325",
+  "purpose": "Testnet dry-run of the v2 mandate lifecycle (status/supersede/revoke/expire/isCurrent). NOT production; mainnet v1 at 0x20cEE8... remains the live contract.",
+  "smokeTest": {
+    "date": "2026-07-02",
+    "result": "passed",
+    "checks": [
+      "mint defaults Active/current",
+      "supersede: old Amended + supersededBy pointer + isCurrent flip",
+      "revoke: Revoked, no successor, token retained in wallet",
+      "second revoke reverts (terminal immutability)"
+    ],
+    "tokens": { "supersedePair": [4, 5], "revoked": 6 },
+    "note": "Public RPC (sepolia.base.org) serves eventually-consistent reads; smoke script polls state and derives token ids from receipt events."
+  }
+}
