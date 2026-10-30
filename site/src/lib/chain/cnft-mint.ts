@@ -67,7 +67,7 @@ export async function mintContractNFTAsync(
 
   const { data: contract, error } = await db
     .from('contracts')
-    .select('id, contract_id, sha256_hash, contract_type, amendment_type, principal_declaration, payer_wallet')
+    .select('id, contract_id, sha256_hash, contract_type, amendment_type, principal_declaration, payer_wallet, principal_wallet')
     .eq('id', contractUuid)
     .single();
 
@@ -76,23 +76,23 @@ export async function mintContractNFTAsync(
     return;
   }
 
-  // Determine holder + counterparty. Priority order:
+  // Determine holder + counterparty. Priority order for recipient:
   //   1. explicitWallets parameter (amendment approval flow)
   //   2. payer_wallet column (x402 flow)
-  //   3. signatures table lookup (signed contract via API key flow)
-  let recipient: string | null = explicitWallets?.recipient || contract.payer_wallet || null;
+  //   3. principal_wallet column (chat-deploy flow — deployer's connected wallet)
+  //   4. signatures table lookup (signed contract via API key, no principal set)
+  //
+  // The signatures lookup ALSO drives counterparty discovery for any non-explicit
+  // flow, so it still runs when we have a principal_wallet — but only sets
+  // recipient as a last-resort fallback.
+  let recipient: string | null =
+    explicitWallets?.recipient ||
+    contract.payer_wallet ||
+    contract.principal_wallet ||
+    null;
   let counterpartyWallet: string = explicitWallets?.counterparty || ethers.ZeroAddress;
 
   if (!explicitWallets && !contract.payer_wallet) {
-    const { data: sig } = await db
-      .from('signatures')
-      .select('signer_wallet')
-      .eq('contract_id', contractUuid)
-      .order('signed_at', { ascending: true })
-      .limit(1)
-      .single();
-    recipient = sig?.signer_wallet || null;
-
     const { data: signers } = await db
       .from('signatures')
       .select('signer_wallet')
@@ -100,8 +100,24 @@ export async function mintContractNFTAsync(
       .order('signed_at', { ascending: true })
       .limit(2);
 
-    if (signers && signers.length >= 2) {
-      counterpartyWallet = signers[1].signer_wallet;
+    // Last-resort recipient: first signer (only if principal_wallet was also null)
+    if (!recipient) {
+      recipient = signers?.[0]?.signer_wallet || null;
+    }
+
+    // Counterparty = the signer that ISN'T the recipient. Handles the case
+    // where principal_wallet === signers[0] (deployer signed first) — we want
+    // signers[1] as the counterparty, not the recipient duplicated.
+    if (signers && signers.length >= 1) {
+      const other = signers.find(
+        (s) => s.signer_wallet.toLowerCase() !== recipient?.toLowerCase(),
+      );
+      if (other) {
+        counterpartyWallet = other.signer_wallet;
+      } else if (signers.length >= 2) {
+        // All signers match recipient (shouldn't happen); fall back to positional
+        counterpartyWallet = signers[1].signer_wallet;
+      }
     }
   }
 

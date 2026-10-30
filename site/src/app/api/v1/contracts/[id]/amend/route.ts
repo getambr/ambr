@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createContractSchema } from '@/lib/validation/contract-schemas';
 import { validateApiKey } from '@/lib/api-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { rateLimit } from '@/lib/rate-limit';
 import { corsOptions } from '@/lib/cors';
 import { getCurrentHolders } from '@/lib/chain/cnft-holders';
@@ -92,13 +93,11 @@ export async function POST(
   // Lookup original contract — needs the cNFT token IDs to query current holders
   const db = getSupabaseAdmin();
   let query = db.from('contracts').select('id, contract_id, status, sha256_hash, template_id, api_key_id, nft_token_id, nft_counterparty_token_id');
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    query = query.eq('sha256_hash', id);
-  } else {
-    query = query.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  query = query.eq(column, id);
 
   const { data: originalRaw, error: origError } = await query.single();
 

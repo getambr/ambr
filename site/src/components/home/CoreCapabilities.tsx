@@ -6,17 +6,21 @@ const capabilities = [
   {
     title: 'Authorize',
     description:
-      'Define exactly what your agent can do. Spend caps, allowed counterparties, action scopes, time windows. One API call sets the boundaries — your agent cannot cross them.',
+      // Do not write "...sets the boundaries — your agent cannot cross them." That is an
+      // enforcement guarantee, and Ambr holds no key that signs an agent's transactions
+      // (sign/route.ts verifies a signature that arrived already made), so it cannot stop
+      // anything. The same claim stays out of MandateDemo.tsx and MandateSteps.tsx.
+      'Define exactly what your agent can do. Spend caps, allowed counterparties, action scopes, time windows. One API call puts those boundaries on the record — signed and hash-verifiable, so anyone can check whether an action fell inside them.',
     variant: 'dark' as const,
     geoPattern: 'ellipse' as const,
     label: '// STEP.01',
-    meta: 'REF: PERMISSION\nAUTH: ACTIVE',
+    meta: 'REF: MANDATE\nAUTH: ACTIVE',
     footer: { left: 'SET.LIMITS', right: '>_ ENFORCE' },
   },
   {
     title: 'Act',
     description:
-      'When your agent transacts, Ambr issues an agreement both sides can trust — readable by humans, parsable by other agents. No more handshake-by-prompt-injection.',
+      'When your agent transacts, Ambr issues an Agent Mandate both sides can trust — readable by humans, parsable by other agents. No more handshake-by-prompt-injection.',
     variant: 'light' as const,
     geoPattern: 'circle' as const,
     label: '// STEP.02',
@@ -44,7 +48,7 @@ export default function CoreCapabilities() {
         </p>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8 mb-16 pb-8 border-b border-amber/60">
           <h2 className="text-3xl text-background sm:text-4xl lg:text-5xl">Three steps. One API.</h2>
-          <p className="text-[#333] text-lg max-w-xl">Authorize what your agent can do. Let it act inside those rules. Prove every decision afterwards. No legal team required to get started — just an API key.</p>
+          <p className="text-[#333] text-lg max-w-xl">Each step is a single API call — from setting the rules to proving on-chain what your agent actually did. No legal team required to get started.</p>
         </div>
       </ScrollReveal>
 

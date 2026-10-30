@@ -9,10 +9,10 @@ import Button from '@/components/ui/Button';
 export const metadata: Metadata = {
   title: 'Developers | Ambr',
   description:
-    'Ambr API — REST, A2A JSON-RPC, and MCP integration for AI agent contract management.',
+    'Ambr API — REST, A2A JSON-RPC, and MCP integration for deploying and verifying Agent Mandates.',
   ...createOgMetadata({
     title: 'Developers | Ambr',
-    description: 'Ambr API — REST, A2A JSON-RPC, and MCP integration for AI agent contract management.',
+    description: 'Ambr API — REST, A2A JSON-RPC, and MCP integration for deploying and verifying Agent Mandates.',
     path: '/developers',
     label: 'Developers',
     domain: 'getamber.dev',
@@ -25,14 +25,19 @@ export default function DevelopersPage() {
       <SectionWrapper>
         <ScrollReveal>
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <p className="text-sm font-mono uppercase tracking-widest text-amber mb-2">
-              Developers
+            <p className="text-[11px] font-mono uppercase text-amber mb-2" style={{ letterSpacing: '0.3em' }}>
+              § 01 — Developers
             </p>
             <h1 className="text-4xl text-text-primary sm:text-5xl">
               Build on Ambr
             </h1>
-            <p className="mt-4 text-lg text-text-secondary">
-              REST API, A2A JSON-RPC, and MCP integration for AI agent contract management.
+            <p className="mt-4 text-lg text-[#a39b8c]">
+              REST API, A2A JSON-RPC, and MCP integration for deploying and verifying Agent Mandates.
+            </p>
+            <p className="mt-3 text-sm font-mono uppercase" style={{ letterSpacing: '0.14em' }}>
+              <a href="/docs" className="text-amber hover:text-text-primary transition-colors">
+                Concepts &amp; lifecycle → /docs
+              </a>
             </p>
           </div>
         </ScrollReveal>
@@ -50,8 +55,8 @@ export default function DevelopersPage() {
             <h2 className="text-3xl text-text-primary sm:text-4xl lg:text-5xl">
               Start Building
             </h2>
-            <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-              Free developer access — 25 contracts, no payment required.
+            <p className="mt-4 text-[#a39b8c] max-w-xl mx-auto">
+              Free developer access — 500 credits once per verified key, no payment required.
               Full REST API, A2A discovery, and MCP integration.
             </p>
             <div className="mt-8">

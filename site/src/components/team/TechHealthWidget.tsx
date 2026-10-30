@@ -22,6 +22,9 @@ interface HealthData {
     resend: CheckResult
     stripe: CheckResult
     cnft_contract: CheckResult
+    // Admin-only and excluded from the overall roll-up, so this can read
+    // "degraded" while System status stays Healthy. That is intended.
+    inbound_mail?: CheckResult
   }
 }
 
@@ -39,6 +42,7 @@ const CHECK_LABELS: Record<string, { name: string; desc: string }> = {
   resend: { name: 'Resend', desc: 'Outbound email delivery' },
   stripe: { name: 'Stripe', desc: 'Billing & subscriptions' },
   cnft_contract: { name: 'cNFT Contract', desc: 'Base L2 mint contract' },
+  inbound_mail: { name: 'Inbound Mail', desc: 'Company mail reaching the log' },
 }
 
 export function TechHealthWidget() {

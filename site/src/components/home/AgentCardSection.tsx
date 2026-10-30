@@ -1,41 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { Copy, Check, ExternalLink } from 'lucide-react';
-import ScrollReveal from '@/components/ui/ScrollReveal';
+import Reveal from '@/components/ui/Reveal';
+import { useAgentCard } from './useAgentCard';
 
-interface AgentStats {
-  total_contracts_served: number;
-  active_contracts: number;
-  skills_count: number;
-}
-
-interface AgentData {
-  name: string;
-  description: string;
-  url: string;
-  version: string;
-  skills: { id: string; name: string }[];
-  securitySchemes: Record<string, { type: string }>;
-  stats?: AgentStats;
-}
+const serif = { fontFamily: 'var(--font-instrument-serif), serif' } as const;
+const mono = { fontFamily: 'var(--font-jetbrains-mono), monospace' } as const;
 
 /**
- * Homepage section showing the Ambr A2A Agent Card.
- * Fetches live data from /.well-known/agent.json.
- * Positioned between Architecture and Pricing on the marketing site.
+ * Homepage section showing the live Ambr A2A Agent Card.
+ * Fetches live data from /.well-known/agent.json (via useAgentCard).
+ * Editorial styling + balanced 2-col layout match the Mandate* sections
+ * (see MandateDual / MandateDemo).
  */
 export default function AgentCardSection() {
-  const [data, setData] = useState<AgentData | null>(null);
+  const { data, loading, stats } = useAgentCard();
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    fetch('/.well-known/agent.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setData(d); })
-      .catch(() => {});
-  }, []);
 
   function copyUrl() {
     navigator.clipboard.writeText('https://getamber.dev/.well-known/agent.json');
@@ -43,158 +24,132 @@ export default function AgentCardSection() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const stats = data?.stats;
-
   return (
-    <section className="relative py-24 sm:py-32 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+    <section className="relative px-6 py-28 sm:px-10 lg:px-16" style={{ background: '#0a0a0a', color: '#f4f4f0' }}>
+      <div className="mx-auto max-w-[1500px]">
+        <Reveal><div style={{ height: 1, background: 'linear-gradient(to right, rgba(198,168,124,0.45), transparent)' }} /></Reveal>
+        <Reveal delay={0.05}>
+          <p className="mt-6 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>§ 05 — A2A Protocol</p>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <h2 className="mt-5 max-w-3xl" style={{ ...serif, fontSize: 'clamp(2.4rem, 5vw, 4.4rem)', lineHeight: 0.98, letterSpacing: '-0.02em' }}>
+            Discoverable by any AI agent.
+          </h2>
+        </Reveal>
+
+        <div className="mt-14 grid gap-12 lg:grid-cols-2 lg:items-start">
           {/* Left: context */}
-          <ScrollReveal direction="left">
-            <div>
-              <p className="text-micro text-amber mb-3">A2A PROTOCOL</p>
-              <h2
-                className="brass-gradient-text leading-tight mb-6"
-                style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', letterSpacing: '-0.02em' }}
-              >
-                Discoverable by<br />any AI agent.
-              </h2>
-              <p className="text-base text-text-secondary leading-relaxed max-w-lg mb-8">
-                Ambr exposes a standard A2A Agent Card so other agents can find it,
-                check capabilities, and initiate contract workflows — no human
-                intermediary required.
+          <Reveal delay={0.14}>
+            <div className="border-t pt-8 lg:pr-10" style={{ borderColor: 'rgba(198,168,124,0.4)' }}>
+              <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.22em' }}>The discovery surface</p>
+              <h3 className="mt-3" style={{ ...serif, fontSize: 'clamp(1.8rem, 3.2vw, 2.6rem)', lineHeight: 1, color: '#f4f4f0' }}>
+                A public agent identity.
+              </h3>
+              <p className="mt-6 max-w-md text-[15px] leading-relaxed" style={{ color: '#a39b8c' }}>
+                Ambr exposes a standard A2A Agent Card, so other agents can find it, check its capabilities,
+                and initiate mandate workflows. No human intermediary required.
               </p>
-              <div className="flex items-center gap-3">
+              <div className="mt-9 flex flex-wrap items-center gap-6">
                 <a
                   href="/developers"
-                  className="inline-flex items-center gap-2 text-sm text-amber hover:opacity-80 transition-opacity"
+                  data-cursor
+                  className="inline-flex items-center gap-2 text-[12px] uppercase transition-colors hover:text-text-primary"
+                  style={{ ...mono, color: '#c6a87c', letterSpacing: '0.16em' }}
                 >
-                  Integration docs
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  Integration docs <ExternalLink className="h-3.5 w-3.5" />
                 </a>
-                <span className="text-border">|</span>
                 <button
                   onClick={copyUrl}
-                  className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                  className="inline-flex cursor-pointer items-center gap-2 text-[12px] uppercase transition-colors hover:text-text-primary"
+                  style={{ ...mono, color: copied ? '#34D399' : '#8a8170', letterSpacing: '0.16em' }}
                 >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-500">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      Copy discovery URL
-                    </>
-                  )}
+                  {copied ? (<><Check className="h-3.5 w-3.5" /> Copied</>) : (<><Copy className="h-3.5 w-3.5" /> Copy discovery URL</>)}
                 </button>
               </div>
             </div>
-          </ScrollReveal>
+          </Reveal>
 
-          {/* Right: the card */}
-          <ScrollReveal direction="right">
-            <div className="relative max-w-[420px] mx-auto lg:ml-auto">
-              {/* Geometric bg glow */}
-              <div
-                className="absolute -inset-8 opacity-20 pointer-events-none blur-2xl"
-                style={{ background: 'radial-gradient(circle at 50% 50%, #c6a87c33, transparent 70%)' }}
-              />
+          {/* Right: the live A2A card (fills its half) */}
+          <Reveal delay={0.2}>
+            <div className="relative w-full" style={{ background: '#0c0b09', border: '1px solid rgba(198,168,124,0.22)' }}>
+              {/* corner markers */}
+              <span className="pointer-events-none absolute left-2 top-2 h-2.5 w-2.5 border-l border-t" style={{ borderColor: 'rgba(198,168,124,0.5)' }} />
+              <span className="pointer-events-none absolute right-2 top-2 h-2.5 w-2.5 border-r border-t" style={{ borderColor: 'rgba(198,168,124,0.5)' }} />
+              <span className="pointer-events-none absolute bottom-2 left-2 h-2.5 w-2.5 border-b border-l" style={{ borderColor: 'rgba(198,168,124,0.5)' }} />
+              <span className="pointer-events-none absolute bottom-2 right-2 h-2.5 w-2.5 border-b border-r" style={{ borderColor: 'rgba(198,168,124,0.5)' }} />
 
-              <div className="relative rounded-xl border border-amber/20 bg-surface overflow-hidden">
-                {/* Geometric watermark */}
-                <div className="absolute top-0 right-0 w-32 h-32 opacity-[0.06] pointer-events-none">
-                  <svg viewBox="0 0 120 120" fill="none">
-                    <circle cx="60" cy="60" r="50" stroke="#c6a87c" strokeWidth="0.5" />
-                    <ellipse cx="60" cy="60" rx="45" ry="25" stroke="#c6a87c" strokeWidth="0.5" transform="rotate(30 60 60)" />
-                    <ellipse cx="60" cy="60" rx="45" ry="25" stroke="#c6a87c" strokeWidth="0.5" transform="rotate(-30 60 60)" />
-                    <circle cx="60" cy="60" r="8" fill="#c6a87c" />
-                  </svg>
-                </div>
-
-                {/* Inner frame */}
-                <div className="m-2 border border-amber/10 rounded-lg p-6 relative">
-                  {/* Corner dots */}
-                  <span className="absolute -top-px -left-px w-1.5 h-1.5 border-t border-l border-amber/30" />
-                  <span className="absolute -top-px -right-px w-1.5 h-1.5 border-t border-r border-amber/30" />
-                  <span className="absolute -bottom-px -left-px w-1.5 h-1.5 border-b border-l border-amber/30" />
-                  <span className="absolute -bottom-px -right-px w-1.5 h-1.5 border-b border-r border-amber/30" />
-
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-5">
-                    <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-amber">A2A Agent Card</span>
-                    <motion.div
-                      className="flex items-center gap-1.5"
-                      animate={{ opacity: [0.7, 1, 0.7] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                    >
-                      <span
-                        className="w-[5px] h-[5px] rounded-full bg-emerald-500"
-                        style={{ boxShadow: '0 0 6px rgba(52,211,153,0.4)' }}
-                      />
-                      <span className="text-[9px] text-emerald-500">Live</span>
-                    </motion.div>
-                  </div>
-
-                  {/* Name */}
-                  <h3 className="text-3xl font-serif text-text-primary mb-1">
-                    {data?.name || 'Ambr'}
-                  </h3>
-                  <p className="text-xs text-text-secondary mb-5">
-                    {data ? data.description.split('.')[0] + '.' : 'Legal framework for AI agents.'}
-                  </p>
-
-                  {/* Divider */}
-                  <div className="h-px mb-5" style={{ background: 'linear-gradient(to right, rgba(198,168,124,0.2), transparent)' }} />
-
-                  {/* Stats */}
-                  <div className="flex gap-8 mb-5">
-                    <div>
-                      <div className="text-xl text-amber font-light">{stats?.total_contracts_served ?? '--'}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.1em] text-text-secondary">Contracts</div>
-                    </div>
-                    <div>
-                      <div className="text-xl text-text-primary font-light">{stats?.skills_count ?? 6}</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.1em] text-text-secondary">Skills</div>
-                    </div>
-                    <div>
-                      <div className="text-xl text-emerald-500 font-light">A2A</div>
-                      <div className="text-[8px] font-mono uppercase tracking-[0.1em] text-text-secondary">Protocol</div>
-                    </div>
-                  </div>
-
-                  {/* Skills */}
-                  {data && (
-                    <div className="flex flex-wrap gap-1.5 mb-5">
-                      {data.skills.map((s) => (
-                        <span key={s.id} className="px-2 py-0.5 border border-border rounded text-[9px] font-mono text-text-secondary">
-                          {s.id}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Auth */}
-                  <div className="flex gap-1.5">
-                    <span className="px-2 py-0.5 border border-amber/20 rounded text-[9px] font-mono text-amber">API Key</span>
-                    <span className="px-2 py-0.5 border border-amber/20 rounded text-[9px] font-mono text-amber">x402 USDC</span>
-                    <span className="px-2 py-0.5 border border-border rounded text-[9px] font-mono text-text-secondary">jsonrpc/http</span>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-2.5 flex items-center justify-between">
-                  <span className="text-[9px] font-mono text-text-secondary/40">
-                    getamber.dev/.well-known/agent.json
+              <div className="p-8 sm:p-10">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase" style={{ ...mono, color: '#8a8170', letterSpacing: '0.2em' }}>A2A Agent Card</span>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] uppercase" style={{ ...mono, color: '#34D399', letterSpacing: '0.16em' }}>
+                    <span className="inline-block h-[6px] w-[6px] rounded-full" style={{ background: '#34D399', boxShadow: '0 0 7px rgba(52,211,153,0.6)' }} aria-hidden />
+                    Live
                   </span>
-                  <span className="text-[9px] font-mono text-text-secondary/30">v{data?.version || '1.0.0'}</span>
+                </div>
+
+                {/* Name + description */}
+                <h3 className="mt-6" style={{ ...serif, fontSize: 'clamp(1.6rem, 2.4vw, 2.3rem)', color: '#f4f4f0', lineHeight: 1 }}>
+                  {data?.name || 'Ambr'}
+                </h3>
+                <p className="mt-2 max-w-md text-[13px] leading-relaxed" style={{ color: '#a39b8c' }}>
+                  {data ? data.description.split('.')[0] + '.' : 'The liability record for autonomous agents.'}
+                </p>
+
+                {/* Divider */}
+                <div className="my-7" style={{ height: 1, background: 'linear-gradient(to right, rgba(198,168,124,0.28), transparent)' }} />
+
+                {/* Stats */}
+                <div className="flex gap-12">
+                  <Stat label="Contracts" loading={loading} value={(stats?.total_contracts_served ?? 0).toLocaleString()} color="#c6a87c" />
+                  <Stat label="Skills" loading={loading} value={String(stats?.skills_count ?? 6)} color="#f4f4f0" />
+                  <div>
+                    <div style={{ ...serif, fontSize: '1.7rem', color: '#34D399', lineHeight: 1 }}>A2A</div>
+                    <div className="mt-1.5 text-[10px] uppercase" style={{ ...mono, color: '#8a8170', letterSpacing: '0.16em' }}>Protocol</div>
+                  </div>
+                </div>
+
+                {/* Skills */}
+                {data && (
+                  <div className="mt-7 flex flex-wrap gap-1.5">
+                    {data.skills.map((s) => (
+                      <span key={s.id} className="px-2.5 py-1 text-[10px]" style={{ ...mono, color: '#8a8170', border: '1px solid rgba(198,168,124,0.18)' }}>{s.id}</span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Auth */}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="px-2.5 py-1 text-[10px]" style={{ ...mono, color: '#c6a87c', border: '1px solid rgba(198,168,124,0.3)' }}>API Key</span>
+                  <span className="px-2.5 py-1 text-[10px]" style={{ ...mono, color: '#c6a87c', border: '1px solid rgba(198,168,124,0.3)' }}>x402 USDC</span>
+                  <span className="px-2.5 py-1 text-[10px]" style={{ ...mono, color: '#8a8170', border: '1px solid rgba(198,168,124,0.18)' }}>jsonrpc/http</span>
                 </div>
               </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between border-t px-8 py-3.5 sm:px-10" style={{ borderColor: 'rgba(198,168,124,0.14)' }}>
+                <span className="text-[10px]" style={{ ...mono, color: '#6f675b' }}>getamber.dev/.well-known/agent.json</span>
+                <span className="text-[10px]" style={{ ...mono, color: '#6f675b' }}>v{data?.version || '1.0.0'}</span>
+              </div>
             </div>
-          </ScrollReveal>
+          </Reveal>
         </div>
       </div>
     </section>
+  );
+}
+
+function Stat({ label, value, loading, color }: { label: string; value: string; loading: boolean; color: string }) {
+  return (
+    <div>
+      <div style={{ ...serif, fontSize: '1.7rem', color, lineHeight: 1 }}>
+        {loading ? (
+          <span className="inline-block h-5 w-8 animate-pulse align-middle" style={{ background: 'rgba(198,168,124,0.15)' }} aria-hidden />
+        ) : (
+          value
+        )}
+      </div>
+      <div className="mt-1.5 text-[10px] uppercase" style={{ ...mono, color: '#8a8170', letterSpacing: '0.16em' }}>{label}</div>
+    </div>
   );
 }

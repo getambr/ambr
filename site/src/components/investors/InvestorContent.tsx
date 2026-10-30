@@ -63,18 +63,18 @@ export default async function InvestorContent() {
       <div className="mx-auto max-w-5xl px-6 py-12 space-y-16">
         {/* ───── Hero + Ask ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             Investor Package
           </p>
           <h1 className="text-4xl sm:text-5xl text-text-primary font-serif leading-tight mb-4">
-            The Contracts Layer for the AI Agent Economy
+            The Agent Mandate &amp; Binding Registry
           </h1>
           <p className="text-lg text-text-secondary leading-relaxed max-w-3xl mb-8">
             {figures.hero}
           </p>
 
           <div className="border border-amber/60 bg-amber/5 p-6 max-w-2xl">
-            <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
+            <p className="text-micro mb-2">
               The Ask
             </p>
             <p className="text-3xl text-text-primary font-serif mb-2">
@@ -90,7 +90,7 @@ export default async function InvestorContent() {
 
         {/* ───── Live traction ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             Live System · Production
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">Production-live since March 2026</h2>
@@ -98,7 +98,10 @@ export default async function InvestorContent() {
           <div className="border border-amber/30 bg-surface/80 p-5 space-y-3 text-sm text-text-secondary leading-relaxed">
             <p>
               <strong className="text-text-primary">Contract engine, MCP server, x402 paywall, and cNFT minting on Base mainnet</strong> are all live in production today.
-              <span className="text-text-secondary/70">{' '}{stats.templates_available} Ricardian contract templates ship as the v0.3.9 baseline — discoverable over MCP, signable in the browser, redeemable on-chain.</span>
+              {/* No document version here. "v0.3.9" is a pitch-deck FILENAME, as v0.3.8/v0.6
+                  are model filenames — document versions, never product versions. If a version is
+                  ever wanted, it must be a real repo release tag. */}
+              <span className="text-text-secondary/70">{' '}{stats.templates_available} Ricardian contract templates are live on Base mainnet — discoverable over MCP, signable in the browser, redeemable on-chain.</span>
             </p>
             <p>
               MCP endpoint (<code className="text-amber font-mono text-xs">getamber.dev/api/mcp</code>) receiving high-volume crawler + agent-directory traffic.
@@ -110,63 +113,145 @@ export default async function InvestorContent() {
           </div>
         </section>
 
+        {/* ───── One-pager ─────
+            Sits ABOVE the deck deliberately: this is the forwardable artefact,
+            and it read in 90 seconds where the deck takes 15 minutes. It was
+            live and gated for a while with nothing linking to it — the only way
+            in was knowing the URL. Do not remove the link when reordering. */}
+        <section>
+          <p className="text-micro mb-3">
+            One-pager
+          </p>
+          <h2 className="text-2xl text-text-primary font-serif mb-4">
+            The 90-second version
+          </h2>
+          <p className="text-sm text-text-secondary leading-relaxed max-w-2xl mb-6">
+            What Ambr is, where it stands, the ask, and the liquidity path — on a single
+            forwardable page, in plain language and behind no gate.
+          </p>
+          <div className="flex gap-3 flex-wrap items-center">
+            <a
+              href="/what-it-is"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block rounded-none bg-amber px-5 py-2.5 text-xs font-mono uppercase tracking-wide text-background hover:bg-amber-light transition-colors"
+            >
+              Read the one-pager
+            </a>
+            {/* There is deliberately no secondary "Detailed brief" link: one link
+                is enough on this section.
+                Consequence, recorded rather than argued: the gated brief at
+                /investors/brief and /api/v1/investors/onepager is reachable
+                ONLY by knowing the URL. That is intentional: do not "fix" it by
+                re-adding a button without asking. */}
+            <span className="text-xs text-text-secondary/60 font-mono">1 page · open link</span>
+          </div>
+        </section>
+
         {/* ───── Pitch deck ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             {figures.deck.tag}
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
             {figures.deck.title}
           </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-2">
-            {/* What's inside — 8 bullets, left side */}
-            <div className="lg:col-span-3">
-              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-amber/80 mb-3">
+          {/* items-stretch so the preview column matches the index height rather
+              than leaving a void under a single 16:9 thumbnail. */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-2 items-stretch">
+            {/* Contents index — reads as a table of contents, not a paragraph blob */}
+            <div className="lg:col-span-3 flex flex-col">
+              <p className="text-micro mb-4">
                 What&apos;s inside
               </p>
-              <ul className="space-y-2 text-sm text-text-secondary leading-relaxed">
+              <dl className="border-t border-border-subtle">
                 {figures.deck.insideBullets.map((b) => (
-                  <li key={b.label}><strong className="text-text-primary">{b.label}</strong> — {b.body}</li>
+                  <div key={b.label} className="grid grid-cols-1 sm:grid-cols-4 gap-x-4 gap-y-1 border-b border-border-subtle py-3">
+                    <dt className="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-amber sm:pt-0.5">
+                      {b.label}
+                    </dt>
+                    <dd className="sm:col-span-3 text-[0.82rem] text-text-secondary leading-relaxed">
+                      {b.body}
+                    </dd>
+                  </div>
                 ))}
-              </ul>
+              </dl>
 
               <div className="mt-6 flex gap-3 flex-wrap items-center">
                 <a
                   href="/api/v1/investors/deck"
                   download={figures.deck.pdfFilename}
-                  className="inline-block rounded-none bg-amber px-5 py-2.5 text-xs font-mono uppercase tracking-wide text-background hover:bg-amber-light transition-colors"
+                  /* border-transparent, not no border: the phone-version button
+                     beside this one carries a 1px border, so without a matching
+                     box this sits 2px shorter than its neighbour. */
+                  className="inline-block rounded-none border border-transparent bg-amber px-5 py-2.5 text-xs font-mono uppercase tracking-wide text-background hover:bg-amber-light transition-colors"
                 >
                   Download Full Briefing (PDF · {figures.deck.slideCount} slides)
                 </a>
-                <span className="text-xs text-text-secondary/60 font-mono">~570 KB</span>
+                {/* Same 14 topics at 405x720pt. Labelled "phone version" rather
+                    than "mobile" because the reader is usually ON the phone they
+                    got the email on — the label has to answer "which do I tap",
+                    not describe a format. The landscape deck fits a ~390px screen
+                    at 0.41x, which puts its body copy at 4-6pt. */}
+                <a
+                  href="/api/v1/investors/deck/mobile"
+                  download="ambr-pitch-deck-mobile.pdf"
+                  className="inline-block rounded-none border border-amber/50 px-5 py-2.5 text-xs font-mono uppercase tracking-wide text-amber hover:bg-amber/10 transition-colors"
+                >
+                  Phone version
+                </a>
+                <span className="text-xs text-text-secondary/60 font-mono">~1 MB</span>
               </div>
             </div>
 
-            {/* Hero slide preview — right side, slide 1 cover */}
-            <div className="lg:col-span-2">
-              <figure className="border border-amber/40 bg-surface overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/api/v1/investors/slide/1"
-                  alt="Ambr pitch deck · cover"
-                  loading="eager"
-                  decoding="async"
-                  className="block w-full h-auto"
-                  width={1280}
-                  height={720}
-                />
-                <figcaption className="px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-amber/70 border-t border-amber/20">
-                  briefing cover · slide 1 / {figures.deck.slideCount}
-                </figcaption>
-              </figure>
+            {/* Preview column — three slides rather than one, so the column fills
+                the index's height honestly instead of cropping a 16:9 frame into
+                a tall box. Cover / market / liquidity is the narrative spine. */}
+            <div className="lg:col-span-2 flex flex-col gap-4 justify-between">
+              {[
+                { n: 1, caption: 'briefing cover' },
+                { n: 6, caption: 'the curve · market' },
+                { n: 13, caption: 'the ask · exit or hold' },
+              ].map((s) => (
+                <figure key={s.n} className="border border-amber/40 bg-surface overflow-hidden">
+                  {/* The source PNG is 1280x720 but renders here ~370px wide, so
+                      the deck's 10-15px body copy lands at 3-4px and is simply
+                      unreadable. Link each preview to the full-size image (the
+                      route stays gated, so this is not a bypass) and say so in
+                      the caption — without the affordance they read as static
+                      decoration, which is exactly the feedback we got. */}
+                  <a
+                    href={`/api/v1/investors/slide/${s.n}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open slide ${s.n} full size — ${s.caption}`}
+                    className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-amber/70"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/v1/investors/slide/${s.n}`}
+                      alt={`Ambr pitch deck · ${s.caption}`}
+                      loading={s.n === 1 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      className="block w-full h-auto opacity-90 transition-opacity duration-200 group-hover:opacity-100"
+                      width={1280}
+                      height={720}
+                    />
+                  </a>
+                  <figcaption className="flex items-center justify-between gap-2 px-3 py-1.5 font-mono text-[0.62rem] uppercase tracking-wider text-amber/70 border-t border-amber/20">
+                    <span>{s.caption} · slide {s.n} / {figures.deck.slideCount}</span>
+                    <span className="text-amber/50">enlarge ↗</span>
+                  </figcaption>
+                </figure>
+              ))}
             </div>
           </div>
         </section>
 
         {/* ───── Markets we serve ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             Markets we serve
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
@@ -202,23 +287,75 @@ export default async function InvestorContent() {
             <MarketCard
               label="Travel + subscription-heavy verticals"
               summary="Travel-tech, hospitality, subscription aggregators. Agents book and pay under user-defined rules."
-              hook="Fine-grained consent + revocation · recurring A2C flows · authorization legible to the merchant side."
+              hook="Fine-grained consent + revocation · recurring Personal-tier flows · authorization legible to the merchant side."
             />
           </div>
 
           <p className="mt-6 text-xs text-text-secondary/60 leading-relaxed">
-            Ambr is the contract layer. It sits between an agent and a counterparty (consumer, merchant, or another agent) and turns &ldquo;the agent did this&rdquo; into a redeemable, replayable, auditable record. The verticals above are the surfaces where that record is most needed first.
+            Ambr is the Agent Mandate &amp; Binding Registry. It sits between an agent and a counterparty (consumer, merchant, or another agent) and turns &ldquo;the agent did this&rdquo; into a redeemable, replayable, auditable record. The verticals above are the surfaces where that record is most needed first.
           </p>
         </section>
 
         {/* ───── Financial highlights ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             {figures.model.tag}
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
             {figures.model.title}
           </h2>
+
+          {figures.model.scenarioNote && (
+            <div className="border border-amber/40 bg-amber/5 p-5 mb-6">
+              <p className="text-micro mb-2">
+                Published floor · mapped upside
+              </p>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {figures.model.scenarioNote}
+              </p>
+            </div>
+          )}
+
+          {figures.model.tiers && figures.model.tiers.length > 0 && (
+            <div className="border border-amber/25 bg-surface/60 p-5 mb-6">
+              <p className="text-micro mb-4">
+                The scenario staircase · 2028 exit run-rate, and what unlocks each step
+              </p>
+              <div className="space-y-0">
+                {figures.model.tiers.map((tier) => (
+                  <div
+                    key={tier.name}
+                    className={`flex items-baseline justify-between gap-4 border-t py-3 ${
+                      tier.published ? 'border-amber/60 bg-amber/5 px-3 -mx-3' : 'border-amber/15'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-micro">
+                        {tier.name}
+                        {tier.published && (
+                          <span className="ml-2 border border-amber/50 px-1.5 py-0.5 text-[9px] text-amber">
+                            THIS PAGE
+                          </span>
+                        )}
+                        {tier.cashBasis && (
+                          <span className="ml-2 border border-amber px-1.5 py-0.5 text-[9px] text-background bg-amber">
+                            CASH-PLAN BASIS
+                          </span>
+                        )}
+                        {tier.buffered && (
+                          <span className="ml-2 border border-amber/40 px-1.5 py-0.5 text-[9px] text-amber/80">
+                            CAPITALIZED BY THE FULL {figures.ask.round}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-text-secondary mt-1">{tier.driver}</p>
+                    </div>
+                    <p className="shrink-0 text-2xl text-text-primary font-serif">{tier.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <FinancialYearCard {...figures.model.years.y1} />
@@ -226,38 +363,71 @@ export default async function InvestorContent() {
             <FinancialYearCard {...figures.model.years.y3} />
           </div>
 
+          {figures.model.reconciliation2028 && (
+            <p className="font-mono text-[11px] text-text-secondary/70 -mt-3 mb-6">
+              {figures.model.reconciliation2028}
+            </p>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="border border-amber/40 bg-amber/5 p-5">
-              <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
+              <p className="text-micro mb-2">
                 M36 Exit ARR
               </p>
               <p className="text-3xl text-text-primary font-serif">{figures.model.m36Arr}</p>
               <p className="text-xs text-text-secondary mt-1">year-3 exit run-rate</p>
             </div>
             <div className="border border-amber/30 bg-surface/80 p-5">
-              <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
-                3-yr Cumulative EBITDA
+              <p className="text-micro mb-2">
+                3-yr Cumulative Net Income
               </p>
-              <p className="text-3xl text-text-primary font-serif">{figures.model.cumulativeEbitda}</p>
+              <p className="text-3xl text-text-primary font-serif">{figures.model.cumulativeNetIncome}</p>
             </div>
             <div className="border border-amber/30 bg-surface/80 p-5">
-              <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">
+              <p className="text-micro mb-2">
                 Peak Monthly Burn
               </p>
               <p className="text-3xl text-text-primary font-serif">{figures.model.peakBurn}</p>
+              <p className="text-xs text-text-secondary mt-1">BASE scenario</p>
             </div>
           </div>
+
+          {figures.model.cashflowNote && (
+            <div className="border-2 border-amber bg-amber/10 p-5 mb-6">
+              <p className="text-micro mb-2">
+                ▲ Cash-flow basis · BASE, buffered to LOW
+              </p>
+              <p className="text-sm text-text-primary leading-relaxed">
+                {figures.model.cashflowNote}
+              </p>
+            </div>
+          )}
 
           <div className="border border-amber/20 bg-surface/50 p-4">
             <p className="text-xs text-text-secondary leading-relaxed">
               {figures.model.assumptions}
             </p>
           </div>
+
+          {figures.deck.modelButtonLabel && (
+            <div className="mt-5 flex items-center gap-3 flex-wrap">
+              <a
+                href="/api/v1/investors/model"
+                download={figures.deck.modelFilename}
+                className="inline-block rounded-none border border-amber/60 px-5 py-2.5 text-xs font-mono uppercase tracking-wide text-amber hover:bg-amber hover:text-background transition-colors"
+              >
+                {figures.deck.modelButtonLabel}
+              </a>
+              <span className="text-xs text-text-secondary/60 font-mono">
+                full five-tier engine · Scenarios &amp; Ambition tabs
+              </span>
+            </div>
+          )}
         </section>
 
         {/* ───── Pricing ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             Unit Economics
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
@@ -276,43 +446,33 @@ export default async function InvestorContent() {
 
         {/* ───── Team ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
-            Team · OMRA Corp. (Delaware)
+          <p className="text-micro mb-3">
+            Team
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
             Three founders, aligned equity
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <TeamCard
-              name="Dainis Krisjanis"
-              role="CEO"
-              detail="Corporate governance, finance, strategy. OMRA Corp. CEO."
-            />
-            <TeamCard
-              name="Ilvers Sermols"
-              role="CTO"
-              detail="Product + engineering. Built Ambr contract engine, MCP server, x402 integration."
-            />
-            <TeamCard
-              name="Bruno Krisjanis"
-              role="CBO"
-              detail="Operations + go-to-market. Drives partnerships, customer onboarding, and revenue."
-            />
+            {figures.team.map((m) => (
+              <TeamCard key={m.name} name={m.name} role={m.role} detail={m.detail} />
+            ))}
           </div>
         </section>
 
         {/* ───── What's live ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             Shipping Log
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">Recently deployed</h2>
 
           <ul className="space-y-3 text-sm text-text-secondary">
-            <li>
-              <strong className="text-text-primary font-mono text-xs">v0.3.9 · May 2026</strong> — Investor package v0.3.9 (16-slide briefing) · pricing reconciliation · A2A agent card live on /.well-known/agent.json · Founder Program live on /founders
-            </li>
+            {figures.deckLog.map((d) => (
+              <li key={d.version}>
+                <strong className="text-text-primary font-mono text-xs">{d.version} · {d.date}</strong> — {d.body}
+              </li>
+            ))}
             <li>
               <strong className="text-text-primary font-mono text-xs">v0.3.0 · Apr 2026</strong> — MCP x402 paywall, Stripe live, dashboard billing panel, pricing realignment, Founder Program
             </li>
@@ -339,7 +499,7 @@ export default async function InvestorContent() {
 
         {/* ───── Contact ───── */}
         <section>
-          <p className="font-mono text-xs uppercase tracking-widest text-amber mb-3">
+          <p className="text-micro mb-3">
             Next Steps
           </p>
           <h2 className="text-2xl text-text-primary font-serif mb-6">
@@ -376,9 +536,9 @@ export default async function InvestorContent() {
         {/* ───── Footer ───── */}
         <footer className="border-t border-amber/20 pt-6 text-center">
           <p className="font-mono text-xs text-text-secondary/60 mb-2">
-            Ambr is contract infrastructure, not a law firm. Generated contracts are not legal advice.
+            Ambr is the Agent Mandate &amp; Binding Registry &mdash; infrastructure, not a law firm. Generated contracts are not legal advice.
           </p>
-          <p className="font-mono text-xs text-amber/70 tracking-widest uppercase">
+          <p className="text-micro text-amber/70">
             ambr · confidential · {today}
           </p>
         </footer>
@@ -402,7 +562,7 @@ function StatCard({
 }) {
   return (
     <div className="border border-amber/30 bg-surface/80 p-4">
-      <p className="font-mono text-[0.65rem] uppercase tracking-wider text-amber/80">{label}</p>
+      <p className="text-micro">{label}</p>
       <p className="text-3xl font-serif text-text-primary mt-2">{value}</p>
       {sublabel && <p className="text-xs text-text-secondary mt-1">{sublabel}</p>}
     </div>
@@ -424,7 +584,7 @@ function FinancialYearCard({
 }) {
   return (
     <div className="border border-amber/40 bg-surface/80 p-5">
-      <p className="font-mono text-xs uppercase tracking-wider text-amber mb-3">{label}</p>
+      <p className="text-micro mb-3">{label}</p>
       <p className="text-2xl text-text-primary font-serif mb-1">{revenue}</p>
       <p className="text-sm text-text-secondary">Revenue</p>
       <div className="mt-3 pt-3 border-t border-amber/20">
@@ -439,7 +599,7 @@ function FinancialYearCard({
 function PricingCard({ tier, price, note }: { tier: string; price: string; note: string }) {
   return (
     <div className="border border-amber/30 bg-surface/80 p-4 text-center">
-      <p className="font-mono text-[0.65rem] uppercase tracking-wider text-amber/80 mb-2">{tier}</p>
+      <p className="text-micro mb-2">{tier}</p>
       <p className="text-2xl font-serif text-text-primary">{price}</p>
       <p className="text-xs text-text-secondary/70 mt-1">{note}</p>
     </div>
@@ -449,7 +609,7 @@ function PricingCard({ tier, price, note }: { tier: string; price: string; note:
 function TeamCard({ name, role, detail }: { name: string; role: string; detail: string }) {
   return (
     <div className="border border-amber/30 bg-surface/80 p-5">
-      <p className="font-mono text-xs uppercase tracking-wider text-amber mb-2">{role}</p>
+      <p className="text-micro mb-2">{role}</p>
       <h3 className="text-lg text-text-primary font-serif mb-2">{name}</h3>
       <p className="text-xs text-text-secondary leading-relaxed">{detail}</p>
     </div>
@@ -459,7 +619,7 @@ function TeamCard({ name, role, detail }: { name: string; role: string; detail: 
 function MarketCard({ label, summary, hook }: { label: string; summary: string; hook: string }) {
   return (
     <div className="border border-amber/30 bg-surface/80 p-5">
-      <p className="font-mono text-xs uppercase tracking-wider text-amber mb-3">{label}</p>
+      <p className="text-micro mb-3">{label}</p>
       <p className="text-sm text-text-primary leading-relaxed mb-3">{summary}</p>
       <p className="text-xs text-text-secondary/80 leading-relaxed italic">{hook}</p>
     </div>

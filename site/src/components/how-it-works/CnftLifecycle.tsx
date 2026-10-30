@@ -35,12 +35,12 @@ export default function CnftLifecycle() {
   return (
     <div>
       <div className="mb-12">
-        <p className="text-micro-dark mb-2">Lifecycle</p>
-        <h3 className="text-3xl text-background lg:text-5xl mb-4">
+        <p className="text-micro mb-2">Lifecycle</p>
+        <h3 className="text-3xl text-text-primary lg:text-5xl mb-4">
           Contract Lifecycle
         </h3>
-        <p className="text-[#333] max-w-xl">
-          From creation to activation — every step is cryptographically
+        <p className="text-[#a39b8c] max-w-xl">
+          From draft to activation, every step is cryptographically
           verifiable. Full contract text is private by default.
         </p>
       </div>

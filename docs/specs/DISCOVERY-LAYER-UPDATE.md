@@ -76,7 +76,7 @@ p3-rental-settlement: Rental or Settlement Agreement — Dual-mode template. $0.
 
 ## 3. MCP tools — AUTOMATIC (no manual change needed)
 
-The MCP server at `site/src/app/api/mcp/route.ts` reads templates from the database via `ambr_list_templates`. When new templates are INSERT'd into the `templates` table (via seed-data.ts), they automatically appear in:
+The MCP server at `site/src/app/api/mcp/route.ts` reads templates from the database via `ambr_list_templates`. When new templates are INSERT'd into the `templates` table (via a templates migration under `site/supabase/migrations/`), they automatically appear in:
 
 - `tools/list` response (new templates visible to MCP clients)
 - `ambr_create_contract` tool (accepts new slugs)

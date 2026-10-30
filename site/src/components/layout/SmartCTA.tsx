@@ -33,13 +33,19 @@ export default function SmartCTA({
     }
   }, []);
 
+  // When the user already has a dashboard session, the static nav in
+  // Navigation.tsx already shows a "Dashboard" link — rendering SmartCTA
+  // here too produced a duplicate (reported 2026-05-26 morning). Return
+  // null in that case; visitors without a session still see "Get Started".
+  if (hasSession) return null;
+
   return (
     <Link
-      href={hasSession ? '/dashboard' : '/activate'}
+      href="/activate"
       onClick={onClick}
       className={className}
     >
-      {hasSession ? 'Dashboard' : 'Get Started'}
+      Get an API key
     </Link>
   );
 }

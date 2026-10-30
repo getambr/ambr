@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import AmbrMark from '@/components/ui/AmbrMark';
 import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import SmartCTA from './SmartCTA';
 
 const marketingLinks = [
@@ -28,6 +28,7 @@ interface MobileMenuProps {
 
 export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     if (isOpen) {
@@ -56,16 +57,16 @@ export default function MobileMenu({ isOpen, onClose, currentPath }: MobileMenuP
           role="dialog"
           aria-modal="true"
           aria-label="Navigation menu"
-          initial={{ opacity: 0, x: '100%' }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: '100%' }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          initial={reduce ? { opacity: 0 } : { opacity: 0, x: '100%' }}
+          animate={reduce ? { opacity: 1 } : { opacity: 1, x: 0 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, x: '100%' }}
+          transition={reduce ? { duration: 0 } : { duration: 0.3, ease: 'easeInOut' }}
           className="fixed inset-0 z-[60] bg-[#0a0a0a] flex flex-col"
         >
           <div className="absolute inset-0 grid-bg grid-bg-dark opacity-30 pointer-events-none" />
           <div className="relative z-10 flex h-16 items-center justify-between px-4">
             <div className="flex items-center gap-2">
-              <Image src="/logo.png" alt="" width={32} height={32} className="rounded-sm" />
+              <AmbrMark size={32} className="shrink-0" />
               <span className="text-xl font-serif text-amber">Ambr</span>
             </div>
             <button

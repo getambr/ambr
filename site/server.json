@@ -3,9 +3,9 @@
   "name": "io.github.getambr/ambr-mcp-server",
   "title": "Ambr",
   "description": "Ricardian contracts for AI agents — dual-format, SHA-256 bound, legible by construction.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "repository": {
-    "url": "https://github.com/getambr/site",
+    "url": "https://github.com/getambr/ambr",
     "source": "github"
   },
   "websiteUrl": "https://ambr.run",
@@ -26,7 +26,8 @@
       "llmsTxt": "https://ambr.run/llms.txt",
       "auth": ["api_key", "x402"],
       "protocols": ["a2a", "mcp"],
-      "freeTierPerMonth": 25
+      "freeTierCredits": 500,
+      "creditUnit": "cent"
     }
   }
 }

@@ -44,9 +44,10 @@ try {
   await ambr.createAgreement(input);
 } catch (e) {
   if (e instanceof PaymentRequiredError) {
-    // e.paymentInfo holds the x402 payment requirements.
-    // Build your x402 payment, then retry with the payment header:
-    await ambr.createAgreement(input, { extraHeaders: { 'X-PAYMENT': paymentProof } });
+    // e.paymentInfo holds the x402 payment requirements (the 402 also carries a
+    // PAYMENT-REQUIRED header). Sign the payment with a standard x402 v2 client
+    // (e.g. @x402/fetch), then retry with the PAYMENT-SIGNATURE header:
+    await ambr.createAgreement(input, { extraHeaders: { 'PAYMENT-SIGNATURE': paymentSignature } });
   }
 }
 ```
@@ -97,7 +98,7 @@ const parsed = parseContractGated402(await res.json());
 if (parsed) {
   const { payment, agreement } = parsed;
   const terms = (await new AmbrClient().getStatus(agreement.hash)).bindingTerms;
-  // pay per `payment`, accept `agreement`, then retry with X-Payment + acceptance
+  // pay per `payment`, accept `agreement`, then retry with PAYMENT-SIGNATURE + acceptance
 }
 ```
 

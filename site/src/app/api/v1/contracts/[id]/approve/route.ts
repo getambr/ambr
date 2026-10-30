@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { validateApiKey } from '@/lib/api-auth';
-import { verifyMessage } from 'ethers';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { corsOptions } from '@/lib/cors';
+import { resolveApprovalCredential } from '@/lib/approval-auth';
 
 export const runtime = 'nodejs';
 
@@ -37,16 +38,16 @@ export async function POST(
   const db = getSupabaseAdmin();
 
   // Lookup contract
-  const isHash = /^[a-f0-9]{64}$/i.test(id);
-  const isContractId = id.startsWith('amb-');
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
+  }
 
   let query = db
     .from('contracts')
-    .select('id, contract_id, status, sha256_hash, api_key_id, principal_approval_required, oversight_threshold_usd');
+    .select('id, contract_id, status, sha256_hash, api_key_id, principal_approval_required, oversight_threshold_usd, principal_wallet, principal_declaration');
 
-  if (isContractId) query = query.eq('contract_id', id);
-  else if (isHash) query = query.eq('sha256_hash', id);
-  else query = query.eq('id', id);
+  query = query.eq(column, id);
 
   const { data: contract, error: lookupError } = await query.single();
 
@@ -68,51 +69,68 @@ export async function POST(
   }
 
   // --- Authorization ---
-  let approvedBy: string;
-
-  // Path 1: API key (contract creator)
+  // The decision, and the reasoning behind it, live in lib/approval-auth.ts
+  // alongside their regression tests. This block only gathers the facts.
   const apiCtx = await validateApiKey(request);
-  if (apiCtx && contract.api_key_id === apiCtx.keyId) {
-    approvedBy = `api_key:${apiCtx.email}`;
-  }
-  // Path 2: Wallet signature
-  else if (body?.wallet_address && body?.signature && body?.message) {
-    try {
-      const recovered = verifyMessage(body.message, body.signature).toLowerCase();
-      if (recovered !== body.wallet_address.toLowerCase()) {
-        return NextResponse.json(
-          { error: 'signature_mismatch', message: 'Signature does not match wallet address' },
-          { status: 401 },
-        );
-      }
-      approvedBy = `wallet:${recovered}`;
-    } catch {
-      return NextResponse.json(
-        { error: 'invalid_signature', message: 'Failed to verify wallet signature' },
-        { status: 401 },
-      );
-    }
-  } else {
+
+  // Wallets proven to belong to the account that owns this contract. This is the
+  // entitled set; contracts.principal_wallet alone is not safe to trust, because
+  // contract-engine falls back to the AGENT's address when populating it.
+  const { data: boundWallets } = contract.api_key_id
+    ? await db
+        .from('account_wallets')
+        .select('wallet_address')
+        .eq('api_key_id', contract.api_key_id)
+    : { data: [] as { wallet_address: string }[] };
+
+  const declaration = (contract.principal_declaration ?? {}) as { agent_id?: string };
+
+  const decision = resolveApprovalCredential(
+    {
+      contractHash: contract.sha256_hash,
+      contractApiKeyId: contract.api_key_id,
+      caller: apiCtx ? { keyId: apiCtx.keyId, email: apiCtx.email } : null,
+      signed:
+        body?.wallet_address && body?.signature && body?.message
+          ? {
+              walletAddress: String(body.wallet_address),
+              signature: String(body.signature),
+              message: String(body.message),
+            }
+          : null,
+    },
+    {
+      accountWallets: (boundWallets ?? []).map((w) => w.wallet_address),
+      contractPrincipalWallet: contract.principal_wallet ?? null,
+      agentWallet: declaration.agent_id ?? null,
+      callerDelegatedWallet: apiCtx?.principalWallet ?? null,
+    },
+  );
+
+  if (!decision.ok) {
     return NextResponse.json(
-      {
-        error: 'unauthorized',
-        message: 'Approval requires API key (X-API-Key header) or wallet signature (wallet_address + signature + message in body)',
-      },
-      { status: 401 },
+      { error: decision.error, message: decision.message },
+      { status: decision.status },
     );
   }
+
+  const approvedBy = decision.actor;
 
   // --- Execute approval ---
   const now = new Date().toISOString();
 
-  const { error: updateError } = await db
+  const { data: updated, error: updateError } = await db
     .from('contracts')
     .update({
       status: 'draft',
       principal_approved_at: now,
       principal_approved_by: approvedBy,
     })
-    .eq('id', contract.id);
+    .eq('id', contract.id)
+    // Without this predicate a concurrent approval silently overwrites the
+    // first one's attribution. Matching zero rows is how that race surfaces.
+    .eq('status', 'awaiting_principal_approval')
+    .select('id');
 
   if (updateError) {
     console.error('Approval update failed:', updateError);
@@ -122,13 +140,27 @@ export async function POST(
     );
   }
 
-  logAudit({
+  if (!updated || updated.length === 0) {
+    return NextResponse.json(
+      {
+        error: 'invalid_status',
+        message: 'Contract is no longer awaiting approval; it may have been approved concurrently.',
+      },
+      { status: 409 },
+    );
+  }
+
+  // Awaited deliberately: unawaited, roughly one insert in three lands after
+  // the serverless response and is delayed or dropped (see lib/audit.ts). An
+  // Article 14 approval that is not durably recorded did not happen.
+  await logAudit({
     event_type: 'principal_approval_granted',
     severity: 'info',
     actor: approvedBy,
     details: {
       contract_id: contract.contract_id,
       oversight_threshold_usd: contract.oversight_threshold_usd,
+      assurance: decision.assurance,
     },
     ip_address: ip,
   });

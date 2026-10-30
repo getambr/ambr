@@ -1,4 +1,5 @@
-import { getAnthropicClient, CONTRACT_MODEL } from './client';
+import { callChat, type UnifiedTool } from './providers';
+import { getContractModel } from './models';
 import { getTemplatePrompt } from './prompts';
 
 interface GenerateContractParams {
@@ -136,7 +137,6 @@ const CONTRACT_TOOL = {
 export async function generateContract(
   params: GenerateContractParams,
 ): Promise<GeneratedContract> {
-  const client = getAnthropicClient();
   const systemPrompt = getTemplatePrompt(params.templateSlug);
 
   // Sanitize user-supplied parameters before they reach the LLM
@@ -150,22 +150,82 @@ export async function generateContract(
     generated_at: new Date().toISOString(),
   });
 
-  const response = await client.messages.create({
-    model: CONTRACT_MODEL,
-    max_tokens: 8192,
+  // Two-mode call:
+  // - On Moonshot (Kimi K2.6): response_format JSON mode forces structured
+  //   output that we parse from message.content. Tools are still passed but
+  //   Moonshot ignores them when response_format is set. JSON mode is Kimi's
+  //   documented structured-output path — far more reliable than tool_use
+  //   for complex one-shot generation tasks.
+  // - On Anthropic (Claude Haiku): tool_choice forces the create_contract
+  //   function call; response_format is silently ignored.
+  // The text-JSON fallback below handles either output shape uniformly.
+  const response = await callChat({
+    model: getContractModel(),
     system: systemPrompt,
     messages: [{ role: 'user', content: userInput }],
-    tools: [CONTRACT_TOOL],
-    tool_choice: { type: 'tool', name: 'create_contract' },
+    tools: [CONTRACT_TOOL as unknown as UnifiedTool],
+    toolChoice: { name: 'create_contract' },
+    maxTokens: 8192,
+    responseFormat: { type: 'json_object' },
+    // Contract-gen route runs at maxDuration=300s. Give the LLM a generous
+    // 250s ceiling for complex contracts but still cut before Vercel kills us.
+    timeoutMs: 250_000,
   });
 
-  // Extract tool use result — guaranteed valid JSON by the API
-  const toolBlock = response.content.find((b) => b.type === 'tool_use');
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('LLM did not return tool_use response');
+  // Preferred path: tool-call result. Anthropic forces this via tool_choice,
+  // Kimi follows the updated BASE_INSTRUCTIONS that explicitly tells it to
+  // call create_contract instead of emitting JSON as text.
+  let input: Record<string, unknown> | undefined = response.toolCall?.input;
+
+  // Fallback: when Kimi backslides to text JSON (it sometimes does despite
+  // the prompt — RLHF inertia), try to parse the text body as the expected
+  // schema. Cheaper than retrying a whole LLM call. Tolerates ```json fences
+  // and a single bare JSON object.
+  if (!input && response.textReply) {
+    const stripped = response.textReply
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '');
+    try {
+      const parsed = JSON.parse(stripped) as Record<string, unknown>;
+      if (
+        parsed &&
+        typeof parsed.humanReadable === 'string' &&
+        parsed.machineReadable &&
+        typeof parsed.machineReadable === 'object'
+      ) {
+        input = parsed;
+        console.warn(
+          `[contract-gen] LLM (${response.modelUsed}) bypassed tool_use; ` +
+          `parsed text body as JSON fallback. Consider tightening prompt.`,
+        );
+      }
+    } catch {
+      // Fall through to the throw below
+    }
   }
 
-  const input = toolBlock.input as Record<string, unknown>;
+  if (!input) {
+    // No tool_call and JSON-text fallback didn't find usable JSON.
+    // Dump everything we have so a screenshot from the user tells us
+    // exactly what Kimi returned — no more guessing.
+    const debug = {
+      model: response.modelUsed,
+      provider: response.providerUsed,
+      truncated: response.truncated ?? false,
+      tokens_in: response.usage?.input_tokens,
+      tokens_out: response.usage?.output_tokens,
+      textReply_length: response.textReply?.length ?? 0,
+      textReply_preview: response.textReply
+        ? response.textReply.slice(0, 300)
+        : '(null/empty)',
+    };
+    console.error('[contract-gen] failed with empty/unparseable response:', JSON.stringify(debug));
+    throw new Error(
+      `Contract LLM (${response.modelUsed}) returned no usable response. ` +
+      `truncated=${debug.truncated} tokens_out=${debug.tokens_out} reply_len=${debug.textReply_length} preview="${debug.textReply_preview}"`,
+    );
+  }
 
   if (!input.humanReadable || !input.machineReadable) {
     throw new Error(

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import AmbrMark from '@/components/ui/AmbrMark';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import MobileMenu from './MobileMenu';
@@ -21,7 +21,7 @@ const platformLinks = [
   { href: '/reader', label: 'Reader' },
 ];
 
-const MARKETING_PATHS = ['/', '/how-it-works', '/ecosystem', '/waitlist', '/privacy', '/terms'];
+const MARKETING_PATHS = ['/', '/how-it-works', '/ecosystem', '/founders', '/use-cases', '/waitlist', '/privacy', '/terms'];
 
 function useNavLinks() {
   const pathname = usePathname();
@@ -77,16 +77,16 @@ export default function Navigation() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 mix-blend-difference ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${pathname === '/preview-bold' || pathname === '/' ? '' : 'mix-blend-difference'} ${
           scrolled
             ? 'bg-background/80 backdrop-blur-sm border-b border-white/10'
             : 'bg-transparent backdrop-blur-[4px] border-b border-white/10'
         }`}
       >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className={`mx-auto ${pathname === '/preview-bold' || pathname === '/' ? 'max-w-[1500px] px-6 sm:px-10 lg:px-16' : 'max-w-7xl px-4 sm:px-6 lg:px-8'}`}>
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.png" alt="" width={32} height={32} className="rounded-sm" />
+              <AmbrMark size={28} className="shrink-0" />
               <span className="text-xl font-serif text-amber">Ambr</span>
             </Link>
 

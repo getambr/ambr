@@ -4,7 +4,7 @@
 
 ---
 
-## 1. seed-data.ts — `price_cents` column
+## 1. Templates seed SQL (`site/supabase/migrations/20260309000000_schema_and_seed.sql` and later template migrations) — `price_cents` column
 
 Add after existing c3 INSERT:
 

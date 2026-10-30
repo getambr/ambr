@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { corsOptions } from '@/lib/cors';
 
 /**
@@ -41,13 +42,11 @@ export async function GET(
   // Determine lookup method based on format
   let query = db.from('contracts').select('*');
 
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else if (/^[a-f0-9]{64}$/.test(id)) {
-    query = query.eq('sha256_hash', id);
-  } else {
-    query = query.eq('id', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  query = query.eq(column, id);
 
   const { data: contract, error } = await query.single();
 

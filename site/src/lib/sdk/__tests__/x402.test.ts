@@ -10,7 +10,7 @@ const HASH = 'a'.repeat(64);
 
 const base402: PaymentRequired402 = {
   error: 'payment_required',
-  message: 'Payment required. Send a supported token on Base, then retry with X-Payment.',
+  message: 'Payment required. Send a supported token on Base, then retry with PAYMENT-SIGNATURE.',
   x402: {
     version: '2',
     currency: 'USD',

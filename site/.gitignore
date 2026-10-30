@@ -51,3 +51,12 @@ private-assets/
 
 # Investor-only data (numbers, ask, assumptions — rendered inside auth-gated page)
 private-data/
+
+# card contact-sheet render output (scripts/render-cards.mjs)
+.card-preview/
+.chrome-render-profile/
+# Second isolated profile: the one-pager/portfolio renders must not share a
+# profile with the deck renders, or launching one hands the URL to the other
+# and Chrome exits without writing a file.
+.chrome-onepager-profile/
+.brief-render.html

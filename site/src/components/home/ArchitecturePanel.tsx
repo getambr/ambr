@@ -25,8 +25,8 @@ export default function ArchitecturePanel() {
             Human<br />Readable
           </h3>
           <p className="text-[#999] mb-10 text-lg max-w-[400px]">
-            Every authorization Ambr issues comes with a plain-language agreement
-            your legal team can actually read — no JSON, no jargon, no surprises.
+            Every Agent Mandate Ambr issues comes with a plain-language record
+            your legal team can actually read: no JSON, no jargon, no surprises.
           </p>
           <ul className="space-y-0">
             {humanData.map((row) => (

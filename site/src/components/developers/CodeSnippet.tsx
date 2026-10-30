@@ -18,11 +18,11 @@ export default function CodeSnippet({ code, language = 'typescript', title }: Co
   };
 
   return (
-    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+    <div className="rounded-none border border-amber/20 bg-[#0c0b09] overflow-hidden">
       {title && (
-        <div className="flex items-center justify-between border-b border-border px-4 py-2">
-          <span className="text-xs font-mono text-text-secondary">{title}</span>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-text-secondary">{language}</span>
+        <div className="flex items-center justify-between border-b border-amber/15 px-4 py-2">
+          <span className="text-xs font-mono text-[#8a8170]">{title}</span>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[#6f675b]">{language}</span>
         </div>
       )}
       <div className="relative">
@@ -33,7 +33,7 @@ export default function CodeSnippet({ code, language = 'typescript', title }: Co
         </pre>
         <button
           onClick={handleCopy}
-          className="absolute top-3 right-3 rounded-md bg-surface-elevated px-2 py-1 text-xs text-text-secondary hover:text-text-primary transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="absolute top-3 right-3 rounded-none border border-amber/25 bg-[#111] px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[#8a8170] hover:text-amber hover:border-amber/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Copy code"
         >
           {copied ? '✓ Copied' : 'Copy'}

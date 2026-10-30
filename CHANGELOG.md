@@ -2,6 +2,44 @@
 
 All notable changes to Ambr are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [SemVer](https://semver.org/).
 
+## [0.4.0] — 2026-10-27
+
+### Added
+- **Ambr Agent**: a chat that drafts and deploys a contract from plain language, with drafts saved in the browser, chat history and a usage meter.
+- **Power of Attorney template (P2)**: a one-sided delegation from a principal to their own AI agent, with optional spending caps.
+- **Agent-to-Agent flow**: task-execution contracts can be handed to an agent through a connection panel instead of a human form.
+- **Contract lifecycle emails**: share invite, counterparty signed, contract activated.
+- **Paired cNFT viewer** in the reader portal and the dashboard, showing each party's token, role and signing wallet.
+- **Wallet binding**: an account can link the wallets it proves it controls; EIP-6963 multi-wallet support.
+- **Revocation and expiry**: validity is derived at read time from the contract's state and dates.
+- **Scope-only share links and machine-readable binding terms**, so an agent can prove its authority without exposing personal data.
+- **Counterparty credential check** against GLEIF (LEI), shown as a trust badge in the reader.
+- **EU AI Act Article 14 approval gate**: a contract can declare an oversight threshold, and the gate applies to both the human and the agent API.
+- **AmbrContractNFTV2** with on-chain mandate lifecycle (tested on Base Sepolia).
+- **Zero-dependency agent SDK** (client and x402 helpers).
+- **x402 v2 payments** with Bazaar discovery; credits are counted in cents and a contract burns its own price.
+- **`/api/health`** proves the payment facilitator key and reports every service it depends on.
+
+### Changed
+- A paid contract settles only after it has been generated, and a payment whose outcome is unknown says so instead of asking for a second one.
+- A contract counts as valid only when every declared party has signed and its text still matches its hash.
+- A side of a contract that names no wallet is filled only by the creator or by an invite; each signature takes its own slot.
+- Every contract stores its template's category.
+- The platform version shown by `/api/health` and the A2A agent card now comes from `package.json`, so the two cannot drift apart.
+- Public copy states what a mandate records rather than what it prevents.
+
+### Fixed
+- Contract references that are not an Ambr id, a hash or a UUID are refused before they reach the database.
+- The MCP endpoint no longer loops on its own requests.
+- Audit log entries persist.
+
+### Security
+- Row-level security on server-only tables; anonymous writes to subscriptions and public reads of the audit log are closed.
+- Bilateral contracts enforce the counterparty wallet; a delegation signature is bound to the key it was made for.
+- Public contract views no longer publish party names or the signature graph, and a contract with no owning key fails closed.
+
+---
+
 ## [0.3.4] — 2026-04-23
 
 ### Added
@@ -42,17 +80,17 @@ All notable changes to Ambr are documented here. This file follows [Keep a Chang
 
 ### Added
 - **MCP x402 payment wiring** — AI agents calling paid tools without an API key now receive HTTP 402 with machine-readable x402 payment instructions (USDC on Base L2). Previously returned dead-end JSON-RPC errors. ([f15e7f9](https://github.com/getambr/ambr/commit/f15e7f9))
-- **Dashboard billing panel** — Buy More Credits card + Payment History section in the Account tab. Topup mode adds credits to the current key instead of creating a new one. (Session 2026-04-13)
-- **Stripe live integration** — Live keys deployed to Vercel production. Statement descriptor override to `AMBR.RUN` so customers see the product name instead of "OMRA CORP" on their card statements. Webhook endpoint and signing secret configured. (Session 2026-04-13)
-- **Bruno Krisjanis CBO onboarding** — Added `brunokrisjanis99@gmail.com` to `ADMIN_EMAILS`, `team_members` table row with `bruno@ambr.run` alias, role='admin'. (Session 2026-04-13)
+- **Dashboard billing panel** — Buy More Credits card + Payment History section in the Account tab. Topup mode adds credits to the current key instead of creating a new one.
+- **Stripe live integration** — Live keys deployed to Vercel production. Statement descriptor override to `AMBR.RUN` so customers see the product name instead of "OMRA CORP" on their card statements. Webhook endpoint and signing secret configured.
+- **CBO onboarding**: admin access and team alias added
 - **Founder Program** — `/founders` marketing page with enrollment form. `founder_partners` DB table with RLS, 10-spot cap, admin approval workflow. `POST /api/v1/founders/enroll` endpoint. ([aced7b2](https://github.com/getambr/ambr/commit/aced7b2))
 - **`GET /api/v1/pricing`** — Single source of truth for pricing across all surfaces. Pulled from DB `templates.price_cents`, cached 1h at edge. ([e7ff09c](https://github.com/getambr/ambr/commit/e7ff09c))
 - **Disposable email blocklist** — Free tier signup now rejects known disposable email providers (mailinator, guerrillamail, 10minutemail, etc. — 30+ domains). Audit-logged. ([aced7b2](https://github.com/getambr/ambr/commit/aced7b2))
-- **Sensitive flag on Vercel env vars** — All 8 production secrets (Supabase service role, Stripe, Anthropic, cNFT minter, Resend, Ops, Admin) now marked as `--sensitive` to harden against future exposure classes. (Session 2026-04-20)
+- **Sensitive flag on Vercel env vars** — All 8 production secrets (Supabase service role, Stripe, Anthropic, cNFT minter, Resend, Ops, Admin) now marked as `--sensitive` to harden against future exposure classes.
 - **`/api/health` endpoint** — Public lightweight ping with detail view for admins. Checks Supabase, Base RPC, Anthropic, Ops Agent. Used by paperclip team for monitoring.
 
 ### Changed
-- **Pricing realignment** based on [Ambr Financial Model v34](docs/internal/Ambr_Financial_Model_v34.xlsx):
+- **Pricing realignment**:
   - Consumer (A2C, a1/a2/a3): **$0.30 → $0.20** per contract
   - Delegation (A2A): $0.50 (unchanged)
   - Commerce (B2A): $1.00 (unchanged)
@@ -60,17 +98,14 @@ All notable changes to Ambr are documented here. This file follows [Keep a Chang
 - **Free developer tier: 5 → 25 contracts/month** for new signups.
 - **Marketing homepage PricingSection**: 3 tiers → 4 tiers (added Consumer A2C row), dropped "theoretical pricing" disclaimer, linked to `/api/v1/pricing`.
 - **Docs pricing table**: added Consumer tier, clarified A2A/B2A labels, removed stale cNFT minting $0.25 line (gas absorbed into contract price).
-- **ADMIN_SECRET rotated** to a fresh 64-char hex as part of Vercel security incident response.
-- **Dashboard refactor for topup mode**: `/api/v1/stripe/checkout` accepts `mode: 'topup'`; webhook adds credits to existing key instead of creating a new one when mode is topup. ([earlier session])
+- **Dashboard refactor for topup mode**: `/api/v1/stripe/checkout` accepts `mode: 'topup'`; webhook adds credits to existing key instead of creating a new one when mode is topup.
 
 ### Fixed
-- **Vercel env var corruption** — Long JWT-style values were corrupted during the "--sensitive flag" rotation (stdin pipe issue). Restored via `--value` flag. (Session 2026-04-20)
-- **`SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY`** restored after accidental wipe during rotation. Dashboard login and AI contract generation back to healthy.
 - **`/api/health` version string** bumped from stale `0.2.0` to `0.3.0`. ([f0719dd](https://github.com/getambr/ambr/commit/f0719dd))
 
 ### Security
-- Vercel April 2026 security incident response: all critical env vars marked sensitive. See [`docs/internal/PAPERCLIP-TEAM-ONBOARDING.md`](docs/internal/PAPERCLIP-TEAM-ONBOARDING.md) for post-incident verification checklist.
-- On-chain audit verified: **no unauthorized cNFT mints** during incident window. Only 2 legitimate mints ever (amb-2026-0013 tokens #1 and #2). See [incident plan](https://github.com/getambr/ambr/blob/master/plans/async-dancing-whale.md) for full analysis.
+- Vercel April 2026 security incident response: all critical env vars marked sensitive.
+- On-chain audit verified: **no unauthorized cNFT mints** during incident window. Only 2 legitimate mints ever (amb-2026-0013 tokens #1 and #2).
 
 ### Pre-existing but worth calling out (delivered v0.2.x → v0.3.0)
 - Privy consumer signing adapter (PR #9)
@@ -88,9 +123,7 @@ All notable changes to Ambr are documented here. This file follows [Keep a Chang
 - **Bilateral amendments** — Two-party approval flow for contract amendments. Proposal → counterparty accepts/rejects → new version with new hash.
 - **Paired cNFTs** — Active contracts mint 2 NFTs on Base L2 (one per party) instead of 1 shared token.
 - **EU AI Act Article 14 oversight** — `oversight_threshold_usd` field on parent delegation contracts; child contracts exceeding threshold require principal approval.
-- **Security hardening** — MCP discovery caching, debug endpoint admin auth, rate limiter, compliance language review, merged SecretTrees work.
-
-See [project_ambr_v020_session.md](~/.claude/projects/memory/project_ambr_v020_session.md) for full v0.2.0 details.
+- **Security hardening** — MCP discovery caching, debug endpoint admin auth, rate limiter, compliance language review.
 
 ---
 

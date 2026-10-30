@@ -1,3 +1,20 @@
+/**
+ * POST /api/v1/keys
+ *
+ * Free developer tier: does NOT return a key. It emails a single-use link
+ * which verifies the mailbox and then reveals the key at /activate/reveal.
+ * That link is also the recovery path — before this, a key was shown once,
+ * SHA-256'd at rest, and a user who missed it was locked out of that email
+ * permanently (the old 409 did not even filter is_active, so freezing a key
+ * would not release it). It is additionally what makes the
+ * `requires: ['verified_email']` claim published by /api/v1/pricing true.
+ *
+ * Paid tiers are unchanged: an on-chain tx_hash already proves intent and
+ * ties the key to a wallet, so those still issue immediately.
+ *
+ * Body: { email: string, tier: 'developer'|'startup'|'scale', tx_hash?: string }
+ */
+
 import { NextResponse } from 'next/server';
 import { activateKeySchema } from '@/lib/validation/contract-schemas';
 import { generateApiKey } from '@/lib/api-auth';
@@ -7,19 +24,32 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { checkVelocity } from '@/lib/velocity';
 import { corsOptions } from '@/lib/cors';
+import { sendViaResend } from '@/lib/email/send-via-resend';
+import { renderKeyClaim } from '@/lib/email/key-claim-template';
+import {
+  generateClaimToken,
+  normalizeEmail,
+  buildClaimUrl,
+  CLAIM_TOKEN_TTL_MINUTES,
+  CLAIM_REQUESTS_PER_EMAIL,
+  CLAIM_EMAIL_WINDOW_MS,
+} from '@/lib/keys/claim-token';
 
+import { FREE_TIER_CREDITS, PACKS } from '@/lib/pricing';
+
+const FROM_ADDRESS = 'Ambr <hello@ambr.run>';
+
+// Credits are cents (1 credit = 1 US cent). Amounts come from @/lib/pricing.
+// Enterprise is contact-only and never self-serve; -1 (unlimited) is only a
+// legacy marker on keys created before 2026-10 and is still honoured.
 const TIER_CREDITS: Record<string, number> = {
-  developer: 25,
-  startup: 200,
-  scale: 1000,
-  enterprise: -1, // unlimited — custom pricing
+  developer: FREE_TIER_CREDITS,
+  ...Object.fromEntries(PACKS.map((p) => [p.slug, p.credits])),
 };
 
 const TIER_PRICES_USD: Record<string, number> = {
   developer: 0,
-  startup: 49,
-  scale: 199,
-  enterprise: 0, // custom
+  ...Object.fromEntries(PACKS.map((p) => [p.slug, p.price_cents / 100])),
 };
 
 // Disposable / throwaway email domains — block from free tier signup
@@ -68,7 +98,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { email, tx_hash, tier } = parsed.data;
+  const { tx_hash, tier } = parsed.data;
+  // Normalise before any comparison or write. The old code used
+  // .eq('email', email) with no unique constraint, so 'User@x.com' and
+  // 'user@x.com' were two separate free keys.
+  const email = normalizeEmail(parsed.data.email);
   const db = getSupabaseAdmin();
 
   // Block known disposable email providers (free tier only — paid tiers are self-policing)
@@ -85,60 +119,103 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- Free Developer tier: no payment required ---
+  // --- Free Developer tier: email a single-use verification link ---
   if (tier === 'developer') {
-    // Check if email already has a free developer key
-    const { data: existingDev } = await db
-      .from('api_keys')
-      .select('id')
-      .eq('email', email)
-      .or('tier.eq.developer,tier.eq.alpha')
-      .single();
-
-    if (existingDev) {
+    // Second limit, keyed on the address rather than the requester's IP, so a
+    // stranger cannot flood someone else's inbox from rotating IPs.
+    const emailRl = rateLimit(`keys:email:${email}`, CLAIM_REQUESTS_PER_EMAIL, CLAIM_EMAIL_WINDOW_MS);
+    if (!emailRl.allowed) {
       return NextResponse.json(
-        { error: 'developer_exists', message: 'A free developer key already exists for this email.' },
-        { status: 409 },
+        { error: 'rate_limited', message: 'Too many requests for this email. Try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((emailRl.resetAt - Date.now()) / 1000)) } },
       );
     }
 
-    const { key, hash, prefix } = generateApiKey();
-    const { error: insertError } = await db.from('api_keys').insert({
-      key_hash: hash,
-      key_prefix: prefix,
+    // Does this address already hold an active free key? Decides whether the
+    // link issues a first key or replaces an existing one. maybeSingle(), not
+    // single(): single() errors on 0 or 2+ rows, and the old code discarded
+    // that error — so two rows made the guard silently pass and mint another key.
+    const { data: existingDev, error: lookupError } = await db
+      .from('api_keys')
+      .select('key_prefix')
+      .eq('email', email)
+      .in('tier', ['developer', 'alpha'])
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error('Developer key lookup error:', lookupError);
+      return NextResponse.json(
+        { error: 'db_error', message: 'Could not process this request. Please try again.' },
+        { status: 500 },
+      );
+    }
+
+    const purpose = existingDev ? 'rotate' : 'claim';
+    const { token, tokenHash, expiresAt } = generateClaimToken();
+
+    const { error: tokenError } = await db.from('key_claim_tokens').insert({
       email,
-      tier: 'developer',
-      credits: 25,
-      is_active: true,
-      payment_method: 'free',
+      token_hash: tokenHash,
+      purpose,
+      ip_address: ip,
+      expires_at: expiresAt,
     });
 
-    if (insertError) {
-      console.error('Developer key insert error:', insertError);
+    if (tokenError) {
+      console.error('Claim token insert error:', tokenError);
       return NextResponse.json(
-        { error: 'db_error', code: insertError.code ?? 'unknown', message: 'Failed to create API key' },
+        { error: 'db_error', message: 'Could not process this request. Please try again.' },
+        { status: 500 },
+      );
+    }
+
+    const mail = renderKeyClaim({
+      claimUrl: buildClaimUrl(token),
+      purpose,
+      existingPrefix: existingDev?.key_prefix,
+      expiresMinutes: CLAIM_TOKEN_TTL_MINUTES,
+    });
+
+    try {
+      await sendViaResend({
+        from: FROM_ADDRESS,
+        to: email,
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
+        tags: [{ name: 'campaign', value: 'key_claim' }, { name: 'purpose', value: purpose }],
+      });
+    } catch (err) {
+      // Independent of whether the address is registered, so this reveals
+      // nothing — but silently 202-ing would leave the user waiting forever.
+      console.error('Claim email send failed:', err);
+      return NextResponse.json(
+        { error: 'email_send_failed', message: 'Could not send the verification email. Please try again.' },
         { status: 500 },
       );
     }
 
     logAudit({
-      event_type: 'developer_key_claimed',
+      event_type: 'developer_key_link_requested',
       severity: 'info',
-      actor: email,
-      details: { tier: 'developer', credits: 25 },
+      // audit_log is service-role only; still keep addresses out of it.
+      // key_claim_tokens holds the address under RLS.
+      actor: 'keys-route',
+      details: { purpose },
       ip_address: ip,
     });
 
+    // Identical response whether or not the address is registered. Do not
+    // return a 409 'developer_exists' here: it is an account-enumeration oracle,
+    // letting anyone probe which emails have signed up. The email itself
+    // explains which case this is, and only the mailbox owner sees it.
     return NextResponse.json(
       {
-        api_key: key,
-        prefix,
-        tier: 'developer',
-        credits: 25,
-        message: 'Free developer key activated — 25 contracts. Save this key — it cannot be retrieved again.',
-        docs: 'https://ambr.run/developers',
+        status: 'verification_sent',
+        message: 'Check your email for a link to reveal your API key. It expires in 30 minutes.',
       },
-      { status: 201 },
+      { status: 202 },
     );
   }
 

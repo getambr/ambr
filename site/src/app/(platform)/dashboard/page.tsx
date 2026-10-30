@@ -1,44 +1,122 @@
 'use client';
 
-import Image from 'next/image';
+import AmbrMark from '@/components/ui/AmbrMark';
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Layers, FileText, Handshake, PenTool, ShieldCheck,
-  Terminal, Wallet, BarChart3, ChevronRight, LogOut, Menu, X,
+  Terminal, Wallet, BarChart3, ChevronRight, ChevronDown, LogOut, Menu, X,
   Calendar, Mail, Users, Lock, Copy, Check, ExternalLink,
   ArrowRight, Clock, Plus, RefreshCw, TrendingUp, Eye, Activity,
+  KeyRound, Bot,
 } from 'lucide-react';
+import { isLei } from '@/lib/dacs/recipes';
+import type { VerifyResult } from '@/lib/dacs/types';
 import { AdminSection } from '@/components/dashboard/AdminSection';
+import { BetaAccessSection } from '@/components/dashboard/BetaAccessSection';
 import { TechHealthWidget } from '@/components/team/TechHealthWidget';
 import { ContractAnalytics } from '@/components/dashboard/ContractAnalytics';
 import { useWalletStatus } from '@/lib/wallet/use-wallet-status';
 import ContractViewer from '@/app/(platform)/reader/[hashOrId]/ContractViewer';
 import ExportButtons from '@/app/(platform)/reader/[hashOrId]/ExportButtons';
-import { ADMIN_EMAILS } from '@/lib/admin-emails';
+import ContractNftViewer from '@/components/contract/ContractNftViewer';
+import AgentHandoff from '@/components/contract/AgentHandoff';
+import { extractPartyNames } from '@/lib/contract/party-names';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import WalletPicker from '@/components/wallet/WalletPicker';
+import DeployChat, { ShareByEmail, ACTIVE_DRAFT_KEY } from '@/components/deploy/DeployChat';
+import DraftsList from '@/components/deploy/DraftsList';
+import { FREE_TIER_CREDITS, PACKS, TEAM, ENTERPRISE, formatUsd } from '@/lib/pricing';
+import { listDrafts } from '@/lib/storage/indexed-db';
+import AmbrAgentOverlay from '@/components/ambr-agent/AmbrAgentOverlay';
+import BetaNotice from '@/components/dashboard/BetaNotice';
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
-type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'health';
+type Section = 'overview' | 'create' | 'contracts' | 'contract-detail' | 'wallet' | 'agents' | 'account' | 'analytics' | 'calendar' | 'email' | 'drafts' | 'my-drafts' | 'health' | 'beta-access';
 
-interface UserInfo { email: string; tier: string; credits: number; key_prefix: string }
+interface UserInfo {
+  email: string;
+  tier: string;
+  credits: number;
+  key_prefix: string;
+  beta_features?: { ai_chat?: boolean };
+  api_key_id?: string;
+  // Server-computed. The admin roster stays server-side; the browser is told
+  // only about itself. Optional because older cached sessions predate them —
+  // absent is treated as false, which fails closed.
+  is_admin?: boolean;
+  is_tech_admin?: boolean;
+  // Opaque handle used by the team widgets instead of anyone's address.
+  team_member_id?: string | null;
+}
 export interface ContractRow {
   contract_id: string; status: string; amendment_type: string; sha256_hash: string;
   created_at: string; updated_at: string | null; template_id: string;
   principal_declaration: { principal_name: string } | null;
+  parameters: Record<string, unknown> | null;
   nft_mint_status: string | null;
   nft_token_id: number | null;
   nft_counterparty_token_id: number | null;
   nft_holder_wallet: string | null;
   nft_counterparty_wallet: string | null;
+  nft_tx_hash: string | null;
+  nft_counterparty_tx_hash: string | null;
   visibility: string | null;
   contract_type: string | null; payment_method: string | null;
   revoked_at: string | null; revoked_by: string | null; revocation_reason: string | null;
   expiry_date: string | null; parent_contract_hash: string | null;
   oversight_threshold_usd: number | null; principal_approval_required: boolean | null;
+  // Fields used by the Phase B per-row role computation. Server already
+  // returns them; previously they were filtered out at the interface level.
+  principal_wallet: string | null;
+  payer_wallet: string | null;
+  api_key_id: string | null;
+  // P2 one-sided flag — true for unilateral contracts (Power of Attorney).
+  // Default false for bilateral templates. Used by Analytics to break out
+  // one-sided vs bilateral deploys without re-joining templates.
+  is_one_sided: boolean | null;
+  // Flattened template join (dashboard route enriches the response with
+  // templates.slug + templates.category for Analytics' category breakdown).
+  template_slug: string | null;
+  template_category: string | null;
+  // Aggregated signature count from the signatures table — for Analytics'
+  // signature-flow metrics + per-row signed-by-N display.
+  signature_count: number | null;
+}
+
+/** Per-contract role for the current user (Phase B). */
+export type ContractRole =
+  | 'principal'        // your wallet is principal_wallet
+  | 'counterparty'     // your wallet is nft_counterparty_wallet
+  | 'nft_holder'       // your wallet currently holds the NFT (post-transfer)
+  | 'payer'            // your wallet paid (x402)
+  | 'deployer-only'    // your account deployed it but no wallet of yours is on-chain
+  | 'none';            // none of your wallets touch it (shouldn't happen in the union query)
+
+/**
+ * Compute the user's role for a single contract. Uses the bound wallet set
+ * + the user's api_key_id. Wallet match takes precedence over deployer-only
+ * because it's the stronger on-chain link.
+ */
+export function computeContractRole(
+  c: ContractRow,
+  boundWallets: string[],
+  apiKeyId: string | null,
+): ContractRole {
+  const set = new Set(boundWallets.map((w) => w.toLowerCase()));
+  if (c.principal_wallet && set.has(c.principal_wallet.toLowerCase())) return 'principal';
+  if (c.nft_holder_wallet && set.has(c.nft_holder_wallet.toLowerCase())) {
+    // If the on-chain holder wallet matches but it's NOT the principal_wallet,
+    // this is post-transfer (novation). Otherwise it's just the principal.
+    if (c.principal_wallet?.toLowerCase() !== c.nft_holder_wallet.toLowerCase()) return 'nft_holder';
+    return 'principal';
+  }
+  if (c.nft_counterparty_wallet && set.has(c.nft_counterparty_wallet.toLowerCase())) return 'counterparty';
+  if (c.payer_wallet && set.has(c.payer_wallet.toLowerCase())) return 'payer';
+  if (apiKeyId && c.api_key_id === apiKeyId) return 'deployer-only';
+  return 'none';
 }
 interface TemplateRow {
   slug: string; name: string; description: string; category: string;
@@ -46,6 +124,9 @@ interface TemplateRow {
 }
 interface DashboardState {
   user: UserInfo | null; contracts: ContractRow[]; wallet: string | null;
+  // Phase B: all wallets bound to this account. Used to compute per-contract
+  // role badges and power the "Just my current wallet" filter chip locally.
+  bound_wallets: string[];
   authMethod: AuthMethod | null; error: string | null;
 }
 
@@ -66,6 +147,13 @@ function loadSession(): { method: AuthMethod; apiKey?: string; wallet?: string }
 function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch {} }
 
 // ─── Status Badge ───────────────────────────────────────
+// MUST cover every status in the contracts CHECK constraint
+// (`20260311000000_schema_v2.sql`):
+//   draft, handshake, pending_signature, active, amended, fulfilled,
+//   disputed, terminated, expired, revoked, awaiting_principal_approval.
+// Missing entries fall back to the draft style (gray pill) — not a crash,
+// but the visual loses meaning. Audit this dict whenever the schema's
+// status enum changes.
 const STATUS_STYLES: Record<string, string> = {
   active: 'text-success border-success/40 bg-success/10',
   amended: 'text-amber border-amber/40 bg-amber/10',
@@ -73,6 +161,11 @@ const STATUS_STYLES: Record<string, string> = {
   handshake: 'text-amber border-amber/40 bg-amber/10',
   pending_signature: 'text-yellow-400 border-yellow-500/40 bg-yellow-500/10',
   awaiting_principal_approval: 'text-orange-400 border-orange-500/40 bg-orange-500/10',
+  // fulfilled: contract reached its terminal "completed normally" state.
+  fulfilled: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10',
+  // disputed: an open dispute is on the contract (rare today; reserves
+  // future styling so the badge doesn't fall through to gray).
+  disputed: 'text-orange-400 border-orange-500/40 bg-orange-500/10',
   revoked: 'text-error border-error/40 bg-error/10',
   terminated: 'text-error border-error/40 bg-error/10',
   expired: 'text-text-secondary border-border bg-surface-elevated',
@@ -87,10 +180,11 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Tier Info ──────────────────────────────────────────
 const TIER_INFO: Record<string, { label: string; limit: string; overage: string }> = {
-  developer: { label: 'Developer', limit: '25/mo', overage: 'N/A' },
-  startup: { label: 'Startup', limit: '200/mo', overage: '$0.35/contract' },
-  scale: { label: 'Scale', limit: '1,000/mo', overage: '$0.25/contract' },
-  enterprise: { label: 'Enterprise', limit: 'Unlimited', overage: 'Custom' },
+  developer: { label: 'Developer', limit: `${FREE_TIER_CREDITS} credits, once`, overage: 'Buy a pack' },
+  startup: { label: PACKS[0].label, limit: `${PACKS[0].credits.toLocaleString('en-US')} credits, one-off`, overage: 'Buy a pack' },
+  scale: { label: PACKS[1].label, limit: `${PACKS[1].credits.toLocaleString('en-US')} credits, one-off`, overage: 'Buy a pack' },
+  business: { label: TEAM.label, limit: `${TEAM.credits_per_month.toLocaleString('en-US')} credits/mo`, overage: 'Buy a pack' },
+  enterprise: { label: ENTERPRISE.label, limit: `${ENTERPRISE.credits.toLocaleString('en-US')} credits/yr`, overage: 'Buy a pack' },
   alpha: { label: 'Alpha (legacy)', limit: '5 total', overage: 'N/A' },
 };
 
@@ -101,6 +195,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'overview' as Section, label: 'Pipeline Overview', icon: BarChart3 },
       { id: 'create' as Section, label: 'Create Contract', icon: Plus },
+      { id: 'my-drafts' as Section, label: 'Drafts', icon: Clock },
       { id: 'contracts' as Section, label: 'All Contracts', icon: FileText },
       { id: 'analytics' as Section, label: 'Analytics', icon: TrendingUp },
     ],
@@ -120,28 +215,131 @@ const NAV_SECTIONS = [
       { id: 'calendar' as Section, label: 'Calendar', icon: Calendar },
       { id: 'email' as Section, label: 'Email Triage', icon: Mail },
       { id: 'health' as Section, label: 'System Health', icon: Activity },
+      { id: 'beta-access' as Section, label: 'Beta Access', icon: KeyRound },
     ],
   },
 ];
 
-function SidebarWalletCard() {
-  const { wallet, nftCount, pendingActions, hasZkIdentity, disconnect } = useWalletStatus();
+function SidebarWalletCard({ serverBoundWallet, onRebound }: { serverBoundWallet?: string | null; onRebound?: () => void }) {
+  const { wallet, nftCount, pendingActions, hasZkIdentity, disconnect, preferredProvider, providers, setPreferredProvider, requestAccount } = useWalletStatus();
+  // Rebind state — surfaces to the warning row's "Bind to my account" button.
+  // 'idle' shows the button; 'signing' shows a spinner; 'success' briefly
+  // shows ✓ before resetting; 'error' shows the message inline so the user
+  // knows what to retry.
+  const [rebindState, setRebindState] = useState<'idle' | 'signing' | 'success' | 'error'>('idle');
+  const [rebindError, setRebindError] = useState<string | null>(null);
+  // Picker dropdown state (Fix #2). Toggled by clicking the wallet address.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerConnecting, setPickerConnecting] = useState(false);
 
   if (!wallet) return null;
 
+  // Sign + POST /api/v1/dashboard/wallet-auth to bind the live wallet to the
+  // current account. Server verifies the signature and upserts account_wallets.
+  // After success, reloads dashboard data via onRebound() so data.wallet
+  // refreshes and the mismatch warning disappears.
+  async function rebindToAccount() {
+    if (!preferredProvider || !wallet) return;
+    setRebindState('signing');
+    setRebindError(null);
+    try {
+      const eth = preferredProvider.provider as unknown as { request: (a: { method: string; params?: unknown }) => Promise<unknown> };
+      const message = `Bind wallet ${wallet} to my Ambr account · ${new Date().toISOString()}`;
+      const signature = (await eth.request({
+        method: 'personal_sign',
+        params: [message, wallet],
+      })) as string;
+      const res = await fetch('/api/v1/dashboard/wallet-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: wallet, signature, message }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(json?.message ?? `Bind failed (${res.status})`);
+      }
+      setRebindState('success');
+      onRebound?.();
+      // Reset back to idle after a moment so a subsequent wallet switch
+      // can trigger another bind without a page refresh.
+      setTimeout(() => setRebindState('idle'), 2500);
+    } catch (err) {
+      const msg = (err as Error)?.message ?? 'Sign cancelled';
+      // User-rejected signature → quiet idle; anything else → show error.
+      if (msg.toLowerCase().includes('user reject') || msg.toLowerCase().includes('user denied')) {
+        setRebindState('idle');
+      } else {
+        setRebindError(msg.slice(0, 80));
+        setRebindState('error');
+      }
+    }
+  }
+
+  // Wallet picker — same flow as WalletSection.connectWallet but bound to the
+  // sidebar dropdown. Switches the active provider AND triggers an account
+  // prompt so MetaMask/SafePal shows its account selector. The hook's
+  // accountsChanged listener picks up the result and updates `wallet` for
+  // everything that reads useWalletStatus.
+  async function pickWallet(picked: EIP6963ProviderDetail) {
+    setPickerConnecting(true);
+    try {
+      setPreferredProvider(picked.info.rdns);
+      await new Promise((r) => setTimeout(r, 0));
+      await requestAccount();
+      setPickerOpen(false);
+    } catch {
+      // Silent — picker stays open so user can try again
+    } finally {
+      setPickerConnecting(false);
+    }
+  }
+
+  const serverMismatch =
+    serverBoundWallet && wallet && serverBoundWallet.toLowerCase() !== wallet.toLowerCase();
+
   return (
-    <div className="shrink-0 border-t border-border px-3 py-3">
+    <div className="shrink-0 border-t border-border px-3 py-3 relative">
       <div className="rounded-lg border border-border/50 bg-surface/50 p-2.5">
-        {/* Wallet address + status */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5 min-w-0">
+        {/* SIGNING WALLET LABEL — the most important thing to communicate.
+            Answers the user's question "which wallet will my next contract
+            actually sign with?" at first glance, every time. Per user
+            feedback 2026-05-26: clients need certainty about which wallet
+            is active for contracting — no buried info. */}
+        <p className="text-[8px] font-mono uppercase tracking-wider text-amber/70 mb-1.5">
+          Signing wallet
+        </p>
+
+        {/* Wallet picker trigger — provider name + address. Clickable when
+            2+ providers; opens a dropdown to switch. Includes the wallet
+            extension name (MetaMask / SafePal) prominently so the user can
+            cross-check against the extension popup. */}
+        <div className="flex items-center justify-between mb-1">
+          <button
+            type="button"
+            onClick={() => providers.length > 1 && setPickerOpen((o) => !o)}
+            disabled={providers.length <= 1}
+            className={`flex items-center gap-1.5 min-w-0 -ml-0.5 px-0.5 py-0.5 rounded ${providers.length > 1 ? 'hover:bg-amber/10 cursor-pointer' : 'cursor-default'} transition-colors`}
+            title={providers.length > 1 ? `${providers.length} wallets connected. Click to switch which signs.` : `Connected: ${preferredProvider?.info.name ?? 'Wallet'}`}
+          >
             <span
               className="w-[5px] h-[5px] rounded-full bg-emerald-500 shrink-0"
               style={{ boxShadow: '0 0 4px rgba(52,211,153,0.4)' }}
             />
+            {preferredProvider?.info.icon ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preferredProvider.info.icon} alt="" className="w-3 h-3 shrink-0" />
+            ) : null}
+            <span className="text-[10px] font-medium text-text-primary truncate">
+              {preferredProvider?.info.name ?? 'Wallet'}
+            </span>
             <span className="text-[10px] font-mono text-text-secondary truncate">
               {wallet.slice(0, 6)}...{wallet.slice(-4)}
             </span>
+            {providers.length > 1 && (
+              <ChevronDown className={`w-2.5 h-2.5 text-text-secondary/50 shrink-0 transition-transform ${pickerOpen ? 'rotate-180' : ''}`} />
+            )}
+          </button>
+          <span className="flex items-center gap-1.5 shrink-0">
             <span className={`inline-flex items-center gap-0.5 px-1 border rounded text-[8px] shrink-0 ${
               hasZkIdentity
                 ? 'border-amber/25 bg-amber/[0.06] text-amber'
@@ -150,15 +348,21 @@ function SidebarWalletCard() {
               <img src="/demos-logo.svg" alt="" className={`w-2 h-2 ${hasZkIdentity ? 'opacity-70' : 'opacity-30'}`} />
               {hasZkIdentity ? 'ZK' : 'Link ZK'}
             </span>
-          </div>
-          <button
-            onClick={disconnect}
-            className="text-text-secondary/40 hover:text-text-primary transition-colors cursor-pointer p-0.5"
-            title="Disconnect"
-          >
-            <X className="w-3 h-3" />
-          </button>
+            <button
+              onClick={disconnect}
+              className="text-text-secondary/40 hover:text-text-primary transition-colors cursor-pointer p-0.5"
+              title="Disconnect"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
         </div>
+
+        {/* Explicit reassurance — answers "is THIS the wallet that will sign?"
+            instead of leaving the user to infer from the visual hierarchy. */}
+        <p className="text-[9px] text-text-secondary/70 mb-2 leading-tight">
+          Your next contract will sign with this wallet.
+        </p>
 
         {/* Stats */}
         <div className="flex items-center gap-3 text-[9px] font-mono">
@@ -173,19 +377,139 @@ function SidebarWalletCard() {
             </span>
           )}
         </div>
+
+        {/* "Also linked to your account" — reframed from the previous "Server
+            has X bound" warning. The old wording sounded like Ambr was doing
+            something to the user; the reality is just that account_wallets
+            has a historical record from when this wallet last authenticated.
+            New positioning: not a problem, just informational about which
+            OLDER wallets your dashboard knows to look up. Adding the live
+            wallet here too is a positive action ("link this one as well"),
+            not a corrective action. */}
+        {serverMismatch && (
+          <div
+            className="mt-2 pt-2 border-t border-border/30 text-[9px] leading-tight"
+            title={`Your account has a historical link to ${serverBoundWallet} from a prior session. Older contracts you deployed with that wallet remain visible on the dashboard, but new contracts will be signed by the SIGNING WALLET above. Click "Add this wallet too" to also link ${wallet}.`}
+          >
+            <p className="text-text-secondary/60 font-mono">
+              Also linked to your account
+            </p>
+            <p className="text-text-secondary mt-0.5 font-mono">
+              {serverBoundWallet!.slice(0, 6)}…{serverBoundWallet!.slice(-4)}
+              <span className="text-text-secondary/50 ml-1">(older — read-only)</span>
+            </p>
+            <div className="mt-1.5">
+              {rebindState === 'success' ? (
+                <span className="inline-flex items-center gap-1 text-[9px] text-emerald-400 px-1.5 py-0.5">
+                  <Check className="w-2.5 h-2.5" />
+                  Linked to your account
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={rebindToAccount}
+                  disabled={rebindState === 'signing'}
+                  className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border border-amber/40 bg-amber/10 text-amber hover:bg-amber/20 disabled:opacity-50 disabled:cursor-wait transition-colors"
+                  title={`Sign a message to add ${wallet.slice(0, 6)}…${wallet.slice(-4)} as another wallet linked to your account. This is additive — your older wallet stays linked too.`}
+                >
+                  {rebindState === 'signing' ? (
+                    <>
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      <span>Awaiting signature…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-2.5 h-2.5" />
+                      <span>Add {wallet.slice(0, 6)}…{wallet.slice(-4)} too</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {rebindState === 'error' && rebindError && (
+                <p className="text-[8px] text-error mt-0.5 leading-tight" title={rebindError}>
+                  {rebindError}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Wallet picker dropdown — shown when user clicks the wallet address.
+          Lists all EIP-6963-announced providers so they can switch active
+          wallet without leaving the page. Positioned absolutely above the
+          card so it floats over surrounding content. */}
+      {pickerOpen && providers.length > 1 && (
+        <div
+          className="absolute left-3 right-3 bottom-full mb-1 z-50 rounded-lg border border-border bg-surface-elevated shadow-2xl p-2"
+          role="menu"
+        >
+          <p className="text-[9px] font-mono text-text-secondary uppercase tracking-wider mb-1.5 px-1">
+            Switch wallet
+          </p>
+          <div className="space-y-1">
+            {providers.map((p) => {
+              const isActive = p.info.rdns === preferredProvider?.info.rdns;
+              return (
+                <button
+                  key={p.info.uuid}
+                  type="button"
+                  onClick={() => pickWallet(p)}
+                  disabled={pickerConnecting}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] text-left transition-colors ${
+                    isActive
+                      ? 'bg-amber/15 border border-amber/30 text-amber'
+                      : 'border border-transparent text-text-primary hover:bg-surface hover:border-border'
+                  } disabled:opacity-50`}
+                >
+                  {p.info.icon ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.info.icon} alt="" className="w-3.5 h-3.5 shrink-0" />
+                  ) : (
+                    <span className="w-3.5 h-3.5 rounded bg-amber/20 shrink-0" />
+                  )}
+                  <span className="flex-1 truncate">{p.info.name}</span>
+                  {isActive && <span className="text-[8px] uppercase font-mono">active</span>}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[8px] text-text-secondary/60 mt-1.5 px-1 leading-tight">
+            Switching prompts {preferredProvider?.info.name ?? 'the wallet'} to share an account. Use &ldquo;Bind to account&rdquo; below afterwards to update the server.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
+function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut, serverBoundWallet, onRebound }: {
   active: Section;
   onNav: (s: Section) => void;
   isAdmin: boolean;
   user: UserInfo | null;
   onSignOut: () => void;
+  /** Wallet bound to the account on the server (from /api/v1/dashboard data.wallet).
+   *  Passed through to SidebarWalletCard so it can warn when the live wallet
+   *  (what useWalletStatus reports) differs from what the server has bound. */
+  serverBoundWallet?: string | null;
+  /** Called after a successful wallet-auth re-bind so the dashboard can
+   *  refetch data.wallet from the server and the mismatch warning clears. */
+  onRebound?: () => void;
 }) {
   const tierLabel = user?.tier ? (TIER_INFO[user.tier]?.label || user.tier) : null;
+  // Draft count for the Drafts nav-item badge — refreshes when the user
+  // navigates between sections so the badge stays accurate after Resume /
+  // Discard / new-draft actions in DeployChat or DraftsList. IndexedDB query
+  // is fast (<5ms typical) so this is fine on every section change.
+  const [draftCount, setDraftCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    listDrafts()
+      .then((all) => { if (!cancelled) setDraftCount(all.length); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [active]);
 
   return (
     <aside className="hidden lg:flex flex-col fixed top-16 left-0 w-56 h-[calc(100vh-4rem)] border-r border-border bg-background z-30">
@@ -201,6 +525,7 @@ function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
               </div>
               {section.items.map(item => {
                 const Icon = item.icon;
+                const showDraftBadge = item.id === 'my-drafts' && draftCount > 0;
                 return (
                   <button
                     key={item.id}
@@ -212,7 +537,12 @@ function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {item.label}
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {showDraftBadge && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30">
+                        {draftCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -222,7 +552,7 @@ function DesktopSidebar({ active, onNav, isAdmin, user, onSignOut }: {
       </nav>
 
       {/* Wallet status card */}
-      <SidebarWalletCard />
+      <SidebarWalletCard serverBoundWallet={serverBoundWallet} onRebound={onRebound} />
 
       {/* Pinned footer with user card + sign out */}
       <div className="shrink-0 border-t border-border px-3 py-3 bg-background">
@@ -265,6 +595,7 @@ const MOBILE_TABS = [
 ];
 
 const MORE_ITEMS = [
+  { id: 'my-drafts' as Section, label: 'Drafts', icon: Clock },
   { id: 'agents' as Section, label: 'Agent Setup', icon: Terminal },
   { id: 'account' as Section, label: 'Account', icon: Layers },
 ];
@@ -481,8 +812,8 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
               <p className="text-xs text-text-secondary">Credits</p>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber/10 text-amber border border-amber/20">{tierInfo?.label || user.tier}</span>
             </div>
-            <p className="text-2xl font-bold text-text-primary">{user.credits === -1 ? '\u221e' : user.credits}</p>
-            {tierInfo && <p className="text-[10px] text-text-secondary/50 mt-0.5">{tierInfo.limit} limit</p>}
+            <p className="text-2xl font-bold text-text-primary">{user.credits === -1 ? '\u221e' : user.credits}<span className="text-xs font-normal text-text-secondary ml-1.5">credits</span></p>
+            {tierInfo && <p className="text-[10px] text-text-secondary/50 mt-0.5">{tierInfo.limit}</p>}
           </div>
         )}
         <div className="rounded-xl border border-border bg-surface/80 p-5 relative overflow-hidden min-h-[104px]">
@@ -563,6 +894,9 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
                     {c.nft_mint_status === 'minted' && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-mono text-emerald-400 border border-emerald-500/30">NFT</span>
                     )}
+                    {c.is_one_sided && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-mono text-violet-400 border border-violet-500/30" title="Unilateral authorization — principal signs once, no counterparty required">DELEGATION</span>
+                    )}
                   </div>
                   <p className="text-xs text-text-secondary/60 truncate">{c.principal_declaration?.principal_name || 'Unknown'}</p>
                 </div>
@@ -580,39 +914,155 @@ function PipelineOverview({ contracts, user, onSelectContract }: { contracts: Co
 }
 
 // ─── Contract Builder ───────────────────────────────────
+interface ParamSpec { type?: string; description?: string; enum?: unknown[] }
+
+// The API's rule for principal_declaration.agent_id (lib/validation/contract-schemas.ts).
+const WALLET_RE = /^0x[a-fA-F0-9]{40}$/;
+
+// Form values are strings; the API validates against the template's
+// parameter_schema, so numbers and booleans have to leave as such.
+function coerceParams(
+  raw: Record<string, string>,
+  props: Record<string, ParamSpec>,
+): { values: Record<string, unknown>; errors: string[] } {
+  const values: Record<string, unknown> = {};
+  const errors: string[] = [];
+  for (const [key, spec] of Object.entries(props)) {
+    const v = (raw[key] ?? '').trim();
+    if (v === '') continue;
+    if (spec.type === 'number' || spec.type === 'integer') {
+      const n = Number(v);
+      if (!Number.isFinite(n) || (spec.type === 'integer' && !Number.isInteger(n))) {
+        errors.push(`${key.replace(/_/g, ' ')} must be ${spec.type === 'integer' ? 'a whole number' : 'a number'}`);
+        continue;
+      }
+      values[key] = n;
+    } else if (spec.type === 'boolean') {
+      values[key] = v === 'true';
+    } else if (Array.isArray(spec.enum)) {
+      values[key] = spec.enum.find(o => String(o) === v) ?? v;
+    } else {
+      values[key] = v;
+    }
+  }
+  return { values, errors };
+}
+
+// The contracts API answers 400 with `details` (zod issues); show them per field.
+function formatApiError(json: Record<string, unknown>): string {
+  // A provider outage carries the wait in seconds; show it as minutes.
+  if (json.error === 'generation_unavailable' && Number.isFinite(Number(json.retry_after))) {
+    const mins = Math.max(1, Math.ceil(Number(json.retry_after) / 60));
+    return `Contract generation is temporarily unavailable. You have not been charged. Try again in ${mins} ${mins === 1 ? 'minute' : 'minutes'}.`;
+  }
+  const details = json.details;
+  if (Array.isArray(details) && details.length > 0) {
+    return details
+      .map((d: { path?: unknown[]; message?: string }) => {
+        const field = Array.isArray(d.path) ? d.path.map(String).join('.') : '';
+        return field ? `${field}: ${d.message}` : String(d.message ?? '');
+      })
+      .join('; ');
+  }
+  return String(json.message || json.error || 'Failed to create');
+}
+
 function ContractBuilder({ apiKey }: { apiKey: string }) {
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [selected, setSelected] = useState<TemplateRow | null>(null);
   const [params, setParams] = useState<Record<string, string>>({});
+  const [principal, setPrincipal] = useState({ agent_id: '', principal_name: '', principal_type: 'company' });
+  // The wallet that signs as the principal. Not agent_id, which names the agent.
+  const [principalWallet, setPrincipalWallet] = useState('');
   const [requireZkIdentity, setRequireZkIdentity] = useState(false);
   const [creating, setCreating] = useState(false);
   const [result, setResult] = useState<{ contract_id: string; sha256_hash: string; reader_url: string } | null>(null);
   const [error, setError] = useState('');
+  const [templatesFailed, setTemplatesFailed] = useState(false);
+  const [templatesReload, setTemplatesReload] = useState(0);
 
   useEffect(() => {
-    fetch('/api/v1/templates').then(r => r.json()).then(d => setTemplates(d.templates || [])).catch(() => {});
-  }, []);
+    // Show ONLY the offered on-pitch set in the playground (allowlist — matches
+    // the deploy chat's chip set: P2 / D1 / A2A). Everything else stays usable
+    // via the raw API but is not surfaced on human UI.
+    const OFFERED = new Set(['p2-power-of-attorney', 'd1-general-auth', 'c3-task-execution']);
+    setTemplatesFailed(false);
+    fetch('/api/v1/templates')
+      .then(r => {
+        if (!r.ok) throw new Error(`templates ${r.status}`);
+        return r.json();
+      })
+      .then(d => setTemplates((d.templates || []).filter((t: TemplateRow) => OFFERED.has(t.slug))))
+      .catch(() => setTemplatesFailed(true));
+  }, [templatesReload]);
 
   async function handleCreate() {
-    if (!selected || !apiKey) return;
+    if (!selected) return;
+    if (!apiKey) {
+      setError('Creating a contract needs an API key. Sign in with your key, or get one at /activate.');
+      return;
+    }
     setCreating(true); setError(''); setResult(null);
     try {
-      const body: Record<string, unknown> = { template_slug: selected.slug, parameters: params, ...(requireZkIdentity ? { require_zk_identity: true } : {}) };
+      const { values, errors } = coerceParams(params, paramProps);
+      if (errors.length > 0) { setError(errors.join('; ')); return; }
+      // Checked here, not left to the API: its error names
+      // principal_declaration.agent_id, which this form hides whenever the
+      // template's agent field supplies it.
+      const agentId = agentBoxShown ? principal.agent_id.trim() : agentParamValue;
+      if (!WALLET_RE.test(agentId)) {
+        const field = agentBoxShown ? 'agent wallet address' : (agentParam ?? '').replace(/_/g, ' ');
+        setError(`${field}: enter the agent's wallet address (0x followed by 40 hex characters)`);
+        return;
+      }
+      const fromParam = (key: string | undefined, own: string) =>
+        (key ? String(values[key] ?? '') : own).trim();
+      const body: Record<string, unknown> = {
+        template: selected.slug,
+        parameters: values,
+        principal_declaration: {
+          agent_id: agentId,
+          principal_name: fromParam(nameParam, principal.principal_name),
+          // The template's types (corporation, llc, …) narrow to the declaration's two.
+          principal_type: typeParam
+            ? (values[typeParam] === 'individual' ? 'individual' : 'company')
+            : principal.principal_type,
+        },
+        ...(principalWallet.trim() ? { principal_wallet: principalWallet.trim() } : {}),
+        ...(requireZkIdentity ? { require_zk_identity: true } : {}),
+      };
       const res = await fetch('/api/v1/contracts', {
         method: 'POST',
         headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error || json.message || 'Failed to create'); return; }
+      if (!res.ok) { setError(formatApiError(json)); return; }
       setResult({ contract_id: json.contract_id, sha256_hash: json.sha256_hash, reader_url: `https://getamber.dev/reader/${json.sha256_hash}` });
     } catch { setError('Network error'); }
     finally { setCreating(false); }
   }
 
-  const paramFields = selected?.parameter_schema
-    ? Object.entries((selected.parameter_schema as Record<string, { type?: string; description?: string }>)?.properties || {})
-    : [];
+  const paramProps = ((selected?.parameter_schema as { properties?: Record<string, ParamSpec> } | undefined)?.properties) || {};
+  const paramFields = Object.entries(paramProps);
+  // Declaration fields the template asks for too are entered once, in the template
+  // field: parameters.agent_id (C3: requester_agent_id) is the wallet that signs, so
+  // a second agent box could only ever disagree with it.
+  const agentParam = ['agent_id', 'requester_agent_id'].find(k => k in paramProps);
+  const nameParam = 'principal_name' in paramProps ? 'principal_name' : undefined;
+  const typeParam = 'principal_type' in paramProps ? 'principal_type' : undefined;
+  // That field may name the agent by a platform identifier instead, where the
+  // template's description says so (D1 today; P2 and C3 define it as a wallet).
+  // The declaration still needs the agent's wallet then, so its own box comes back.
+  // A value that could still become an address ("0", or "0x" and up to 40 hex
+  // characters) counts as a wallet being typed, so the box does not flash up.
+  const agentParamValue = agentParam ? (params[agentParam] ?? '').trim() : '';
+  const agentAllowsId = !!agentParam && /identifier/i.test(paramProps[agentParam]?.description ?? '');
+  const agentBoxShown = !agentParam
+    || (agentAllowsId && agentParamValue !== '' && !/^0(x[0-9a-f]{0,40})?$/i.test(agentParamValue));
+  const enteredBelow = [nameParam && 'principal name', typeParam && 'principal type', !agentBoxShown && "the agent's wallet"]
+    .filter(Boolean);
+  const inputClass = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50';
 
   return (
     <div className="space-y-6">
@@ -620,7 +1070,7 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
         <p className="text-micro mb-4">Select Template</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {templates.map(t => (
-            <button key={t.slug} onClick={() => { setSelected(t); setParams({}); setResult(null); }}
+            <button key={t.slug} onClick={() => { setSelected(t); setParams({}); setResult(null); setError(''); }}
               className={`text-left rounded-xl border p-4 transition-all ${
                 selected?.slug === t.slug ? 'border-amber/50 bg-amber/5' : 'border-border bg-surface-elevated hover:border-amber/30'
               }`}>
@@ -632,7 +1082,14 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
               </div>
             </button>
           ))}
-          {templates.length === 0 && <p className="text-sm text-text-secondary col-span-2">Loading templates...</p>}
+          {templates.length === 0 && (templatesFailed ? (
+            <p className="text-sm text-text-secondary col-span-2">
+              Couldn&apos;t load templates.{' '}
+              <button type="button" onClick={() => setTemplatesReload(n => n + 1)} className="text-amber hover:underline">Try again</button>
+            </p>
+          ) : (
+            <p className="text-sm text-text-secondary col-span-2">Loading templates...</p>
+          ))}
         </div>
       </div>
 
@@ -640,18 +1097,79 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
         <div className="rounded-xl border border-border bg-surface/80 p-6">
           <p className="text-micro mb-4">Parameters for {selected.name}</p>
           <div className="space-y-4">
-            {paramFields.map(([key, schema]) => (
-              <div key={key}>
-                <label className="block text-xs text-text-secondary mb-1 capitalize">{key.replace(/_/g, ' ')}</label>
-                <input
-                  type="text"
-                  value={params[key] || ''}
-                  onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
-                  placeholder={((schema as unknown as Record<string, string>)?.description) || key}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-amber/50"
-                />
+            <div className="space-y-4 rounded-lg border border-border bg-background p-4">
+              <p className="text-xs font-medium text-text-primary">Principal declaration</p>
+              {enteredBelow.length > 0 && (
+                <p className="text-xs text-text-secondary/60">
+                  Entered once, in the contract fields below: {enteredBelow.join(', ')}.
+                </p>
+              )}
+              {!nameParam && (
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Principal name</label>
+                  <input type="text" value={principal.principal_name}
+                    onChange={e => setPrincipal(p => ({ ...p, principal_name: e.target.value }))}
+                    placeholder="Legal name of the person or company" className={inputClass} />
+                </div>
+              )}
+              {!typeParam && (
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Principal type</label>
+                  <select value={principal.principal_type}
+                    onChange={e => setPrincipal(p => ({ ...p, principal_type: e.target.value }))}
+                    className={inputClass}>
+                    <option value="company">Company</option>
+                    <option value="individual">Individual</option>
+                  </select>
+                </div>
+              )}
+              {agentBoxShown && (
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Agent wallet address (the agent that acts for you)</label>
+                  <input type="text" value={principal.agent_id}
+                    onChange={e => setPrincipal(p => ({ ...p, agent_id: e.target.value }))}
+                    placeholder="0x…" className={`${inputClass} font-mono`} />
+                  {agentParam && (
+                    <p className="text-xs text-text-secondary/60 mt-1">
+                      The {agentParam.replace(/_/g, ' ')} field below names the agent without a wallet, so enter the agent&apos;s wallet here.
+                    </p>
+                  )}
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">Your signing wallet (principal) <span className="text-text-secondary/60">— optional</span></label>
+                <input type="text" value={principalWallet}
+                  onChange={e => setPrincipalWallet(e.target.value)}
+                  placeholder="0x…" className={`${inputClass} font-mono`} />
+                <p className="text-xs text-text-secondary/60 mt-1">
+                  The wallet that signs this contract as the principal. Leave it empty to use your account&apos;s verified wallet, or this account&apos;s API key if it has none.
+                </p>
               </div>
-            ))}
+            </div>
+            {paramFields.map(([key, schema]) => {
+              const options = Array.isArray(schema.enum) ? schema.enum.map(String) : schema.type === 'boolean' ? ['true', 'false'] : null;
+              return (
+                <div key={key}>
+                  <label className="block text-xs text-text-secondary mb-1 capitalize">{key.replace(/_/g, ' ')}</label>
+                  {options ? (
+                    <select value={params[key] || ''} onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
+                      className={inputClass}>
+                      <option value="">Select…</option>
+                      {options.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type={schema.type === 'number' || schema.type === 'integer' ? 'number' : 'text'}
+                      step={schema.type === 'integer' ? 1 : 'any'}
+                      value={params[key] || ''}
+                      onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder={schema.description || key}
+                      className={inputClass}
+                    />
+                  )}
+                </div>
+              );
+            })}
             {paramFields.length === 0 && <p className="text-xs text-text-secondary">This template has no required parameters.</p>}
 
             <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
@@ -706,9 +1224,39 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
 }
 
 // ─── Contract List ──────────────────────────────────────
-function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[]; onSelectContract?: (c: ContractRow) => void }) {
+function ContractList({
+  contracts, onSelectContract, currentWallet, boundWallets, apiKeyId,
+}: {
+  contracts: ContractRow[];
+  onSelectContract?: (c: ContractRow) => void;
+  currentWallet: string | null;
+  boundWallets: string[];
+  apiKeyId: string | null;
+}) {
   const [filter, setFilter] = useState('all');
-  const filtered = filter === 'all' ? contracts : contracts.filter(c => c.status === filter);
+  // Phase B: 'all' = show every contract (account union with all bound wallets);
+  // 'current_wallet' = narrow to contracts where currentWallet is a party.
+  const [walletScope, setWalletScope] = useState<'all' | 'current_wallet'>('all');
+
+  const currentWalletLc = currentWallet?.toLowerCase() ?? null;
+
+  // Compute roles once per render
+  const withRoles = contracts.map((c) => ({
+    contract: c,
+    role: computeContractRole(c, boundWallets, apiKeyId),
+  }));
+
+  let scoped = withRoles;
+  if (walletScope === 'current_wallet' && currentWalletLc) {
+    scoped = withRoles.filter(({ contract: c }) => {
+      const cols: (string | null)[] = [
+        c.principal_wallet, c.nft_holder_wallet, c.nft_counterparty_wallet, c.payer_wallet,
+      ];
+      return cols.some((w) => w?.toLowerCase() === currentWalletLc);
+    });
+  }
+
+  const filtered = filter === 'all' ? scoped : scoped.filter(({ contract: c }) => c.status === filter);
   const statuses = ['all', 'draft', 'handshake', 'pending_signature', 'active', 'terminated', 'amended'];
 
   return (
@@ -716,8 +1264,28 @@ function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[
       <div className="px-5 py-3.5 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-text-primary">All Contracts</h2>
-          <span className="text-xs text-text-secondary/60">{contracts.length} total</span>
+          <span className="text-xs text-text-secondary/60">
+            {scoped.length}{walletScope === 'current_wallet' ? ' (current wallet)' : ' total'}
+          </span>
         </div>
+        {/* Wallet-scope chip (Phase B). Hidden when no current wallet to scope to. */}
+        {currentWalletLc && (
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-[10px] uppercase tracking-wider text-text-secondary/50">Scope:</span>
+            <button onClick={() => setWalletScope('all')}
+              className={`text-xs px-3 py-1 rounded-md font-mono transition-colors ${
+                walletScope === 'all' ? 'bg-amber/20 text-amber border border-amber/40' : 'bg-surface-elevated text-text-secondary border border-border hover:border-amber/30'
+              }`}>
+              All (account + all bound wallets)
+            </button>
+            <button onClick={() => setWalletScope('current_wallet')}
+              className={`text-xs px-3 py-1 rounded-md font-mono transition-colors ${
+                walletScope === 'current_wallet' ? 'bg-amber/20 text-amber border border-amber/40' : 'bg-surface-elevated text-text-secondary border border-border hover:border-amber/30'
+              }`}>
+              Just {currentWallet?.slice(0, 6)}…{currentWallet?.slice(-4)}
+            </button>
+          </div>
+        )}
         <div className="flex gap-2 flex-wrap">
           {statuses.map(s => (
             <button key={s} onClick={() => setFilter(s)}
@@ -731,15 +1299,21 @@ function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[
       </div>
       {filtered.length === 0 ? (
         <div className="px-5 py-12 text-center">
-          <p className="text-sm text-text-secondary">{filter === 'all' ? 'No contracts yet.' : `No ${filter.replace('_', ' ')} contracts.`}</p>
+          <p className="text-sm text-text-secondary">
+            {filter === 'all' && walletScope === 'all'
+              ? 'No contracts yet.'
+              : filter === 'all' && walletScope === 'current_wallet'
+              ? 'No contracts where your current wallet is a party. Try the All scope.'
+              : `No ${filter.replace('_', ' ')} contracts in this scope.`}
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-border/50">
-          {filtered.map(c => (
+          {filtered.map(({ contract: c, role }) => (
             <button key={c.contract_id} onClick={() => onSelectContract?.(c)}
               className="flex w-full items-center gap-4 px-5 py-3.5 hover:bg-amber/5 transition-colors text-left">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-sm font-mono text-amber">{c.contract_id}</span>
                   <StatusBadge status={c.status} />
                   {c.nft_mint_status === 'minted' && (
@@ -748,6 +1322,10 @@ function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[
                   {c.revoked_at && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded font-mono text-error border border-error/30">REVOKED</span>
                   )}
+                  {c.is_one_sided && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono text-violet-400 border border-violet-500/30" title="Unilateral authorization — principal signs once, no counterparty required">DELEGATION</span>
+                  )}
+                  <RoleBadge role={role} />
                 </div>
                 <p className="text-xs text-text-secondary/70 truncate">{c.principal_declaration?.principal_name || 'Unknown'}</p>
               </div>
@@ -761,6 +1339,37 @@ function ContractList({ contracts, onSelectContract }: { contracts: ContractRow[
         </div>
       )}
     </div>
+  );
+}
+
+/** Small role chip rendered on each contract row in ContractList. */
+function RoleBadge({ role }: { role: ContractRole }) {
+  if (role === 'none') return null;
+  const styles: Record<ContractRole, string> = {
+    principal:       'text-amber-200 border-amber-400/40 bg-amber/10',
+    counterparty:    'text-blue-300 border-blue-400/40 bg-blue-500/10',
+    nft_holder:      'text-purple-300 border-purple-400/40 bg-purple-500/10',
+    payer:           'text-cyan-300 border-cyan-400/40 bg-cyan-500/10',
+    'deployer-only': 'text-text-secondary border-text-secondary/30 bg-text-secondary/5',
+    none:            '',
+  };
+  const labels: Record<ContractRole, string> = {
+    principal:       'Principal',
+    counterparty:    'Counterparty',
+    nft_holder:      'NFT holder',
+    payer:           'Payer',
+    'deployer-only': 'Deployed by you (no wallet match)',
+    none:            '',
+  };
+  return (
+    <span
+      title={role === 'deployer-only'
+        ? 'Your account deployed this contract, but the on-chain wallets are not in your bound wallet set. Connect the right wallet to import its NFT.'
+        : undefined}
+      className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${styles[role]}`}
+    >
+      {labels[role]}
+    </span>
   );
 }
 
@@ -780,6 +1389,124 @@ interface AmendmentProposal {
   proposed_visibility: 'private' | 'metadata_only' | 'public' | 'encrypted' | null;
 }
 
+/**
+ * The two expected signer parties for a BILATERAL contract, derived from the
+ * contract's deploy parameters. Drives the per-party "signed / awaiting"
+ * indicator. Field names mirror DeployChat's FIELD_BY_TEMPLATE +
+ * AGENT_WALLET_FIELD_BY_TEMPLATE. Returns [] when the wallets can't be resolved
+ * (the caller then falls back to the plain signature list). One-sided contracts
+ * (P2) are intentionally excluded — they have a single signer.
+ */
+function expectedSignersFor(c: ContractRow): { role: string; wallet: string }[] {
+  const p = c.parameters ?? {};
+  const get = (k: string) => (typeof p[k] === 'string' ? (p[k] as string) : '');
+  const PAIRS: Record<string, [string, string][]> = {
+    'c3-task-execution': [['Requester agent', 'requester_agent_id'], ['Executor agent', 'executor_agent_id']],
+    'a1-service-purchase': [['Buyer agent', 'consumer_agent_id'], ['Provider agent', 'provider_agent_id']],
+    'd1-general-auth': [['Principal', 'principal_agent_id'], ['Agent', 'agent_id']],
+    'c1-api-access': [['Buyer agent', 'buyer_agent_id'], ['Provider agent', 'provider_agent_id']],
+  };
+  const pairs = PAIRS[c.template_slug ?? ''] ?? [];
+  return pairs
+    .map(([role, field]) => ({ role, wallet: get(field) }))
+    .filter((x) => /^0x[a-fA-F0-9]{40}$/.test(x.wallet));
+}
+
+/**
+ * DACS-2 Vet — counterparty credential verification card. Shows for a company
+ * party that carries an LEI-shaped registration number. Verifies against the
+ * public GLEIF register via Demos DAHR and renders a decision badge. While the
+ * live DAHR call is flag-gated off, the result is `indeterminate` ("Pending").
+ */
+function VerificationCard({ contractId, apiKey, role, identifier, partyName }: {
+  contractId: string; apiKey: string; role: string; identifier: string; partyName?: string;
+}) {
+  const [result, setResult] = useState<VerifyResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/v1/contracts/${contractId}/verify-party`, { headers: apiKey ? { 'X-API-Key': apiKey } : {} })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelled) return;
+        const v = d?.verifications?.[0]?.verify_result as VerifyResult | undefined;
+        if (v) setResult(v);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [contractId, apiKey]);
+
+  async function run() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/contracts/${contractId}/verify-party`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'X-API-Key': apiKey } : {}) },
+        body: JSON.stringify({ party_role: role, scheme: 'lei', identifier }),
+      });
+      const json = await res.json();
+      if (!res.ok) setError(json.message || 'Verification failed');
+      else setResult(json.verify_result as VerifyResult);
+    } catch {
+      setError('Network error during verification');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const decision = result?.decision;
+  const legalName = (result?.data?.legalName as string | undefined) ?? undefined;
+  const badge =
+    decision === 'pass'
+      ? { cls: 'text-success border-success/40 bg-success/10', icon: <ShieldCheck className="h-3.5 w-3.5" />, label: legalName ? `Verified against GLEIF — ${legalName}` : 'Verified against GLEIF' }
+      : decision === 'fail'
+      ? { cls: 'text-error border-error/40 bg-error/10', icon: <X className="h-3.5 w-3.5" />, label: 'Unverified' }
+      : decision === 'indeterminate'
+      ? { cls: 'text-amber border-amber/40 bg-amber/10', icon: <Clock className="h-3.5 w-3.5" />, label: 'Pending — live verification not yet enabled' }
+      : decision === 'error'
+      ? { cls: 'text-text-secondary border-border bg-surface-elevated', icon: <X className="h-3.5 w-3.5" />, label: 'Could not verify' }
+      : null;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface/80 p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <ShieldCheck className="h-4 w-4 text-amber" />
+        <p className="text-micro">Counterparty verification</p>
+      </div>
+      <p className="text-xs text-text-secondary mb-3 leading-relaxed">
+        Check {partyName ? <span className="text-text-primary">{partyName}</span> : 'this party'} against the public GLEIF register by LEI{' '}
+        <span className="font-mono text-text-primary/70">{identifier}</span>, via Demos DAHR.
+      </p>
+
+      {badge && (
+        <div className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs mb-3 ${badge.cls}`}>
+          {badge.icon}
+          <span>{badge.label}</span>
+        </div>
+      )}
+      {result?.reason && decision !== 'pass' && (
+        <p className="text-[11px] text-text-secondary/70 mb-3 leading-snug">{result.reason}</p>
+      )}
+      {error && <p className="text-[11px] text-error mb-3">{error}</p>}
+
+      <button
+        onClick={run}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs text-text-primary hover:border-amber/50 hover:bg-surface transition-colors disabled:opacity-60"
+      >
+        {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+        {result ? 'Re-verify against GLEIF' : 'Verify against GLEIF'}
+      </button>
+      <p className="mt-2 text-[10px] text-text-secondary/50 leading-snug">
+        Recorded as a DACS VerifyResult. &ldquo;Verified against GLEIF&rdquo; reflects a registry match, not legal certification.
+      </p>
+    </div>
+  );
+}
+
 function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   contract: ContractRow; apiKey: string; onBack: () => void; onRevoked: () => void;
 }) {
@@ -794,6 +1521,27 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [contractText, setContractText] = useState<{ human_readable: string; machine_readable: Record<string, unknown> } | null>(null);
   const [textLoading, setTextLoading] = useState(false);
+  // Principal's share token for the reader URL, purpose 'deployer'. Generated on
+  // mount so the dashboard's "Open in Reader" + "Sign Contract" links land the
+  // deployer in the authorized view (Sign button visible) instead of the
+  // metadata-only fallback. It never places its holder in the counterparty
+  // slot, so a creator who signs from these links without the session key is
+  // refused rather than seated on the wrong side. The /share endpoint requires
+  // the same api_key_id as the contract creator — that's the correct
+  // authorization model.
+  const [principalToken, setPrincipalToken] = useState<string | null>(null);
+  // The invite for the other party, behind "Copy share link". Minted on the
+  // first click, so visiting this page creates no invite.
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteLinkBusy, setInviteLinkBusy] = useState(false);
+  const [inviteLinkFailed, setInviteLinkFailed] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  // Scope-only share: a redacted link that shows the agent's authority + validity
+  // but hides the parties' identities and the full contract text. Token minted
+  // lazily on first click so we don't create one per page mount.
+  const [scopeToken, setScopeToken] = useState<string | null>(null);
+  const [scopeLinkCopied, setScopeLinkCopied] = useState(false);
+  const [scopeLinkBusy, setScopeLinkBusy] = useState(false);
 
   const refreshProposals = useCallback(() => {
     fetch(`/api/v1/contracts/${contract.contract_id}/amendments`)
@@ -803,8 +1551,12 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   }, [contract.contract_id]);
 
   useEffect(() => {
-    // Fetch signatures and amendment chain
-    fetch(`/api/v1/contracts/${contract.contract_id}/status`)
+    // Fetch signatures and amendment chain. Send the API key so the status
+    // route recognises the owner and returns UNSTRIPPED signer wallets for
+    // private contracts — needed for the per-party signed/awaiting indicator.
+    fetch(`/api/v1/contracts/${contract.contract_id}/status`, {
+      headers: apiKey ? { 'X-API-Key': apiKey } : {},
+    })
       .then(r => r.json())
       .then(data => {
         if (data.signatures) setSignatures(data.signatures);
@@ -826,6 +1578,23 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
       })
       .catch(() => {})
       .finally(() => setTextLoading(false));
+
+    // Generate a principal-side share token (purpose 'deployer', no email sent).
+    // We need this because the reader portal gates Sign UI on ?token= presence
+    // and the deploy-time auto-token isn't fetched anywhere — so without this
+    // the principal's "Open in Reader" link drops them into the metadata-only
+    // fallback with no way to sign. One token per detail-page mount; it views
+    // the contract and fills no slot, unlike the invite behind "Copy share link".
+    if (apiKey) {
+      fetch(`/api/v1/contracts/${contract.contract_id}/share`, {
+        method: 'POST',
+        headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purpose: 'deployer' }),
+      })
+        .then(r => r.json())
+        .then(data => { if (data.token) setPrincipalToken(data.token); })
+        .catch(() => {});
+    }
   }, [contract.contract_id, apiKey, refreshProposals]);
 
   async function handleApproveProposal(proposalId: string) {
@@ -895,12 +1664,21 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
     }
   }
 
-  const stages = [
-    { key: 'draft', label: 'Created', icon: FileText },
-    { key: 'handshake', label: 'Handshake', icon: Handshake },
-    { key: 'pending_signature', label: 'Signing', icon: PenTool },
-    { key: 'active', label: 'Active', icon: ShieldCheck },
-  ];
+  // Type-aware lifecycle. One-sided contracts (P2 Power of Attorney) go
+  // draft → active directly — there is no counterparty handshake or second
+  // signature, so showing those stages as completed is misleading. Bilateral
+  // contracts keep the full 4-stage path.
+  const stages = contract.is_one_sided
+    ? [
+        { key: 'draft', label: 'Created', icon: FileText },
+        { key: 'active', label: 'Active', icon: ShieldCheck },
+      ]
+    : [
+        { key: 'draft', label: 'Created', icon: FileText },
+        { key: 'handshake', label: 'Handshake', icon: Handshake },
+        { key: 'pending_signature', label: 'Signing', icon: PenTool },
+        { key: 'active', label: 'Active', icon: ShieldCheck },
+      ];
 
   const currentStageIndex = stages.findIndex(s => s.key === contract.status);
   const isTerminal = ['revoked', 'terminated', 'expired', 'amended'].includes(contract.status);
@@ -910,19 +1688,55 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState('');
 
-  async function handleApprove() {
+  // Article 14 approval. The wallet path is the real one: an API key proves only
+  // that the caller holds a bearer token, which the agent also holds, so it
+  // cannot evidence a human. The key path survives for accounts that have not
+  // bound a wallet yet — the server refuses it once they have.
+  async function handleApprove(mode: 'wallet' | 'api_key') {
     setApproving(true);
     setApproveError('');
     try {
+      let payload: Record<string, string> = {};
+
+      if (mode === 'wallet') {
+        const injected = (window as unknown as { ethereum?: unknown }).ethereum;
+        if (!injected) {
+          setApproveError('No wallet detected in this browser. Use the API key option, or open the dashboard in a wallet-enabled browser.');
+          return;
+        }
+        const { BrowserProvider } = await import('ethers');
+        const provider = new BrowserProvider(injected as never);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        // The server requires the hash and an approval verb, so a login
+        // signature cannot be replayed into an approval.
+        const message = [
+          `I approve Ambr contract ${contract.contract_id}`,
+          '',
+          `Contract SHA-256: ${contract.sha256_hash}`,
+          '',
+          `Timestamp: ${new Date().toISOString()}`,
+        ].join('\n');
+        const signature = await signer.signMessage(message);
+        payload = { wallet_address: address, signature, message };
+      }
+
       const res = await fetch(`/api/v1/contracts/${contract.contract_id}/approve`, {
         method: 'POST',
         headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) { setApproveError(json.message || 'Approval failed'); return; }
       onRevoked(); // reuse callback to refresh data
-    } catch { setApproveError('Network error'); }
+    } catch (e) {
+      // A user rejecting the signature prompt lands here; say so rather than
+      // reporting a network error.
+      const msg = e instanceof Error && /reject|denied/i.test(e.message)
+        ? 'Signature request was rejected in the wallet.'
+        : 'Network error';
+      setApproveError(msg);
+    }
     finally { setApproving(false); }
   }
 
@@ -987,16 +1801,24 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
             As the principal, you must approve before the agent can proceed. This is the human-in-the-loop mechanism required by EU AI Act Article 14.
           </p>
           {approveError && <p className="text-xs text-error mb-3">{approveError}</p>}
-          <div className="flex gap-3">
-            <button onClick={handleApprove} disabled={approving}
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={() => handleApprove('wallet')} disabled={approving}
               className="rounded-lg bg-orange-500/20 border border-orange-500/40 px-4 py-2 text-sm text-orange-400 hover:bg-orange-500/30 transition-colors disabled:opacity-50">
-              {approving ? 'Approving...' : 'Approve Contract'}
+              {approving ? 'Approving...' : 'Sign & Approve'}
             </button>
             <button onClick={() => setShowRevokeConfirm(true)}
               className="rounded-lg border border-error/30 bg-error/5 px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors">
               Reject
             </button>
+            <button onClick={() => handleApprove('api_key')} disabled={approving}
+              className="text-xs text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors disabled:opacity-50">
+              Approve with API key instead
+            </button>
           </div>
+          <p className="mt-3 text-xs text-text-secondary">
+            Signing with the principal wallet is what makes this approval evidence of a human decision. An API key
+            alone is accepted only while the account has no wallet bound to it.
+          </p>
         </div>
       )}
 
@@ -1008,10 +1830,15 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
             const Icon = stage.icon;
             const isPast = !isTerminal && currentStageIndex >= i;
             const isCurrent = !isTerminal && currentStageIndex === i;
+            // The 'active' stage is a reached/good state, not in-progress — so
+            // when it's the current step (contract is active) show it green,
+            // while other in-progress steps (draft/handshake/pending) stay amber.
+            const isCurrentActive = isCurrent && stage.key === 'active';
             return (
               <div key={stage.key} className="flex items-center gap-1 flex-1">
                 <div className="flex-1 text-center">
                   <div className={`mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg border transition-all ${
+                    isCurrentActive ? 'border-success/50 bg-success/15 text-success' :
                     isCurrent ? 'border-amber bg-amber/15 text-amber' :
                     isPast ? 'border-success/40 bg-success/10 text-success' :
                     'border-border bg-surface-elevated text-text-secondary/40'
@@ -1019,7 +1846,7 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
                     <Icon className="h-4 w-4" />
                   </div>
                   <p className={`text-[10px] font-mono uppercase tracking-wider ${
-                    isCurrent ? 'text-amber' : isPast ? 'text-success/70' : 'text-text-secondary/40'
+                    isCurrentActive ? 'text-success' : isCurrent ? 'text-amber' : isPast ? 'text-success/70' : 'text-text-secondary/40'
                   }`}>{stage.label}</p>
                 </div>
                 {i < stages.length - 1 && (
@@ -1044,7 +1871,66 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
             </>
           )}
         </div>
+        {/* Bilateral contracts waiting on the second party: make the pending
+            state explicit so the amber "Signing" step isn't mistaken for done. */}
+        {!contract.is_one_sided && contract.status === 'pending_signature' && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber/30 bg-amber/5 px-3 py-2">
+            <Clock className="h-3.5 w-3.5 text-amber shrink-0" />
+            <p className="text-xs text-amber">Waiting for the counterparty to sign.</p>
+          </div>
+        )}
+        {/* A2A is agent-deployed (no human form), so any c3 contract reaching the
+            dashboard was created by the user's agent via MCP. Make that explicit
+            pre-activation so it reads as a contract to watch, not an unfinished
+            draft — and reassure the reading view needs no wallet. */}
+        {contract.template_slug === 'c3-task-execution' &&
+          ['draft', 'handshake', 'pending_signature'].includes(contract.status) && (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-text-secondary">
+            <Bot className="h-3.5 w-3.5 text-amber/70 shrink-0" />
+            <span>Deployed by your agent — read it below and watch the signatures land. No wallet needed for this view.</span>
+          </div>
+        )}
       </div>
+
+      {/* Share with counterparty — only visible pre-activation so users can
+          recover from typos / re-send after the one-shot DeploySuccess modal
+          is dismissed. Hidden once the contract is `active` (both parties
+          signed) or terminated. The /share endpoint generates a fresh token
+          on every call, so re-sending is safe and idempotent on the email
+          side (counterparty just gets the link again). ShareByEmail provides
+          its own card chrome so no outer wrapper here. */}
+      {(['draft', 'handshake', 'pending_signature'].includes(contract.status)) && (
+        <ShareByEmail apiKey={apiKey} contractId={contract.contract_id} />
+      )}
+
+      {/* Agent connection handoff — the copy-paste an agent uses to read +
+          sign this contract machine-to-machine. Shown while a signature is
+          still outstanding (pre-active); hidden once fully executed. */}
+      {(['draft', 'handshake', 'pending_signature'].includes(contract.status)) && (
+        <AgentHandoff
+          contractId={contract.contract_id}
+          sha256Hash={contract.sha256_hash}
+          isOneSided={contract.is_one_sided ?? false}
+          isAgentToAgent={contract.template_slug === 'c3-task-execution'}
+        />
+      )}
+
+      {/* DACS-2 Vet — counterparty verification, shown when a company party
+          carries an LEI-shaped registration number. */}
+      {(() => {
+        const reg = contract.parameters?.principal_registration_number;
+        if (typeof reg !== 'string' || !isLei(reg)) return null;
+        const name = contract.parameters?.principal_name;
+        return (
+          <VerificationCard
+            contractId={contract.contract_id}
+            apiKey={apiKey}
+            role="principal"
+            identifier={reg}
+            partyName={typeof name === 'string' ? name : undefined}
+          />
+        );
+      })()}
 
       {/* Details grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1063,18 +1949,55 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
 
         <div className="rounded-xl border border-border bg-surface/80 p-5">
           <p className="text-micro mb-3">Signatures</p>
-          {signatures.length > 0 ? (
-            <div className="space-y-2">
-              {signatures.map((sig, i) => (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <span className="font-mono text-text-primary">{sig.signer_wallet?.slice(0, 6)}...{sig.signer_wallet?.slice(-4)}</span>
-                  <span className="text-text-secondary">{new Date(sig.signed_at).toLocaleDateString()}</span>
+          {(() => {
+            // Per-party "signed / awaiting" view for bilateral contracts — shows
+            // WHO still needs to sign (e.g. for A2A: requester agent vs executor
+            // agent). Only used when (a) it's bilateral, (b) we resolved both
+            // party wallets from the deploy params, and (c) the signer wallets
+            // came back unstripped (owner-auth'd) so the match is trustworthy.
+            // Otherwise fall back to the plain signature list (no regression).
+            const expected = expectedSignersFor(contract);
+            const haveSignerWallets = signatures.every((s) => !!s.signer_wallet);
+            const usePerParty = !contract.is_one_sided && expected.length >= 2 && haveSignerWallets;
+            if (usePerParty) {
+              const signedSet = new Set(
+                signatures.map((s) => (s.signer_wallet ?? '').toLowerCase()).filter(Boolean),
+              );
+              return (
+                <div className="space-y-2.5">
+                  {expected.map((e) => {
+                    const signed = signedSet.has(e.wallet.toLowerCase());
+                    return (
+                      <div key={e.wallet} className="flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {signed
+                            ? <Check className="h-3.5 w-3.5 text-success shrink-0" />
+                            : <Clock className="h-3.5 w-3.5 text-amber shrink-0" />}
+                          <span className="text-text-secondary shrink-0">{e.role}</span>
+                          <span className="font-mono text-text-primary/70 truncate">{e.wallet.slice(0, 6)}…{e.wallet.slice(-4)}</span>
+                        </div>
+                        <span className={`shrink-0 ${signed ? 'text-success' : 'text-amber'}`}>
+                          {signed ? 'signed' : 'awaiting'}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-text-secondary">No signatures yet</p>
-          )}
+              );
+            }
+            return signatures.length > 0 ? (
+              <div className="space-y-2">
+                {signatures.map((sig, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span className="font-mono text-text-primary">{sig.signer_wallet ? `${sig.signer_wallet.slice(0, 6)}...${sig.signer_wallet.slice(-4)}` : 'Signed'}</span>
+                    <span className="text-text-secondary">{new Date(sig.signed_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-text-secondary">No signatures yet</p>
+            );
+          })()}
 
           {contract.parent_contract_hash && (
             <div className="mt-4 pt-3 border-t border-border">
@@ -1202,6 +2125,40 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
         </div>
       )}
 
+      {/* Embedded cNFT viewer — positioned ABOVE the contract body so the
+          NFT proof is visible without scrolling past the legal text. Renders
+          only when mint pipeline has fired (i.e. once the contract is signed
+          and at least one cNFT exists or is in progress).
+          Party names extracted template-aware from contract parameters so each
+          card shows "Held by [name] · Principal/Counterparty". */}
+      {contract.nft_mint_status && (() => {
+        const { principalName, counterpartyName } = extractPartyNames(
+          contract.template_id,
+          contract.parameters,
+        );
+        // template_id is a UUID, not a slug, and contract_type holds the
+        // template category: when the first pass finds no names, the second
+        // takes the helper's field-name fallback.
+        const fallback = (!principalName && !counterpartyName)
+          ? extractPartyNames(contract.contract_type, contract.parameters)
+          : { principalName, counterpartyName };
+        return (
+          <ContractNftViewer
+            sha256Hash={contract.sha256_hash}
+            mintStatus={contract.nft_mint_status}
+            tokenId={contract.nft_token_id}
+            counterpartyTokenId={contract.nft_counterparty_token_id}
+            holderWallet={contract.nft_holder_wallet}
+            counterpartyWallet={contract.nft_counterparty_wallet}
+            txHash={contract.nft_tx_hash}
+            counterpartyTxHash={contract.nft_counterparty_tx_hash}
+            principalName={fallback.principalName ?? contract.principal_declaration?.principal_name ?? null}
+            counterpartyName={fallback.counterpartyName}
+            isOneSided={contract.is_one_sided ?? false}
+          />
+        );
+      })()}
+
       {/* Inline contract viewer */}
       {textLoading && (
         <div className="rounded-xl border border-border bg-surface/80 p-8 text-center">
@@ -1226,7 +2183,125 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
-        <Link href={`/reader/${contract.sha256_hash}`} target="_blank"
+        {/* Primary CTA for the principal when signing is pending. Same URL as
+            "Open in Reader" — the difference is discoverability. Guarded on
+            principalToken so we don't briefly link to the no-token URL before
+            the on-mount fetch resolves. That token is the deployer's, never an
+            invite (see the state above). */}
+        {['draft', 'handshake', 'pending_signature'].includes(contract.status) && principalToken && (
+          <Link
+            href={`/reader/${contract.sha256_hash}?token=${principalToken}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber text-background px-4 py-2.5 text-sm font-medium hover:bg-amber-light transition-colors"
+          >
+            <PenTool className="h-3.5 w-3.5" /> Sign Contract
+          </Link>
+        )}
+        {/* Copy share link — for distributing the tokenized URL via Telegram,
+            Slack, or any off-email channel. Tester report 2026-05-19
+            showed a counterparty hitting the metadata-only fallback because
+            the URL passed to them was missing the ?token=... segment. This
+            button is the one-click answer. Its token is an invite (the kind
+            that may fill an open counterparty slot), minted on the first click.
+            Shown once principalToken exists: only the creator's key gets one. */}
+        {principalToken && (
+          <button
+            disabled={inviteLinkBusy}
+            onClick={async () => {
+              try {
+                setInviteLinkBusy(true);
+                setInviteLinkFailed(false);
+                let tok = inviteToken;
+                if (!tok) {
+                  const res = await fetch(`/api/v1/contracts/${contract.contract_id}/share`, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ purpose: 'invite' }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok || !data.token) throw new Error(data.message || 'Failed to create share link');
+                  tok = data.token as string;
+                  setInviteToken(tok);
+                }
+                const url = `${window.location.origin}/reader/${contract.sha256_hash}?token=${tok}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2000);
+                } catch {
+                  // Clipboard API blocked (e.g. older browsers, certain webviews) —
+                  // fall back to a prompt the user can manually copy from.
+                  window.prompt('Copy this URL to share:', url);
+                }
+              } catch {
+                // The mint failed: say so, or the creator may paste an old clipboard.
+                setInviteLinkFailed(true);
+                setTimeout(() => setInviteLinkFailed(false), 3000);
+              } finally {
+                setInviteLinkBusy(false);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:border-amber/30 transition-colors disabled:opacity-50"
+          >
+            {linkCopied ? (
+              <><Check className="h-3.5 w-3.5 text-emerald-400" /> Copied</>
+            ) : inviteLinkFailed ? (
+              <><Copy className="h-3.5 w-3.5" /> Couldn&apos;t create the link. Try again</>
+            ) : (
+              <><Copy className="h-3.5 w-3.5" /> Copy share link</>
+            )}
+          </button>
+        )}
+        {/* Scope-only link — proves the agent's authority + validity without
+            exposing the parties' identities or the full contract text. Token is
+            minted on first click. */}
+        {apiKey && (
+          <button
+            disabled={scopeLinkBusy}
+            onClick={async () => {
+              try {
+                setScopeLinkBusy(true);
+                let tok = scopeToken;
+                if (!tok) {
+                  const res = await fetch(`/api/v1/contracts/${contract.contract_id}/share`, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ access_level: 'scope' }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok || !data.token) throw new Error(data.message || 'Failed to create scope link');
+                  tok = data.token as string;
+                  setScopeToken(tok);
+                }
+                const url = `${window.location.origin}/reader/${contract.sha256_hash}?token=${tok}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setScopeLinkCopied(true);
+                  setTimeout(() => setScopeLinkCopied(false), 2000);
+                } catch {
+                  window.prompt('Copy this scope-only URL to share:', url);
+                }
+              } catch {
+                /* surfaced via the button label staying idle */
+              } finally {
+                setScopeLinkBusy(false);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:border-amber/30 transition-colors disabled:opacity-50"
+            title="A redacted link: shows what the agent may do and whether it's valid, but hides identities and the full contract text"
+          >
+            {scopeLinkCopied ? (
+              <><Check className="h-3.5 w-3.5 text-emerald-400" /> Copied</>
+            ) : (
+              <><ShieldCheck className="h-3.5 w-3.5" /> Copy scope-only link</>
+            )}
+          </button>
+        )}
+        <Link
+          href={principalToken
+            ? `/reader/${contract.sha256_hash}?token=${principalToken}`
+            : `/reader/${contract.sha256_hash}`}
+          target="_blank"
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:border-amber/30 transition-colors">
           Open in Reader <ExternalLink className="h-3.5 w-3.5" />
         </Link>
@@ -1238,6 +2313,22 @@ function ContractDetail({ contract, apiKey, onBack, onRevoked }: {
           </button>
         )}
       </div>
+
+      {/* Honest explainer — the link contains a signing credential (the share
+          token). Anyone who receives it can sign as counterparty, regardless
+          of contract visibility. Visibility only controls read access; signing
+          is always token-gated. Earlier draft said "no Ambr account needed"
+          which was technically true but misleading about the credential nature.
+          See /api/v1/contracts/[id]/share/route.ts DEFAULT_EXPIRY_HOURS for the
+          7-day source of truth. */}
+      {principalToken && ['draft', 'handshake', 'pending_signature'].includes(contract.status) && (
+        <p className="text-[11px] text-text-secondary/70 mt-2 leading-relaxed">
+          <span className="text-amber/80">Anyone with the share link can sign as counterparty.</span> Share only with the intended recipient — the link contains a signing token that expires in 7 days.
+          {contract.visibility && contract.visibility !== 'private' && (
+            <> This contract&apos;s visibility is set to <span className="font-mono">{contract.visibility}</span> — read access follows that setting separately from the signing token.</>
+          )}
+        </p>
+      )}
 
       {/* Revoke confirmation */}
       {showRevokeConfirm && (
@@ -1441,7 +2532,7 @@ function AgentSetup({ apiKeyPrefix, apiKey }: { apiKeyPrefix: string; apiKey: st
           {[
             { id: 'mcp', title: 'MCP Server', desc: 'Add to Claude Desktop, Cursor, or any MCP client:', code: mcpConfig },
             { id: 'a2a', title: 'Agent Discovery (A2A)', desc: 'Ambr is discoverable via:', code: 'https://getamber.dev/.well-known/agent.json' },
-            { id: 'x402', title: 'x402 Pay-per-Contract', desc: 'No API key needed. Include payment tx hash:', code: `curl -X POST https://getamber.dev/api/v1/contracts \\\n  -H "X-Payment: 0xYOUR_TX_HASH" \\\n  -H "Content-Type: application/json" \\\n  -d '{ "template": "d1-general-auth", ... }'` },
+            { id: 'x402', title: 'x402 Pay-per-Contract', desc: 'No API key needed (x402 v2). The first call returns 402 with a PAYMENT-REQUIRED header; a standard x402 client signs it and you retry with PAYMENT-SIGNATURE. Success carries PAYMENT-RESPONSE:', code: `# 1. First call: 402 + PAYMENT-REQUIRED header\ncurl -i -X POST https://getamber.dev/api/v1/contracts \\\n  -H "Content-Type: application/json" \\\n  -d '{ "template": "d1-general-auth", ... }'\n\n# 2. Retry with PAYMENT-SIGNATURE produced by a standard x402 client (e.g. @x402/fetch)\ncurl -i -X POST https://getamber.dev/api/v1/contracts \\\n  -H "PAYMENT-SIGNATURE: <base64 from your x402 client>" \\\n  -H "Content-Type: application/json" \\\n  -d '{ "template": "d1-general-auth", ... }'\n# 201 Created, PAYMENT-RESPONSE header carries the settlement` },
           ].map(b => (
             <div key={b.id} className="rounded-xl border border-border bg-surface/80 p-5">
               <h3 className="text-sm font-medium text-text-primary mb-1">{b.title}</h3>
@@ -1472,10 +2563,11 @@ function X402Calculator() {
   const total = price * count;
 
   const tierComparison = [
-    { tier: 'x402 (pay-per-use)', cost: total, note: `${count} contracts` },
-    { tier: 'Developer (free)', cost: 0, note: '5/mo per account' },
-    { tier: 'Startup ($49/mo)', cost: 49, note: `200/mo, overage $0.35` },
-    { tier: 'Scale ($199/mo)', cost: 199, note: `1,000/mo, overage $0.25` },
+    { tier: 'x402 (pay-per-use)', cost: total, note: `${count} contracts`, suffix: '' },
+    { tier: `Developer (free)`, cost: 0, note: `${FREE_TIER_CREDITS} credits once, then buy a pack`, suffix: '' },
+    { tier: `${PACKS[0].label} (${formatUsd(PACKS[0].price_cents)})`, cost: PACKS[0].price_cents / 100, note: `${PACKS[0].credits.toLocaleString('en-US')} credits, one-off`, suffix: '' },
+    { tier: `${PACKS[1].label} (${formatUsd(PACKS[1].price_cents)})`, cost: PACKS[1].price_cents / 100, note: `${PACKS[1].credits.toLocaleString('en-US')} credits, one-off`, suffix: '' },
+    { tier: `${TEAM.label} (${formatUsd(TEAM.price_cents_monthly)}/mo)`, cost: TEAM.price_cents_monthly / 100, note: `${TEAM.credits_per_month.toLocaleString('en-US')} credits per month, overage: buy a pack`, suffix: '/mo' },
   ];
 
   return (
@@ -1486,7 +2578,7 @@ function X402Calculator() {
           <div>
             <label className="text-xs text-text-secondary mb-1.5 block">Contract Type</label>
             <div className="space-y-1.5">
-              {([['delegation', 'Delegation (d-series)', '$0.50'], ['commerce', 'Commerce (c-series)', '$1.00'], ['fleet', 'Fleet Auth (d3)', '$2.50']] as const).map(([val, label, price]) => (
+              {([['delegation', 'Delegation (d-series)', '$0.50'], ['commerce', 'Agent-to-Agent (c-series)', '$1.00'], ['fleet', 'Fleet Auth (d3)', '$2.50']] as const).map(([val, label, price]) => (
                 <button key={val} onClick={() => setContractType(val)}
                   className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors border ${
                     contractType === val ? 'border-amber/30 bg-amber/5 text-text-primary' : 'border-border text-text-secondary hover:border-amber/20'
@@ -1522,7 +2614,7 @@ function X402Calculator() {
                 <p className="text-xs text-text-secondary">{t.note}</p>
               </div>
               <span className={`font-mono text-sm ${t.cost <= total && t.tier !== 'x402 (pay-per-use)' ? 'text-success' : 'text-text-primary'}`}>
-                ${t.cost.toFixed(2)}{t.tier !== 'x402 (pay-per-use)' ? '/mo' : ''}
+                ${t.cost.toFixed(2)}{t.suffix}
               </span>
             </div>
           ))}
@@ -1598,9 +2690,10 @@ function AccountSection({ user, wallet, authMethod, apiKey, onSignOut }: {
         <div className="space-y-3">
           {user?.email && <Row label="Email" value={user.email} />}
           {tierInfo && <Row label="Plan" value={tierInfo.label} className="text-amber" />}
-          {user && <Row label="Credits Remaining" value={user.credits === -1 ? 'Unlimited' : String(user.credits)} mono />}
-          {tierInfo && <Row label="Monthly Limit" value={tierInfo.limit} />}
-          {tierInfo && tierInfo.overage !== 'N/A' && <Row label="Overage Rate" value={tierInfo.overage} className="text-text-secondary" />}
+          {user && <Row label="Credits Remaining" value={user.credits === -1 ? 'Unlimited' : `${user.credits} credits`} mono />}
+          {user && user.credits > 0 && <Row label="Personal Contracts" value={`~${Math.floor(user.credits / 20)}`} mono />}
+          {tierInfo && <Row label="Included Credits" value={tierInfo.limit} />}
+          {tierInfo && tierInfo.overage !== 'N/A' && tierInfo.overage !== '—' && <Row label="When Credits Run Out" value={tierInfo.overage} className="text-text-secondary" />}
           {user?.key_prefix && <Row label="API Key" value={`${user.key_prefix}...`} mono />}
           {wallet && <Row label="Wallet" value={`${wallet.slice(0, 6)}...${wallet.slice(-4)}`} mono />}
           <Row label="Auth Method" value={authMethod === 'wallet' ? 'Wallet (ECDSA)' : 'API Key'} />
@@ -1623,8 +2716,8 @@ function AccountSection({ user, wallet, authMethod, apiKey, onSignOut }: {
               }`}
             >
               <p className="text-sm font-medium text-text-primary">Starter Pack</p>
-              <p className="text-lg font-mono font-bold text-amber mt-1">$49</p>
-              <p className="text-xs text-text-secondary mt-1">200 contracts</p>
+              <p className="text-lg font-mono font-bold text-amber mt-1">{formatUsd(PACKS[0].price_cents)}</p>
+              <p className="text-xs text-text-secondary mt-1">{PACKS[0].credits.toLocaleString('en-US')} credits</p>
             </button>
             <button
               type="button"
@@ -1636,8 +2729,8 @@ function AccountSection({ user, wallet, authMethod, apiKey, onSignOut }: {
               }`}
             >
               <p className="text-sm font-medium text-text-primary">Scale Pack</p>
-              <p className="text-lg font-mono font-bold text-amber mt-1">$199</p>
-              <p className="text-xs text-text-secondary mt-1">1,000 contracts</p>
+              <p className="text-lg font-mono font-bold text-amber mt-1">{formatUsd(PACKS[1].price_cents)}</p>
+              <p className="text-xs text-text-secondary mt-1">{PACKS[1].credits.toLocaleString('en-US')} credits</p>
             </button>
           </div>
           {buyError && (
@@ -1748,38 +2841,19 @@ function Row({ label, value, mono, className }: { label: string; value: string; 
 // ─── Wallet & NFTs Section ─────────────────────────────
 const NFT_WALLET_STORAGE_KEY = 'ambr_nft_wallet';
 
-function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[]; walletAddress: string | null }) {
-  // Lazy initializer: auth wallet prop wins, then persisted NFT wallet, then null.
-  // This survives section navigation (component unmount/remount) and page reloads.
-  const [wallet, setWallet] = useState<string | null>(() => {
-    if (walletAddress) return walletAddress;
-    if (typeof window === 'undefined') return null;
-    try {
-      return localStorage.getItem(NFT_WALLET_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  });
+function WalletSection({ contracts }: { contracts: ContractRow[] }) {
+  // Use the same hook the bottom-left WalletStatusBar uses. Previously this
+  // section had its own state initialized from `walletAddress` (the session
+  // snapshot) + its own localStorage, which made the big "Connected Wallet"
+  // panel display a STALE wallet that disagreed with the live-wallet status
+  // bar in the sidebar. Reported 2026-05-26 morning: panel showed
+  // 0xae86…0a91 (SafePal cache) while sidebar showed 0x200b…7dd8 (real
+  // current MetaMask).
+  const {
+    wallet, providers, setPreferredProvider, requestAccount, disconnect,
+  } = useWalletStatus();
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
-  const walletProviders = useWalletProviders();
-
-  // Persist/clear the NFT wallet in localStorage whenever it changes.
-  // Disconnect (setWallet(null)) clears the stored value.
-  // Dispatch custom event so the WalletStatusBar picks up same-tab changes.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      if (wallet) {
-        localStorage.setItem(NFT_WALLET_STORAGE_KEY, wallet);
-      } else {
-        localStorage.removeItem(NFT_WALLET_STORAGE_KEY);
-      }
-      window.dispatchEvent(new Event('ambr-wallet-change'));
-    } catch {
-      // localStorage disabled (private browsing, quota exceeded) — non-critical
-    }
-  }, [wallet]);
 
   const nftContracts = contracts.filter(c => c.nft_mint_status === 'minted');
   const pendingMints = contracts.filter(c => c.nft_mint_status === 'pending');
@@ -1787,11 +2861,15 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
   async function connectWallet(picked: EIP6963ProviderDetail) {
     setConnecting(true); setError('');
     try {
-      const { BrowserProvider } = await import('ethers');
-      const provider = new BrowserProvider(picked.provider);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setWallet(address.toLowerCase());
+      // Tell the hook which provider to use, then prompt that provider for
+      // accounts. The hook's accountsChanged listener picks up the address
+      // and updates `wallet` for both this panel AND the WalletStatusBar.
+      setPreferredProvider(picked.info.rdns);
+      // Defer one tick so the preferredProvider state has propagated before
+      // requestAccount() reads it (matches the AmbrAgentOverlay pattern).
+      await new Promise((r) => setTimeout(r, 0));
+      const addr = await requestAccount();
+      if (!addr) setError('Connection cancelled');
     } catch (err) {
       if (!(err as Error).message?.includes('user rejected'))
         setError('Failed to connect wallet');
@@ -1815,7 +2893,7 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
                   <p className="text-xs text-text-secondary">Base L2</p>
                 </div>
               </div>
-              <button onClick={() => setWallet(null)}
+              <button onClick={disconnect}
                 className="text-xs text-text-secondary hover:text-text-primary transition-colors">
                 Disconnect
               </button>
@@ -1839,7 +2917,7 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
           <div>
             <p className="text-xs text-text-secondary mb-3">Connect an Ethereum wallet on Base L2 to view your contract NFTs and link wallet delegation to your API key.</p>
             {error && <p className="text-xs text-error mb-3">{error}</p>}
-            <WalletPicker providers={walletProviders} onPick={connectWallet} connecting={connecting} variant="amber" />
+            <WalletPicker providers={providers} onPick={connectWallet} connecting={connecting} variant="amber" />
           </div>
         )}
       </div>
@@ -1890,6 +2968,14 @@ function WalletSection({ contracts, walletAddress }: { contracts: ContractRow[];
                         title="This wallet is a current cNFT holder via a bilateral transfer (novation), not the original signer."
                       >
                         NOVATED
+                      </span>
+                    )}
+                    {c.is_one_sided && (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded font-mono text-violet-400 border border-violet-500/30"
+                        title="Unilateral authorization — principal signs once, no counterparty required"
+                      >
+                        DELEGATION
                       </span>
                     )}
                   </div>
@@ -1960,10 +3046,49 @@ export default function DashboardPage() {
   const [section, setSection] = useState<Section>('overview');
   // mobileOpen removed — replaced by bottom tab bar
   const [selectedContract, setSelectedContract] = useState<ContractRow | null>(null);
+  // Chat-driven deploy state (experimental, admin-gated until v1 ships publicly)
+  const [deployInitialIntent, setDeployInitialIntent] = useState<string | null>(null);
+  const [deployInitialTemplate, setDeployInitialTemplate] = useState<string | null>(null);
+  const [deployDraftIdToResume, setDeployDraftIdToResume] = useState<string | null>(null);
+  const [createManualMode, setCreateManualMode] = useState(false);
+  // Bumped each time the user clicks "Create Contract" so DeployChat remounts
+  // into a fresh session (vs. auto-resuming the last draft). See handleNav.
+  const [createNonce, setCreateNonce] = useState(0);
+
+  // Sidebar/tab navigation. "Create Contract" always starts a FRESH chat: the
+  // current in-progress draft is already auto-saved in IndexedDB and stays
+  // available under Drafts, so we just drop the "active draft" pointer and bump
+  // a nonce to force a clean DeployChat mount (even if already on the create
+  // tab). Resuming a specific draft still goes through Drafts → Resume.
+  const handleNav = useCallback((id: Section) => {
+    if (id === 'create') {
+      try { localStorage.removeItem(ACTIVE_DRAFT_KEY); } catch {}
+      setDeployDraftIdToResume(null);
+      setDeployInitialIntent(null);
+      setDeployInitialTemplate(null);
+      setCreateManualMode(false);
+      setCreateNonce((n) => n + 1);
+    }
+    setSection(id);
+  }, []);
   const walletProviders = useWalletProviders();
+  // Live MetaMask connection — used by ContractList's "Just my current wallet"
+  // filter chip in Phase B. The dashboard already has WalletSection consuming
+  // useWalletStatus internally; pulling it here too is fine (hook re-uses the
+  // same localStorage cache, no extra network call).
+  const liveWallet = useWalletStatus();
 
   const isLoggedIn = data?.authMethod != null;
-  const isAdmin = data?.user?.email ? ADMIN_EMAILS.includes(data.user.email) : false;
+  const isAdmin = data?.user?.is_admin === true;
+  const isTechAdmin = data?.user?.is_tech_admin === true;
+  // Beta access for Ambr Agent (AI chat). Admins always have it; non-admins
+  // need the explicit `ai_chat` flag in their api_keys.beta_features JSONB.
+  // The env flag remains the top-level kill switch — flip it off to hide
+  // the chat surface for everyone, no rollback commit needed.
+  const hasAiChatBeta = data?.user?.beta_features?.ai_chat === true;
+  const canUseAmbrChat =
+    (isAdmin || hasAiChatBeta) &&
+    process.env.NEXT_PUBLIC_AMBR_AGENT_EXPERIMENTAL === 'true';
 
   useEffect(() => {
     const s = loadSession();
@@ -1976,9 +3101,9 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/v1/dashboard', { headers: { 'X-API-Key': key } });
       const json = await res.json();
-      if (!res.ok) { setData({ user: null, contracts: [], wallet: null, authMethod: null, error: json.error || 'Invalid API key' }); }
-      else { setData({ user: json.user, contracts: json.contracts, wallet: null, authMethod: 'api_key', error: null }); saveSession('api_key', key); }
-    } catch { setData({ user: null, contracts: [], wallet: null, authMethod: null, error: 'Failed to connect' }); }
+      if (!res.ok) { setData({ user: null, contracts: [], wallet: null, bound_wallets: [], authMethod: null, error: json.error || 'Invalid API key' }); }
+      else { setData({ user: json.user, contracts: json.contracts, wallet: json.wallet ?? null, bound_wallets: json.bound_wallets ?? [], authMethod: 'api_key', error: null }); saveSession('api_key', key); }
+    } catch { setData({ user: null, contracts: [], wallet: null, bound_wallets: [], authMethod: null, error: 'Failed to connect' }); }
     finally { setLoading(false); }
   }, []);
 
@@ -2000,15 +3125,15 @@ export default function DashboardPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setData({ user: null, contracts: [], wallet: res.status === 404 ? address : null, authMethod: null,
+        setData({ user: null, contracts: [], wallet: res.status === 404 ? address : null, bound_wallets: [], authMethod: null,
           error: res.status === 404 ? 'No contracts found for this wallet.' : json.message || 'Verification failed' });
       } else {
-        setData({ user: json.user, contracts: json.contracts, wallet: json.wallet, authMethod: 'wallet', error: null });
+        setData({ user: json.user, contracts: json.contracts, wallet: json.wallet, bound_wallets: json.bound_wallets ?? (json.wallet ? [json.wallet] : []), authMethod: 'wallet', error: null });
         saveSession('wallet', undefined, json.wallet);
       }
     } catch (err) {
       if (!(err as Error).message?.includes('user rejected'))
-        setData({ user: null, contracts: [], wallet: null, authMethod: null, error: 'Wallet connection failed' });
+        setData({ user: null, contracts: [], wallet: null, bound_wallets: [], authMethod: null, error: 'Wallet connection failed' });
     } finally { setWalletLoading(false); }
   }
 
@@ -2065,14 +3190,22 @@ export default function DashboardPage() {
         {/* Dashboard */}
         {isLoggedIn && (
           <>
-            <DesktopSidebar active={section} onNav={setSection} isAdmin={isAdmin} user={data.user} onSignOut={handleSignOut} />
-            <MobileBottomNav active={section} onNav={setSection} isAdmin={isAdmin} user={data.user} onSignOut={handleSignOut} />
+            <DesktopSidebar active={section} onNav={handleNav} isAdmin={isAdmin} user={data.user} onSignOut={handleSignOut} serverBoundWallet={data.wallet ?? null} onRebound={() => { if (apiKey) fetchWithApiKey(apiKey); }} />
+            <MobileBottomNav active={section} onNav={handleNav} isAdmin={isAdmin} user={data.user} onSignOut={handleSignOut} />
 
             <div className="lg:ml-56 px-4 py-6 sm:px-6 lg:px-10 xl:px-16 2xl:px-24 pb-20 lg:pb-6">
+              {/* Beta notice — visible to all signed-in users (not just admins).
+                  Dismissible per-browser. Above the Top bar so it's the first
+                  thing every dashboard user sees on every section until they
+                  dismiss it. */}
+              <div className="mb-3">
+                <BetaNotice />
+              </div>
+
               {/* Top bar */}
               <div className="flex items-center justify-between gap-2 mb-6 rounded-xl border border-border/50 bg-surface/80 px-4 py-2.5">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Image src="/logo.png" alt="" width={18} height={18} className="rounded-sm shrink-0" />
+                  <AmbrMark size={18} className="shrink-0" />
                   <span className="text-sm text-text-secondary truncate">{data.user?.email || (data.wallet ? `${data.wallet.slice(0, 6)}...${data.wallet.slice(-4)}` : '')}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -2095,8 +3228,88 @@ export default function DashboardPage() {
                   exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
 
                   {section === 'overview' && <PipelineOverview contracts={data.contracts} user={data.user} onSelectContract={(c) => { setSelectedContract(c); setSection('contract-detail'); }} />}
-                  {section === 'create' && <ContractBuilder apiKey={apiKey} />}
-                  {section === 'contracts' && <ContractList contracts={data.contracts} onSelectContract={(c) => { setSelectedContract(c); setSection('contract-detail'); }} />}
+                  {section === 'create' && (
+                    (canUseAmbrChat && !createManualMode) ? (
+                      <DeployChat
+                        key={`deploy-${createNonce}`}
+                        apiKey={apiKey}
+                        wallet={data.wallet}
+                        userEmail={data.user?.email}
+                        initialIntent={deployInitialIntent}
+                        initialTemplate={deployInitialTemplate}
+                        draftIdToResume={deployDraftIdToResume}
+                        tier={data.user?.tier ?? null}
+                        credits={data.user?.credits ?? null}
+                        onSwitchToManual={() => setCreateManualMode(true)}
+                        onDeployed={() => {
+                          setDeployInitialIntent(null);
+                          setDeployInitialTemplate(null);
+                          setDeployDraftIdToResume(null);
+                          fetchWithApiKey(apiKey);
+                        }}
+                      />
+                    ) : (
+                      <>
+                        {/* Ambr Agent discovery hint — shown ONLY to users who
+                            CANNOT use the chat (wallet-only sessions, keys
+                            without the ai_chat beta flag). Manual-mode beta
+                            users don't see it (they have the toggle below).
+                            Feedback 2026-07-19: fresh users land here
+                            with zero signal that an AI assistant exists. */}
+                        {!canUseAmbrChat && (
+                          <div className="flex items-start gap-3 rounded-xl border border-amber/25 bg-amber/[0.06] px-4 py-3 mb-2">
+                            <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <p className="text-xs text-text-secondary leading-relaxed">
+                              <span className="text-text-primary">Prefer plain language?</span>{' '}
+                              The Ambr Agent — an AI assistant that drafts the mandate from a sentence — is in private beta.
+                              It requires an email-registered API key with beta access:{' '}
+                              <a href="/activate" className="text-amber hover:underline">claim a free key</a>, then request
+                              access at <a href="mailto:support@ambr.run" className="text-amber hover:underline">support@ambr.run</a>.
+                              The manual builder below works for everyone.
+                            </p>
+                          </div>
+                        )}
+                        <ContractBuilder apiKey={apiKey} />
+                        {canUseAmbrChat && createManualMode && (
+                          <div className="mt-4 text-center">
+                            <button
+                              onClick={() => setCreateManualMode(false)}
+                              className="text-xs text-amber hover:underline"
+                            >
+                              ← Switch back to Ambr Agent (chat-driven)
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )
+                  )}
+                  {section === 'my-drafts' && (
+                    canUseAmbrChat ? (
+                      <DraftsList
+                        apiKey={apiKey || null}
+                        onResumeDraft={(id) => {
+                          setDeployDraftIdToResume(id);
+                          setDeployInitialIntent(null);
+                          setDeployInitialTemplate(null);
+                          setCreateManualMode(false);
+                          setSection('create');
+                        }}
+                      />
+                    ) : (
+                      <div className="rounded-2xl border border-border bg-surface p-8 text-center">
+                        <p className="text-sm text-text-secondary">Drafts (chat-driven contracts) is in experimental preview.</p>
+                      </div>
+                    )
+                  )}
+                  {section === 'contracts' && <ContractList
+                    contracts={data.contracts}
+                    onSelectContract={(c) => { setSelectedContract(c); setSection('contract-detail'); }}
+                    currentWallet={liveWallet.wallet ?? data.wallet}
+                    boundWallets={data.bound_wallets}
+                    apiKeyId={data.user?.api_key_id ?? null}
+                  />}
                   {section === 'contract-detail' && selectedContract && (
                     <ContractDetail
                       contract={selectedContract}
@@ -2105,24 +3318,29 @@ export default function DashboardPage() {
                       onRevoked={() => { fetchWithApiKey(apiKey); setSection('contracts'); }}
                     />
                   )}
-                  {section === 'wallet' && <WalletSection contracts={data.contracts} walletAddress={data.wallet} />}
+                  {section === 'wallet' && <WalletSection contracts={data.contracts} />}
                   {section === 'agents' && <AgentSetup apiKeyPrefix={data.user?.key_prefix || 'amb_***'} apiKey={apiKey} />}
-                  {section === 'analytics' && <ContractAnalytics contracts={data.contracts} />}
+                  {section === 'analytics' && <ContractAnalytics contracts={data.contracts} apiKey={apiKey} />}
                   {section === 'account' && <AccountSection user={data.user} wallet={data.wallet} authMethod={data.authMethod!} apiKey={apiKey} onSignOut={handleSignOut} />}
 
                   {/* Admin sections */}
                   {isAdmin && ['calendar', 'email', 'drafts'].includes(section) && (
                     <AdminSection
                       activeSection={section as 'calendar' | 'email' | 'drafts'}
-                      currentUserEmail={data.user?.email}
+                      memberId={data.user?.team_member_id ?? undefined}
                     />
                   )}
 
-                  {/* Tech health — Ilvers + Dainis only (Bruno sees business metrics elsewhere) */}
-                  {isAdmin && section === 'health' && data.user?.email !== 'brunokrisjanis99@gmail.com' && (
+                  {/* Beta Access — admin-only management surface for granting per-account beta flags */}
+                  {isAdmin && section === 'beta-access' && (
+                    <BetaAccessSection currentUserEmail={data.user?.email} />
+                  )}
+
+                  {/* Tech health (admin only) */}
+                  {isAdmin && section === 'health' && isTechAdmin && (
                     <TechHealthWidget />
                   )}
-                  {isAdmin && section === 'health' && data.user?.email === 'brunokrisjanis99@gmail.com' && (
+                  {isAdmin && section === 'health' && !isTechAdmin && (
                     <div className="rounded-xl border border-border bg-surface p-8 text-center">
                       <p className="text-sm text-text-secondary">Business metrics are shown in Pipeline Overview and Analytics.</p>
                     </div>
@@ -2130,6 +3348,29 @@ export default function DashboardPage() {
                 </motion.div>
               </AnimatePresence>
             </div>
+
+            {/* Global Ambr Agent — gated by admin OR per-account ai_chat beta flag, plus the experimental env kill switch */}
+            {canUseAmbrChat && (
+              <AmbrAgentOverlay
+                apiKey={apiKey}
+                context={{
+                  wallet: data.wallet,
+                  tier: data.user?.tier ?? null,
+                }}
+                hidden={section === 'create'}
+                onHandoffToDeploy={(template, intent) => {
+                  // Seed a FRESH chat with the agent's intent — don't let the
+                  // last active draft shadow it (same fresh-start as handleNav).
+                  try { localStorage.removeItem(ACTIVE_DRAFT_KEY); } catch {}
+                  setDeployInitialIntent(intent);
+                  setDeployInitialTemplate(template);
+                  setDeployDraftIdToResume(null);
+                  setCreateManualMode(false);
+                  setCreateNonce((n) => n + 1);
+                  setSection('create');
+                }}
+              />
+            )}
           </>
         )}
       </main>

@@ -1,6 +1,6 @@
 # Ambr
 
-> The legal framework for AI agents acting in the real world.
+> The liability record for autonomous agents
 
 Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents. Contracts are dual-format Ricardian: human-readable legal text paired with machine-parsable JSON, linked by SHA-256 hash.
 
@@ -43,9 +43,9 @@ Ambr exposes an A2A-compatible agent card at `/.well-known/agent.json` with 6 sk
 5. **get_status** - Check lifecycle status and amendment chain
 6. **agent_handshake** - Accept/reject contracts on behalf of a principal
 
-Pricing: fetch `GET https://getamber.dev/api/v1/pricing` for canonical per-tier rates (consumer a2c, delegation a2a, commerce b2a, fleet). Free tier: 25 contracts/month per verified-email key. Do not hardcode prices.
+Pricing: fetch `GET https://getamber.dev/api/v1/pricing` for canonical per-tier rates (Personal, Delegation, Agent-to-Agent, Fleet). Credits are cents: 1 credit = 1 US cent, and a contract burns its template price. Free tier: 500 credits once per verified-email key, no renewal. Do not hardcode prices.
 
-Authentication: API key (`X-API-Key` header) or x402 pay-per-contract (USDC on Base L2, tx hash in `X-Payment` header).
+Authentication: API key (`X-API-Key` header) or x402 v2 pay-per-contract (USDC on Base, network `eip155:8453`): an unauthenticated request gets 402 with a `PAYMENT-REQUIRED` header, retry with a `PAYMENT-SIGNATURE` header from a standard x402 client. Discovery: `{facilitator}/discovery/resources`.
 
 ## Technical Details
 
@@ -53,7 +53,7 @@ Authentication: API key (`X-API-Key` header) or x402 pay-per-contract (USDC on B
 - Contract format: Ricardian (dual human+machine), SHA-256 linked, `urn:ambr:ricardian-v1`
 - Blockchain: Base L2 (compressed NFTs for on-chain anchoring)
 - API: RESTful + JSON-RPC at getamber.dev/api/a2a and getamber.dev/api/mcp
-- Built with: Next.js, Supabase, Solana/Base
+- Built with: Next.js, Supabase, Base
 
 ## Contact
 

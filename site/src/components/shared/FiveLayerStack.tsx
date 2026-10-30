@@ -30,9 +30,9 @@ const layers: Layer[] = [
     borderColor: 'border-amber/60',
   },
   {
-    name: 'Agreements',
-    description: 'Contract negotiation, signing & management',
-    detail: 'Ambr provides the agreement layer — Ricardian Contracts that are both human-readable and machine-parsable, minted as transferable cNFTs with Principal Declarations linking agents to their legal entities.',
+    name: 'Mandates',
+    description: 'Contract negotiation, signing & registry',
+    detail: 'Ambr is the Agent Mandate & Binding Registry. Ricardian Contracts that are both human-readable and machine-parsable, minted as transferable cNFTs with Principal Declarations linking agents to their legal entities.',
     projects: ['Ambr'],
     color: 'text-amber',
     bgColor: 'bg-amber-glow',

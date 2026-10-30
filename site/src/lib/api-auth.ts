@@ -1,13 +1,24 @@
 import { createHash, randomBytes } from 'crypto';
 import { getSupabaseAdmin } from './supabase-admin';
 
-// Re-export ADMIN_EMAILS and isAdmin from the shared (Node-free) module so
-// server-side callers can import everything from one place.
-export { ADMIN_EMAILS, isAdmin } from './admin-emails';
+// Re-export the admin predicates so server-side callers import from one place.
+// The raw list is deliberately NOT re-exported: it now lives only in env and is
+// read inside admin-emails.ts, which is what keeps it out of the client bundle.
+export { isAdmin, isTechAdmin } from './admin-emails';
 
 export interface DelegationScope {
   actions: ('create' | 'handshake' | 'read')[];
   templates?: string[];
+}
+
+/**
+ * Per-account beta feature flags. Extensible — add keys here as new betas
+ * land. Values default to `undefined` on rows where the JSONB column has
+ * never been written (treat absent === false).
+ */
+export interface BetaFeatures {
+  ai_chat?: boolean;
+  // Add future features here, e.g. workflow_v2?: boolean;
 }
 
 export interface ApiKeyContext {
@@ -18,6 +29,7 @@ export interface ApiKeyContext {
   principalWallet: string | null;
   delegationScope: DelegationScope | null;
   agentDailyLimit: number;
+  betaFeatures: BetaFeatures;
 }
 
 export async function validateApiKey(request: Request): Promise<ApiKeyContext | null> {
@@ -31,7 +43,7 @@ export async function validateApiKey(request: Request): Promise<ApiKeyContext | 
 
   const { data, error } = await db
     .from('api_keys')
-    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope, agent_daily_limit')
+    .select('id, email, credits, tier, is_active, principal_wallet, delegation_scope, agent_daily_limit, beta_features')
     .eq('key_hash', keyHash)
     .single();
 
@@ -51,6 +63,7 @@ export async function validateApiKey(request: Request): Promise<ApiKeyContext | 
     principalWallet: data.principal_wallet || null,
     delegationScope: data.delegation_scope as DelegationScope | null,
     agentDailyLimit: data.agent_daily_limit ?? 10,
+    betaFeatures: (data.beta_features as BetaFeatures) ?? {},
   };
 }
 

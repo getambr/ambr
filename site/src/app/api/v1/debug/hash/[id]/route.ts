@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { validateApiKey, isAdmin } from '@/lib/api-auth';
 import { hashContract } from '@/lib/contract-engine';
 
@@ -29,11 +30,11 @@ export async function GET(
   const db = getSupabaseAdmin();
 
   let query = db.from('contracts').select('contract_id, sha256_hash, human_readable, machine_readable');
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else {
-    query = query.eq('sha256_hash', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  query = query.eq(column, id);
 
   const { data: contract, error } = await query.single();
   if (error || !contract) {
@@ -114,11 +115,11 @@ export async function POST(
   const db = getSupabaseAdmin();
 
   let query = db.from('contracts').select('id, contract_id, sha256_hash, human_readable, machine_readable');
-  if (id.startsWith('amb-')) {
-    query = query.eq('contract_id', id);
-  } else {
-    query = query.eq('sha256_hash', id);
+  const column = contractRefColumn(id);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
   }
+  query = query.eq(column, id);
 
   const { data: contract, error } = await query.single();
   if (error || !contract) {

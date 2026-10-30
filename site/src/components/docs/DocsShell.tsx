@@ -10,7 +10,7 @@ const allSectionIds = [
   'a2a-discovery', 'mcp-server', 'rest-api', 'x402-payments',
   'endpoints',
   'connect-wallet', 'wallet-auth', 'cnft', 'transfers',
-  'free-alpha', 'crypto', 'card',
+  'pricing', 'crypto', 'card',
   'zk-identity',
 ];
 

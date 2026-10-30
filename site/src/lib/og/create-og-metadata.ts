@@ -8,7 +8,7 @@ interface OgMetadataOptions {
   domain?: 'ambr.run' | 'getamber.dev';
 }
 
-export function createOgMetadata(opts: OgMetadataOptions): Pick<Metadata, 'openGraph' | 'twitter'> {
+export function createOgMetadata(opts: OgMetadataOptions): Pick<Metadata, 'openGraph' | 'twitter' | 'alternates'> {
   const domain = opts.domain ?? 'ambr.run';
   const ogUrl = new URL('/api/og', `https://${domain}`);
   ogUrl.searchParams.set('title', opts.title);
@@ -19,6 +19,9 @@ export function createOgMetadata(opts: OgMetadataOptions): Pick<Metadata, 'openG
   const imageUrl = ogUrl.toString();
 
   return {
+    alternates: {
+      canonical: `https://${domain}${opts.path}`,
+    },
     openGraph: {
       title: opts.title,
       description: opts.description,

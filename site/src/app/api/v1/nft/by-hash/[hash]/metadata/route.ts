@@ -16,7 +16,7 @@ export async function GET(
   const db = getSupabaseAdmin();
   const { data: contract } = await db
     .from('contracts')
-    .select('contract_id, sha256_hash, contract_type, amendment_type, principal_declaration, nft_token_id, visibility')
+    .select('contract_id, sha256_hash, contract_type, amendment_type, principal_declaration, nft_token_id, visibility, status, revoked_at, expiry_date')
     .eq('sha256_hash', hash)
     .single();
 
@@ -36,7 +36,8 @@ export async function GET(
   return NextResponse.json(metadata, {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=31536000, immutable',
+      // Status changes (revoked, expired), so this can no longer be cached as immutable.
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
       'Access-Control-Allow-Origin': '*',
     },
   });

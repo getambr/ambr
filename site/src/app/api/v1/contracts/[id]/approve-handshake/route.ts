@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { contractRefColumn, INVALID_CONTRACT_REF } from '@/lib/contract/lookup';
 import { logAudit } from '@/lib/audit';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { corsOptions } from '@/lib/cors';
@@ -56,9 +57,10 @@ export async function POST(
   const db = getSupabaseAdmin();
 
   // Find contract
-  const isHash = /^[a-f0-9]{64}$/.test(contractIdParam);
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(contractIdParam);
-  const column = isHash ? 'sha256_hash' : isUuid ? 'id' : 'contract_id';
+  const column = contractRefColumn(contractIdParam);
+  if (!column) {
+    return NextResponse.json(INVALID_CONTRACT_REF, { status: 400 });
+  }
 
   const { data: contract } = await db
     .from('contracts')

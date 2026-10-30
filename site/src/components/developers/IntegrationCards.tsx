@@ -27,7 +27,7 @@ const integrations = [
   },
   {
     name: 'Stripe Payments',
-    description: 'Card payments for API key activation. Starter, Builder, and Enterprise tiers.',
+    description: 'Card payments via Stripe Checkout — the Team plan plus one-time credit packs.',
     category: 'Live',
     status: 'live' as const,
   },
@@ -45,7 +45,7 @@ export default function IntegrationCards() {
       <p className="text-micro mb-2">Integrations</p>
       <h2 className="text-2xl text-text-primary mb-2 sm:text-3xl lg:text-4xl">Supported Stack</h2>
       <p className="text-text-secondary mb-8 max-w-2xl">
-        Production integrations powering Ambr&#39;s contract infrastructure.
+        Production integrations powering the Agent Mandate &amp; Binding Registry.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {integrations.map((item, i) => (

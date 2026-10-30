@@ -5,7 +5,7 @@
 > Consumer-facing contracts have stricter legal requirements than B2B (d1-d3, c1-c3).
 
 **Target files:**
-- `site/src/lib/templates/seed-data.ts` — SQL INSERT after line 186 (after c3)
+- `site/supabase/migrations/20260309000000_schema_and_seed.sql` (templates seed; new templates go in a new migration under `site/supabase/migrations/` that follows its INSERT pattern) — SQL INSERT after c3
 - `site/src/lib/llm/prompts.ts` — add to TEMPLATE_PROMPTS object
 - `site/src/lib/x402/pricing.ts` — add to defaults map
 
@@ -19,7 +19,7 @@
 
 Every template MUST follow the existing d1/c1 pattern:
 
-1. **seed-data.ts:** SQL INSERT with slug, name, description, category, parameter_schema (valid JSON Schema draft-7), price_cents, version
+1. **Templates seed SQL (migration):** SQL INSERT with slug, name, description, category, parameter_schema (valid JSON Schema draft-7), price_cents, version
 2. **prompts.ts:** Entry in TEMPLATE_PROMPTS keyed by slug. Must start with `${BASE_INSTRUCTIONS}` and include all 13 mandatory sections (Recitals through Signature Block)
 3. **pricing.ts:** Entry in defaults map with USDC value (6 decimals)
 4. **Tests:** vitest cases in `src/lib/__tests__/prompts.test.ts` verifying prompt content
@@ -381,7 +381,7 @@ CONTRACT STRUCTURE:
 
 After implementing each template:
 
-- [ ] SQL INSERT in seed-data.ts follows exact pattern of d1-d3/c1-c3
+- [ ] SQL INSERT in the templates migration follows exact pattern of d1-d3/c1-c3
 - [ ] parameter_schema is valid JSON Schema draft-7 (test with `ajv` or equivalent)
 - [ ] LLM prompt in prompts.ts starts with `${BASE_INSTRUCTIONS}`
 - [ ] Prompt includes all 13 base mandatory sections + 7 consumer-mandatory sections
@@ -398,7 +398,7 @@ After implementing each template:
 
 ## File references (read before implementing)
 
-- `site/src/lib/templates/seed-data.ts:120-186` — existing 6 templates (pattern source)
+- `site/supabase/migrations/20260309000000_schema_and_seed.sql` — existing d1-d3/c1-c3 templates (pattern source)
 - `site/src/lib/llm/prompts.ts:1-293` — BASE_INSTRUCTIONS + all template prompts
 - `site/src/lib/llm/generate-contract.ts` — generation flow, sanitization, cross-check
 - `site/src/lib/x402/pricing.ts:14-57` — USDC pricing defaults

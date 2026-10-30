@@ -8,25 +8,25 @@ const ecosystemProjects = [
   {
     name: 'x402 V2',
     layer: 'Payments',
-    description: 'HTTP-native multi-token payments enabling per-call billing within contract terms.',
+    description: 'How agents pay. HTTP-native multi-token payments that bill per call within the contract terms.',
     status: 'live' as const,
   },
   {
     name: 'A2A Protocol',
     layer: 'Discovery',
-    description: 'Agent-to-Agent discovery and communication via JSON-RPC, discoverable at /.well-known/agent.json.',
+    description: 'How agents discover Ambr. Agent-to-agent discovery and JSON-RPC messaging, published at /.well-known/agent.json.',
     status: 'live' as const,
   },
   {
     name: 'KAMIYO',
     layer: 'Escrow',
-    description: 'Oracle-verified escrow with conditional payment release for agent contracts.',
+    description: 'Conditional payouts for agent deals. Oracle-verified escrow that releases payment only once contract terms are met.',
     status: 'planned' as const,
   },
   {
     name: 'ZK Identity',
     layer: 'Trust',
-    description: 'Privacy-preserving identity attestation via Demos Network zero-knowledge proofs for anonymous contract signing.',
+    description: 'Proving who an agent is — privately. Identity attestation via Demos Network zero-knowledge proofs, enabling anonymous contract signing.',
     status: 'live' as const,
   },
 ];

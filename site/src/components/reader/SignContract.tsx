@@ -8,6 +8,7 @@ import type { IdentityAttestationPayload } from '@/lib/zk/types';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import { validateSigner } from '@/lib/wallet/validate-signer';
 import { sanitizeWalletError, isUserRejection } from '@/lib/wallet/error-messages';
+import { serverErrorMessage } from '@/lib/wallet/server-error';
 import WalletPicker from '@/components/wallet/WalletPicker';
 
 const ZKIdentityVerify = dynamic(() => import('./ZKIdentityVerify'), { ssr: false });
@@ -27,6 +28,23 @@ interface SignContractProps {
   status: string;
   existingSignatures: Signature[];
   requireZkIdentity?: boolean;
+  /** The reader page's ?token=. The sign route needs it to fill an open counterparty slot. */
+  shareToken?: string;
+}
+
+// The dashboard session ({ method, apiKey, wallet, ts }, 24h TTL, see the
+// dashboard page). Its key lets the creator fill an open principal slot; the
+// sign route ignores it for everyone else.
+function sessionApiKey(): string | null {
+  try {
+    const raw = localStorage.getItem('ambr_dashboard_session');
+    if (!raw) return null;
+    const s = JSON.parse(raw) as { apiKey?: unknown; ts?: unknown };
+    if (typeof s.ts !== 'number' || Date.now() - s.ts > 86_400_000) return null;
+    return typeof s.apiKey === 'string' && s.apiKey ? s.apiKey : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function SignContract({
@@ -36,6 +54,7 @@ export default function SignContract({
   status,
   existingSignatures,
   requireZkIdentity,
+  shareToken,
 }: SignContractProps) {
   const [state, setState] = useState<SignState>('idle');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -47,6 +66,10 @@ export default function SignContract({
   } | null>(null);
   const [identityAttestation, setIdentityAttestation] = useState<IdentityAttestationPayload | null>(null);
   const [pickedProvider, setPickedProvider] = useState<EIP6963ProviderDetail | null>(null);
+  // Optional email — used to send the signer an "activation" notification
+  // once both sides have signed. Stored on contracts.counterparty_email if
+  // this signer isn't the original sender.
+  const [signerEmail, setSignerEmail] = useState<string>('');
   const walletProviders = useWalletProviders();
 
   const canSign = ['draft', 'handshake', 'pending_signature'].includes(status);
@@ -104,21 +127,34 @@ export default function SignContract({
 
       setState('submitting');
 
+      const trimmedEmail = signerEmail.trim();
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail) ? trimmedEmail : undefined;
+
+      const apiKey = sessionApiKey();
       const res = await fetch(`/api/v1/contracts/${contractUuid}/sign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { 'X-API-Key': apiKey } : {}),
+        },
         body: JSON.stringify({
           wallet_address: walletAddress,
           signature,
           message,
+          ...(shareToken ? { share_token: shareToken } : {}),
           ...(identityAttestation ? { identity_attestation: identityAttestation } : {}),
+          ...(validEmail ? { signer_email: validEmail } : {}),
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data.message || 'Signing failed');
+        // The server's own words go to the user as they are; sanitizeWalletError
+        // below is for errors thrown by the wallet.
+        setError(serverErrorMessage(data));
+        setState('error');
+        return;
       }
 
       setResult(data);
@@ -186,6 +222,20 @@ export default function SignContract({
                 <ZKIdentityBadge />
               </div>
             )}
+
+            <div className="space-y-1">
+              <label className="block text-xs uppercase tracking-wider text-stone-500" htmlFor="signer-email">
+                Your email <span className="text-stone-600 normal-case">(optional — for activation notification)</span>
+              </label>
+              <input
+                id="signer-email"
+                type="email"
+                value={signerEmail}
+                onChange={(e) => setSignerEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full rounded-md border border-stone-700 bg-stone-950 px-3 py-2 text-sm text-stone-200 placeholder:text-stone-600 focus:border-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-600"
+              />
+            </div>
 
             <button
               onClick={signContract}

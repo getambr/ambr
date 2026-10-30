@@ -30,35 +30,45 @@ export async function GET(request: Request) {
           flexDirection: 'column',
           backgroundColor: OG.bg,
           padding: '60px',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'JetBrains Mono',
         }}
       >
-        {/* Logo + brand name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: `linear-gradient(135deg, ${OG.accent}, #a08860)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
-              style={{
-                width: '18px',
-                height: '18px',
-                borderRadius: '50%',
-                backgroundColor: OG.bg,
-              }}
+        {/* Logo + brand name — real AmbrMark (brass shell + spark) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <svg width="40" height="40" viewBox="0 0 100 100">
+            <defs>
+              <linearGradient id="amg" x1="24" y1="12" x2="76" y2="86" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stopColor="#9a7d52" />
+                <stop offset="0.5" stopColor="#c6a87c" />
+                <stop offset="1" stopColor="#8a6f48" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M51 12 C39 20 31 38 29 52 C27 71 39 86 50 86 C62 86 72 71 71 53 C70 38 64 21 51 12 Z"
+              fill="none"
+              stroke="url(#amg)"
+              strokeWidth={2.4}
+              strokeLinejoin="round"
             />
-          </div>
+            <g stroke="#c6a87c" strokeWidth={0.9} opacity={0.55}>
+              <line x1="50" y1="52" x2="40" y2="39" />
+              <line x1="50" y1="52" x2="62" y2="45" />
+              <line x1="50" y1="52" x2="56" y2="65" />
+            </g>
+            <g fill="#c6a87c" opacity={0.55}>
+              <circle cx="40" cy="39" r="1.9" />
+              <circle cx="62" cy="45" r="1.6" />
+              <circle cx="56" cy="65" r="1.5" />
+            </g>
+            <path
+              d="M50 43 C50.9 50 52.7 51.7 60 52.5 C52.7 53.3 50.9 55 50 62 C49.1 55 47.3 53.3 40 52.5 C47.3 51.7 49.1 50 50 43 Z"
+              fill="#e8d9bb"
+            />
+          </svg>
           <span
             style={{
               fontFamily: 'Instrument Serif',
-              fontSize: '24px',
+              fontSize: '30px',
               color: OG.textPrimary,
             }}
           >
@@ -110,10 +120,11 @@ export async function GET(request: Request) {
         {description && (
           <div
             style={{
-              fontSize: '18px',
+              fontFamily: 'Instrument Serif',
+              fontSize: '24px',
               color: OG.textSecondary,
-              lineHeight: 1.5,
-              maxWidth: '800px',
+              lineHeight: 1.45,
+              maxWidth: '820px',
             }}
           >
             {description.length > 120 ? description.slice(0, 117) + '...' : description}
@@ -152,6 +163,7 @@ export async function GET(request: Request) {
           </span>
           <span
             style={{
+              fontFamily: 'JetBrains Mono',
               fontSize: '13px',
               color: OG.textSecondary,
             }}

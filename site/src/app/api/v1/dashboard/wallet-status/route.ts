@@ -32,12 +32,13 @@ export async function GET(req: NextRequest) {
       .eq('nft_mint_status', 'pending')
       .or(`nft_holder_wallet.eq.${wallet},nft_counterparty_wallet.eq.${wallet}`),
 
-    // Check ZK identity attestation
+    // ZK identity: the sign route records the nullifier of every DemosSDK proof
+    // it accepts against the signing wallet, so a row here means this wallet has
+    // proven its identity at least once. There is no separate attestation table.
     db
-      .from('identity_attestations')
+      .from('identity_nullifiers')
       .select('id', { count: 'exact', head: true })
-      .eq('wallet_address', wallet)
-      .eq('verified', true),
+      .eq('wallet_address', wallet),
   ]);
 
   return NextResponse.json(

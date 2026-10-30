@@ -22,7 +22,8 @@ function getAllowedOrigin(request?: Request): string {
 export const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0],
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-Payment, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, PAYMENT-SIGNATURE, Authorization',
+  'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED, PAYMENT-RESPONSE',
 };
 
 export function corsOptions(request?: Request) {
@@ -42,6 +43,7 @@ export function withCors(response: NextResponse, request?: Request): NextRespons
   response.headers.set('Access-Control-Allow-Origin', origin);
   response.headers.set('Access-Control-Allow-Methods', corsHeaders['Access-Control-Allow-Methods']);
   response.headers.set('Access-Control-Allow-Headers', corsHeaders['Access-Control-Allow-Headers']);
+  response.headers.set('Access-Control-Expose-Headers', corsHeaders['Access-Control-Expose-Headers']);
   response.headers.set('Vary', 'Origin');
   return response;
 }

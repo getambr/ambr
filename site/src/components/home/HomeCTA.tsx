@@ -36,8 +36,8 @@ export default function HomeCTA() {
             Your AI will act.<br />Under whose rules?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-text-secondary">
-            Free on testnet. No credit card. Three lines of code to put real
-            limits on your agent — and a verifiable trail behind every decision
+            Live on Base mainnet. No credit card. Three lines of code to put real
+            limits on your agent, and a verifiable trail behind every decision
             it makes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -45,7 +45,7 @@ export default function HomeCTA() {
               Get an API key
             </Button>
             <Button href="/developers" variant="secondary" size="lg">
-              Read the docs
+              See how it works
             </Button>
           </div>
         </div>

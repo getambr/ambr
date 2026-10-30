@@ -6,7 +6,7 @@
  * carries an Ambr agreement *inside* the 402 handshake: the 402 body keeps its
  * normal x402 payment requirements AND gains an `agreement` reference (readable
  * terms + hash). The agent reads the agreement, accepts/signs it, and retries
- * with both the payment proof (X-Payment) and the acceptance.
+ * with both the payment proof (PAYMENT-SIGNATURE) and the acceptance.
  *
  * This is an EXTENSION on top of x402 — and gateway-agnostic (the same envelope
  * works regardless of how payment settles, including AP2/Stripe) — NOT a

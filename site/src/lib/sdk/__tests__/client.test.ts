@@ -28,7 +28,7 @@ describe('AmbrClient.createAgreement', () => {
           sign_url: 'https://getamber.dev/api/v1/contracts/amb-2026-0099/sign',
           handshake_url: 'https://getamber.dev/api/v1/contracts/amb-2026-0099/handshake',
           created_at: '2026-06-17T00:00:00Z',
-          credits_remaining: 24,
+          credits_remaining: 480,
         },
         201,
       );
@@ -44,7 +44,7 @@ describe('AmbrClient.createAgreement', () => {
 
     expect(a.contractId).toBe('amb-2026-0099');
     expect(a.hash).toBe(HASH);
-    expect(a.creditsRemaining).toBe(24);
+    expect(a.creditsRemaining).toBe(480);
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe('https://getamber.dev/api/v1/contracts');
