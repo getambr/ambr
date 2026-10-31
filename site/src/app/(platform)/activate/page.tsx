@@ -564,10 +564,10 @@ function ActivateContent() {
 
             <Eyebrow className="mb-4">§ 03 — Founding Partner Program</Eyebrow>
             <h3 className="text-xl text-text-primary sm:text-2xl">
-              10 spots — 1,000 free contracts + 50% off forever
+              10 spots — 24,000 free credits + 50% off for 24 months
             </h3>
             <p className="text-sm text-text-secondary mt-2">
-              Early adopters get lifetime pricing. Limited to the first 10 organizations.
+              Early adopters keep today&apos;s rates at half price for 24 months. Limited to the first 10 organizations.
             </p>
             <div className="mt-6">
               <Button href="/founders" variant="primary">
