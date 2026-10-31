@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkInboundMail, formatAge } from '@/lib/health/inbound-mail';
 
-// The inbound-mail check reads the mail log through the ops backend and goes
-// red when nothing new has been logged for a week. fetch and the clock are
-// stubbed; the backend address and key are made up.
+// The inbound-mail check asks the ops backend two things: how many company
+// messages sit in Spam, and when the newest mail was logged. It goes red on
+// either. fetch and the clock are stubbed; the backend address and key are made up.
 
 const BASE = 'https://ops.example.test/exec';
 const BACKEND_KEY = 'test-backend-key';
@@ -13,8 +13,12 @@ const WEEK = 7 * 24 * HOUR;
 
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
 
-function backendReturns(body: unknown) {
-  const fetchMock = vi.fn().mockResolvedValue({ json: async () => body });
+// Answers each call by its action: the spam search and the mail log.
+function backendReturns(log: unknown, spam: unknown = { count: 0 }) {
+  const fetchMock = vi.fn(async (url: string) => {
+    const body = new URL(url).searchParams.get('action') === 'gmail_search' ? spam : log;
+    return { status: 200, json: async () => body };
+  });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
@@ -44,19 +48,24 @@ describe('checkInboundMail', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('makes a single call, to the mail log', async () => {
+  it('makes two calls: the spam search and the mail log', async () => {
     const fetchMock = backendReturns({ emails: [{ date: ago(2 * HOUR) }] });
 
     await checkInboundMail();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const url = new URL(fetchMock.mock.calls[0][0]);
-    expect(`${url.origin}${url.pathname}`).toBe(BASE);
-    expect(Object.fromEntries(url.searchParams)).toEqual({
-      action: 'email_log',
-      max: '10',
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const params = fetchMock.mock.calls.map(([url]) => {
+      const u = new URL(url);
+      expect(`${u.origin}${u.pathname}`).toBe(BASE);
+      return Object.fromEntries(u.searchParams);
+    });
+    expect(params).toContainEqual({
+      action: 'gmail_search',
+      q: 'in:spam to:(@ambr.run)',
+      max: '25',
       key: BACKEND_KEY,
     });
+    expect(params).toContainEqual({ action: 'email_log', max: '10', key: BACKEND_KEY });
   });
 
   it('is ok and names the age of the newest logged mail, wherever it sits in the rows', async () => {
@@ -64,7 +73,10 @@ describe('checkInboundMail', () => {
       emails: [{ date: ago(30 * HOUR) }, { date: ago(2 * HOUR) }, { date: 'not a date' }, {}],
     });
 
-    expect(await checkInboundMail()).toMatchObject({ status: 'ok', detail: 'last inbound 2h ago' });
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'ok',
+      detail: 'spam clear, last inbound 2h ago',
+    });
   });
 
   it('is degraded when nothing was logged within the last week', async () => {
@@ -78,7 +90,10 @@ describe('checkInboundMail', () => {
 
   it('goes red one minute past a full week, not before', async () => {
     backendReturns({ emails: [{ date: ago(WEEK) }] });
-    expect(await checkInboundMail()).toMatchObject({ status: 'ok', detail: 'last inbound 7d ago' });
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'ok',
+      detail: 'spam clear, last inbound 7d ago',
+    });
 
     backendReturns({ emails: [{ date: ago(WEEK + 60 * 1000) }] });
     expect(await checkInboundMail()).toMatchObject({
@@ -110,6 +125,47 @@ describe('checkInboundMail', () => {
     });
   });
 
+  it('is degraded and counts the company messages sitting in Spam', async () => {
+    backendReturns({ emails: [{ date: ago(2 * HOUR) }] }, { count: 3 });
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'degraded',
+      detail: '3 company messages in Spam',
+    });
+
+    backendReturns({ emails: [{ date: ago(2 * HOUR) }] }, { count: 1 });
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'degraded',
+      detail: '1 company message in Spam',
+    });
+  });
+
+  it('shows a full page of spam as a floor, not a total', async () => {
+    backendReturns({ emails: [{ date: ago(2 * HOUR) }] }, { count: 25 });
+
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'degraded',
+      detail: '25+ company messages in Spam',
+    });
+  });
+
+  it('is degraded when the spam probe returns no count', async () => {
+    backendReturns({ emails: [{ date: ago(2 * HOUR) }] }, {});
+
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'degraded',
+      detail: 'spam probe returned no count',
+    });
+  });
+
+  it('reports spam and a quiet log together', async () => {
+    backendReturns({ emails: [{ date: ago(8 * 24 * HOUR) }] }, { count: 2 });
+
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'degraded',
+      detail: '2 company messages in Spam; no inbound mail logged in 8d',
+    });
+  });
+
   it('passes a backend error through as degraded', async () => {
     backendReturns({ error: 'quota exceeded' });
 
@@ -128,10 +184,36 @@ describe('checkInboundMail', () => {
     expect(await pending).toMatchObject({ status: 'degraded', detail: 'ops timeout' });
   });
 
-  it('reports an unreachable backend as degraded', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fetch failed')));
+  it('reports an unreachable backend with a fixed phrase, never the error text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error(`fetch failed for ?key=${BACKEND_KEY}`)),
+    );
 
-    expect(await checkInboundMail()).toMatchObject({ status: 'degraded', detail: 'fetch failed' });
+    const result = await checkInboundMail();
+
+    expect(result).toMatchObject({
+      status: 'degraded',
+      detail: 'Could not reach the ops assistant.',
+    });
+    expect(JSON.stringify(result)).not.toContain(BACKEND_KEY);
+  });
+
+  it('tells a non-JSON answer apart from an unreachable backend', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        status: 502,
+        json: async () => {
+          throw new SyntaxError('Unexpected token <');
+        },
+      }),
+    );
+
+    expect(await checkInboundMail()).toMatchObject({
+      status: 'degraded',
+      detail: 'The ops assistant sent a non-JSON answer (502).',
+    });
   });
 });
 
