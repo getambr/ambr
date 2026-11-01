@@ -18,7 +18,7 @@ Every action facilitated by Ambr produces a dual-format Ricardian Contract — t
 - [Live Pricing](https://getamber.dev/api/v1/pricing): Canonical price source — fetch before calling paid tools
 - [Health](https://getamber.dev/api/health): Readiness probe
 - [Ricardian Spec v1](https://ambr.run/spec/ricardian-v1): Contract format, hash scheme, URN
-- [Founder Program](https://ambr.run/founders): First 10 orgs — permanent 50% off
+- [Founder Program](https://ambr.run/founders): First 10 orgs — 50% off for 24 months
 
 ## What Ambr Does
 

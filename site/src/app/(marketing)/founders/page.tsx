@@ -11,11 +11,11 @@ import FoundingPartnersList from '@/components/founders/FoundingPartnersList';
 export const metadata: Metadata = {
   title: 'Founder Program | Ambr — Agent Mandate & Binding Registry',
   description:
-    'The first 10 organizations building on the Agent Mandate & Binding Registry, the liability record for autonomous agents. 1,000 free contracts, 50% off per-contract forever, public listing as a founding partner.',
+    'The first 10 organizations building on the Agent Mandate & Binding Registry, the liability record for autonomous agents. 24,000 free credits, 50% off self-serve list prices for 24 months, public listing as a founding partner.',
   ...createOgMetadata({
     title: 'Founder Program | Ambr',
     description:
-      'The first 10 organizations building on the liability record for autonomous agents. 1,000 free contracts, 50% off forever, founding-partner listing.',
+      'The first 10 organizations building on the liability record for autonomous agents. 24,000 free credits, 50% off for 24 months, founding-partner listing.',
     path: '/founders',
     label: 'Founder Program',
     domain: 'ambr.run',
@@ -51,7 +51,7 @@ const benefits = [
   {
     label: 'Grandfathered pricing',
     detail:
-      'Any future price increases do not apply to Founding Partners. Lock in today\'s rates for the lifetime of your account.',
+      'Price increases during the 24 months do not apply to Founding Partners: today\'s rates hold for the whole program.',
   },
 ];
 
@@ -64,7 +64,7 @@ export default function FoundersPage() {
           <Reveal><Eyebrow>§ 01 — Founder Program</Eyebrow></Reveal>
           <Reveal delay={0.08}>
             <h1 className="mt-6 max-w-4xl" style={DISPLAY.hero}>
-              First 10 orgs.<br /><span style={{ color: EDITORIAL.brass }}>Permanent 50% off.</span>
+              First 10 orgs.<br /><span style={{ color: EDITORIAL.brass }}>50% off for 24 months.</span>
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
@@ -101,7 +101,7 @@ export default function FoundersPage() {
           </Reveal>
           <Reveal delay={0.14}>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.detail }}>
-              Locked in for the lifetime of your account. Ten organizations, no renegotiation.
+              Locked in for 24 months. Ten organizations, no renegotiation.
             </p>
           </Reveal>
           <div
