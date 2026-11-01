@@ -60,3 +60,4 @@ Authentication: API key (`X-API-Key` header) or x402 v2 pay-per-contract (USDC o
 - Website: https://ambr.run
 - Platform: https://getamber.dev
 - Twitter: @ambr_run
+- LinkedIn: https://www.linkedin.com/company/113122990/

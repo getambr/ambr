@@ -16,6 +16,7 @@ export const BRAND = {
   social: {
     twitter: 'https://x.com/ambr_run',
     github: 'https://github.com/getambr/ambr',
+    linkedin: 'https://www.linkedin.com/company/113122990/',
     // Discord removed 2026-09-10: the invite is dead. Both HjvJFfjr and getambr
     // return {"message":"Unknown Invite","code":10006}. A dead invite 301s to a
     // Discord marketing page that returns 200, so a naive link checker passes it
