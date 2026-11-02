@@ -79,7 +79,7 @@ export class TeardownEngine {
     host.appendChild(this.labelHost);
 
     // closer on small screens, where the stage is the full column width
-    this.camera.position.set(0, 0, opts.compact ? 8.6 : 9.6);
+    this.camera.position.set(0, 0, opts.compact ? 8.6 : 9.1);
     this.scene.add(this.root);
     this.art = new MandateArt(opts.fonts);
     this.build();
@@ -430,8 +430,8 @@ export class TeardownEngine {
     // ---- pose: a three-quarter view at rest, an exploded axonometric when apart
     const still = this.opts.reduced;
     this.root.rotation.set(lerp(-0.1, -0.3, ex) + this.pointer.y * 0.06, lerp(-0.42, -1.0, ex) + this.pointer.x * 0.14, 0);
-    this.root.scale.setScalar(lerp(1, 0.56, ex));
-    this.root.position.set(lerp(-0.25, -0.5, ex), lerp(0, -0.1, ex) + (still ? 0 : Math.sin(time * 0.7) * 0.05), 0);
+    this.root.scale.setScalar(lerp(1, 0.48, ex));
+    this.root.position.set(lerp(-0.25, -0.45, ex), lerp(0, -0.1, ex) + (still ? 0 : Math.sin(time * 0.7) * 0.05), 0);
 
     // nothing fully faded is drawn at all
     this.root.traverse((o) => {

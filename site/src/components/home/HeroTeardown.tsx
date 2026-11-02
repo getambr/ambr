@@ -137,9 +137,10 @@ export default function HeroTeardown() {
     <section ref={rootRef} className={`ht-root relative min-h-screen overflow-hidden${settled ? ' ht-done' : ''}`} style={{ background: '#0a0a0a' }}>
       <style>{`
         .ht-root { color: #f4f4f0; }
-        /* the stage: a square on the right, the mandate centred in it */
-        .ht-stage { position:absolute; right:6%; top:50%; transform:translateY(-50%);
-          height:min(80vh,660px); aspect-ratio:1/1; z-index:0; pointer-events:auto; }
+        /* the stage: a square at the column's right edge, centred on the copy beside it */
+        .ht-row { position:relative; }
+        .ht-stage { position:absolute; right:0; top:50%; transform:translateY(-50%);
+          height:min(78vh,700px); aspect-ratio:1/1; z-index:0; pointer-events:auto; }
         .ht-front { position:relative; z-index:1; }
         .ht-canvas { position:absolute; inset:0; }
         .ht-hit { position:absolute; left:22%; right:22%; top:12%; bottom:12%; z-index:1; cursor:pointer;
@@ -168,7 +169,7 @@ export default function HeroTeardown() {
         .ht-rail .ht-apart[aria-pressed="true"] { color:#e8d9bb; }
         .ht-rail button:focus-visible { outline:1px solid rgba(198,168,124,0.7); outline-offset:2px; }
         .ht-rule { height:1px; background:linear-gradient(to right, transparent, rgba(198,168,124,0.45) 8%, rgba(198,168,124,0.4) 42%, transparent 58%); }
-        .ht-head { font-size:clamp(3.4rem,9.8vw,10.5rem); line-height:0.84; letter-spacing:-0.035em; }
+        .ht-head { font-size:clamp(3.4rem,8.4vw,8.75rem); line-height:0.84; letter-spacing:-0.035em; }
         .ht-ink { background:linear-gradient(108deg,#8a6f48 0%,#e8d9bb 34%,#c6a87c 58%,#e8d9bb 80%,#9a7d52 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; padding-bottom:0.3em; margin-bottom:-0.3em; }
         .ht-bracket { position:absolute; width:22px; height:22px; border-color:rgba(198,168,124,0.5); z-index:3; }
         .ht-cta { position:relative; overflow:hidden; }
@@ -190,7 +191,8 @@ export default function HeroTeardown() {
         .ht-done .ht-stage { animation:none; opacity:1; }
         /* below 1180px: the mandate sits in the flow, right under the buttons */
         @media (max-width: 1179px) {
-          .ht-stage { position:relative; right:auto; top:auto; transform:none; width:min(88vw, 600px); height:auto; margin:0 auto 8px; }
+          .ht-row { flex-direction:column; align-items:stretch; }
+          .ht-stage { position:relative; right:auto; top:auto; transform:none; width:min(88vw, 600px); height:auto; margin:40px auto 0; }
           .ht-rail { display:none; }
           .ht-hit { left:18%; right:18%; top:8%; bottom:8%; }
           .ht-rule { background:linear-gradient(to right, transparent, rgba(198,168,124,0.45), transparent); }
@@ -215,7 +217,7 @@ export default function HeroTeardown() {
           </div>
           <div className="ht-rule" aria-hidden="true" />
 
-          <div className="flex flex-1 items-center py-10">
+          <div className="ht-row flex flex-1 items-center py-10">
             <div className="ht-front max-w-[820px]">
               <p className="ht-in ht-in-1 mb-7 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>
                 № 001 — The accountability record for autonomous agents
@@ -241,35 +243,35 @@ export default function HeroTeardown() {
                 </a>
               </div>
             </div>
-          </div>
 
-          <div className="ht-stage">
-            <div ref={hostRef} className="ht-canvas" aria-hidden="true">
-              {still && <StillMandate />}
-            </div>
-            {!still && (
-              <button
-                type="button"
-                className="ht-hit"
-                aria-pressed={apart}
-                aria-label={apart ? 'Put the mandate back together' : 'Take the mandate apart into its layers'}
-                onClick={() => engineRef.current?.toggleApart()}
-              />
-            )}
-            {!still && (
-              <ol ref={railRef} className="ht-rail" aria-label="States of a mandate">
-                {STATES.map((s, i) => (
-                  <li key={s}>
-                    <button type="button" onClick={() => engineRef.current?.goto(i)}>{s}</button>
+            <div className="ht-stage">
+              <div ref={hostRef} className="ht-canvas" aria-hidden="true">
+                {still && <StillMandate />}
+              </div>
+              {!still && (
+                <button
+                  type="button"
+                  className="ht-hit"
+                  aria-pressed={apart}
+                  aria-label={apart ? 'Put the mandate back together' : 'Take the mandate apart into its layers'}
+                  onClick={() => engineRef.current?.toggleApart()}
+                />
+              )}
+              {!still && (
+                <ol ref={railRef} className="ht-rail" aria-label="States of a mandate">
+                  {STATES.map((s, i) => (
+                    <li key={s}>
+                      <button type="button" onClick={() => engineRef.current?.goto(i)}>{s}</button>
+                    </li>
+                  ))}
+                  <li style={{ ['--p' as string]: 0 }}>
+                    <button type="button" className="ht-apart" aria-pressed={apart} onClick={() => engineRef.current?.toggleApart()}>
+                      {apart ? 'Put it back together' : 'Take it apart'}
+                    </button>
                   </li>
-                ))}
-                <li style={{ ['--p' as string]: 0 }}>
-                  <button type="button" className="ht-apart" aria-pressed={apart} onClick={() => engineRef.current?.toggleApart()}>
-                    {apart ? 'Put it back together' : 'Take it apart'}
-                  </button>
-                </li>
-              </ol>
-            )}
+                </ol>
+              )}
+            </div>
           </div>
 
           <div className="ht-rule" aria-hidden="true" />
