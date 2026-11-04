@@ -28,10 +28,9 @@ import { hasEnoughCredits, UNLIMITED_CREDITS } from '@/lib/credits';
 import { logAudit } from '@/lib/audit';
 import { CheckInputError, validateTransaction } from '@/lib/contract/check-terms';
 import {
-  canCheckContract,
-  checkAgainstAgreement,
   checkTransactionSchema,
   lookupContractForCheck,
+  runCheck,
 } from '@/lib/contract/check-payment';
 import { rateLimit } from '@/lib/rate-limit';
 import { linkPaymentToContract } from '@/lib/x402/middleware';
@@ -407,9 +406,11 @@ Legibility: the handshake itself is auditable — delegation scope, agent identi
 
 Tests the payment against the agreement's status, validity window, currency, per-transaction
 limit, monthly limit, approved categories, enumerated actions and approval threshold. If the
-agreement was amended, the newest version is checked. Free: no credits are burned.
+agreement was amended, the newest approved version is checked. Free: no credits are burned.
 Ambr does not hold funds or track spend, so the monthly limit is checked only when you pass
 period_spent. A rule the agreement sets no limit for comes back as not_evaluated, never as a pass.
+If a rule has a limit but you did not send what it needs (category, action, currency, period_spent),
+the verdict is "incomplete", not "in_scope". Send everything the agreement limits.
 
 Access: a public contract is open to anyone; otherwise use the creator's API key or pass a share_token.
 
@@ -422,7 +423,7 @@ Args:
   - period_spent (number, optional): already spent this month, to check the monthly limit
   - share_token (string, optional): share token for a private contract
 
-Returns: verdict ("in_scope" | "out_of_scope" | "needs_approval"), the per-rule checks, plain-language reasons, and the contract that was checked (contract_id, effective_contract_id, sha256_hash, reader_url).`,
+Returns: verdict ("in_scope" | "out_of_scope" | "incomplete" | "needs_approval"), the per-rule checks, plain-language reasons, and the contract that was checked (contract_id, effective_contract_id, sha256_hash, reader_url).`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1497,6 +1498,7 @@ async function handleAgentHandshake(
 async function handleCheckTransaction(
   args: Record<string, unknown>,
   apiKey: string | undefined,
+  clientIp: string | undefined,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   const fail = (text: string) => ({ content: [{ type: 'text', text: `Error: ${text}` }], isError: true });
 
@@ -1510,7 +1512,7 @@ async function handleCheckTransaction(
   }
 
   const apiCtx = apiKey ? await validateApiKeyDirect(apiKey) : null;
-  const rl = rateLimit(`check:${apiCtx?.keyId ?? 'mcp-anonymous'}`, 60, 60_000);
+  const rl = rateLimit(`check:${apiCtx?.keyId ?? clientIp ?? 'mcp-anonymous'}`, 60, 60_000);
   if (!rl.allowed) return fail('rate_limited. Try again in a minute.');
 
   const db = getSupabaseAdmin();
@@ -1519,17 +1521,17 @@ async function handleCheckTransaction(
     return fail(found.status === 404 ? `Contract '${contractId}' not found.` : INVALID_CONTRACT_REF.message);
   }
 
-  const allowed = await canCheckContract(db, found.contract, {
-    keyId: apiCtx?.keyId,
-    shareToken: typeof shareToken === 'string' ? shareToken : null,
-  });
-  if (!allowed) {
-    return fail("forbidden. Pass the contract creator's API key (X-API-Key header) or a share_token to check this contract.");
-  }
-
   try {
-    const result = await checkAgainstAgreement(db, found.contract, parsed.data);
-    logAudit({
+    const run = await runCheck(db, found.contract, parsed.data, {
+      keyId: apiCtx?.keyId,
+      shareToken: typeof shareToken === 'string' ? shareToken : null,
+    });
+    if (run.forbidden) {
+      return fail("forbidden. Pass the contract creator's API key (X-API-Key header) or a share_token to check this contract.");
+    }
+    const { result } = run;
+    // Awaited: Vercel can drop work that is still running after the response.
+    await logAudit({
       event_type: 'contract_check',
       actor: apiCtx?.keyId ?? 'anonymous',
       details: {
@@ -1570,6 +1572,7 @@ async function callTool(
   apiKey: string | undefined,
   authCtx?: AuthContext,
   requestStartedAt?: number,
+  clientIp?: string,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   switch (name) {
     case 'ambr_list_templates':
@@ -1585,7 +1588,7 @@ async function callTool(
     case 'ambr_agent_handshake':
       return handleAgentHandshake(args, apiKey);
     case 'ambr_check_transaction':
-      return handleCheckTransaction(args, apiKey);
+      return handleCheckTransaction(args, apiKey, clientIp);
     default:
       return {
         content: [{ type: 'text', text: `Error: Unknown tool '${name}'.` }],
@@ -1628,6 +1631,7 @@ export async function handleMcpMessage(
   apiKey: string | undefined,
   authCtx?: AuthContext,
   requestStartedAt?: number,
+  clientIp?: string,
 ): Promise<JsonRpcResponse | null> {
   if (!body || typeof body !== 'object' || !('method' in body)) {
     return jsonRpcError(null, -32600, 'Invalid Request');
@@ -1691,6 +1695,7 @@ export async function handleMcpMessage(
         apiKey,
         authCtx,
         requestStartedAt,
+        clientIp,
       );
       return jsonRpcOk(id, result);
     }

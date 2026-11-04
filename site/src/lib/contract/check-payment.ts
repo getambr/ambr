@@ -31,6 +31,7 @@ export interface CheckContractRow {
   visibility?: string | null;
   machine_readable?: unknown;
   expiry_date?: string | null;
+  created_at?: string | null;
 }
 
 export const MAX_AMENDMENT_HOPS = 20;
@@ -50,40 +51,78 @@ export async function lookupContractForCheck(db: Db, ref: string): Promise<Looku
   return { ok: true, contract: data as unknown as CheckContractRow };
 }
 
+export type NextVersion = { next: CheckContractRow } | { problem: string };
+
+export interface EffectiveVersion {
+  contract: CheckContractRow;
+  /** Set when the chain could not be followed with confidence; the check then fails closed. */
+  problem?: string;
+}
+
 /**
- * Follow an amended contract forward to its newest version. The approve route
- * stores each new version with parent_contract_hash = the old hash and marks
- * the old row `amended`. `findChild` returns the version that names the given
- * hash as its parent. Stops at the first row that is not `amended`, after
- * MAX_AMENDMENT_HOPS hops, or when a hash repeats.
+ * Follow an amended contract forward to its newest version. `findNext` says
+ * which row replaced the given one, or why that cannot be known. Stops at the
+ * first row that is not `amended`, after MAX_AMENDMENT_HOPS hops, or when a
+ * hash repeats; the last two, and any `problem`, are reported, not guessed past.
  */
 export async function followAmendments(
   start: CheckContractRow,
-  findChild: (parentHash: string) => Promise<CheckContractRow | null>,
-): Promise<CheckContractRow> {
+  findNext: (current: CheckContractRow) => Promise<NextVersion>,
+): Promise<EffectiveVersion> {
   let current = start;
   const seen = new Set<string>([start.sha256_hash]);
-  for (let hop = 0; hop < MAX_AMENDMENT_HOPS && current.status === 'amended'; hop++) {
-    const child = await findChild(current.sha256_hash);
-    if (!child || seen.has(child.sha256_hash)) break;
-    seen.add(child.sha256_hash);
-    current = child;
+  for (let hop = 0; current.status === 'amended'; hop++) {
+    if (hop >= MAX_AMENDMENT_HOPS) {
+      return { contract: current, problem: `The amendment chain is longer than ${MAX_AMENDMENT_HOPS} versions.` };
+    }
+    const step = await findNext(current);
+    if ('problem' in step) return { contract: current, problem: step.problem };
+    if (seen.has(step.next.sha256_hash)) {
+      return { contract: current, problem: 'The amendment chain loops back on itself.' };
+    }
+    seen.add(step.next.sha256_hash);
+    current = step.next;
   }
-  return current;
+  return { contract: current };
 }
 
-export function resolveEffectiveContract(db: Db, start: CheckContractRow): Promise<CheckContractRow> {
-  return followAmendments(start, async (parentHash) => {
-    const { data } = await db
-      .from('contracts')
-      .select(CHECK_CONTRACT_COLUMNS)
-      .eq('parent_contract_hash', parentHash)
-      .eq('amendment_type', 'amendment')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    const row = Array.isArray(data) ? data[0] : null;
-    return (row as unknown as CheckContractRow) ?? null;
-  });
+/**
+ * The version that replaced `current` is the one an approved amendment
+ * proposal points at (resulting_contract_id, written by the approve route).
+ * parent_contract_hash alone is not trusted: POST /contracts takes it from the
+ * request body, so anyone could attach a fake "newer version" to a contract.
+ * The new version must also belong to the same API key and name `current` as
+ * its parent.
+ */
+async function findApprovedNext(db: Db, current: CheckContractRow): Promise<NextVersion> {
+  const { data: proposals } = await db
+    .from('amendment_proposals')
+    .select('resulting_contract_id')
+    .eq('original_contract_id', current.id)
+    .eq('status', 'approved');
+  const ids = [...new Set((proposals ?? []).map((p: { resulting_contract_id: string | null }) => p.resulting_contract_id))];
+  if (ids.length === 0) {
+    return { problem: `The agreement is marked amended, but no approved amendment leads away from ${current.contract_id}.` };
+  }
+  if (ids.length > 1 || !ids[0]) {
+    return { problem: `The amendment of ${current.contract_id} is ambiguous: more than one approved amendment, or none that points at a new version.` };
+  }
+  const { data: child } = await db.from('contracts').select(CHECK_CONTRACT_COLUMNS).eq('id', ids[0]).single();
+  if (!child) {
+    return { problem: `The amended version of ${current.contract_id} could not be found.` };
+  }
+  const next = child as unknown as CheckContractRow;
+  if ((next.api_key_id ?? null) !== (current.api_key_id ?? null)) {
+    return { problem: `The amended version of ${current.contract_id} belongs to a different account, so it is not trusted.` };
+  }
+  if (next.parent_contract_hash !== current.sha256_hash) {
+    return { problem: `The amended version of ${current.contract_id} does not name it as its parent.` };
+  }
+  return { next };
+}
+
+export function resolveEffectiveContract(db: Db, start: CheckContractRow): Promise<EffectiveVersion> {
+  return followAmendments(start, (current) => findApprovedNext(db, current));
 }
 
 async function validShareToken(db: Db, contractUuid: string, token: string): Promise<boolean> {
@@ -98,18 +137,22 @@ async function validShareToken(db: Db, contractUuid: string, token: string): Pro
   return true;
 }
 
+export interface CheckCaller {
+  keyId?: string | null;
+  shareToken?: string | null;
+}
+
 /**
- * Same rule as GET /api/v1/contracts/[id]: a public contract is open to all;
- * otherwise the key that created it, or a valid share token, may read it.
- * (GET withholds a metadata_only contract's terms even from its owner; a
- * check returns a verdict and the limits the owner set, so the owner and
- * token holders are let in there.)
+ * A public contract is open to all; otherwise the key that created it, or a
+ * valid share token, may check it.
+ *
+ * metadata_only: the check follows the reader page's rule, not GET's. GET
+ * withholds the terms of a metadata_only contract from everyone, but the
+ * reader page shows the capability summary (the limits) to the owner and to
+ * share-token holders, and a check returns exactly that: a verdict and the
+ * limits. So the owner and token holders are let in, anonymous callers are not.
  */
-export async function canCheckContract(
-  db: Db,
-  contract: CheckContractRow,
-  caller: { keyId?: string | null; shareToken?: string | null },
-): Promise<boolean> {
+export async function canCheckContract(db: Db, contract: CheckContractRow, caller: CheckCaller): Promise<boolean> {
   if ((contract.visibility || 'private') === 'public') return true;
   if (caller.keyId && contract.api_key_id && caller.keyId === contract.api_key_id) return true;
   if (caller.shareToken) return validShareToken(db, contract.id, caller.shareToken);
@@ -125,27 +168,49 @@ export interface CheckResponse extends CheckOutcome {
   reader_url: string;
 }
 
-/** Evaluate the payment against the newest version of the agreement. */
-export async function checkAgainstAgreement(
+export type RunCheckResult = { forbidden: true } | { forbidden: false; result: CheckResponse };
+
+/**
+ * Check a payment against the newest version of the agreement. The caller must
+ * be allowed to see the contract asked for AND the version that replaced it:
+ * an amendment can be stricter in visibility, and its limits must not reach
+ * someone who could not read them directly. If the version chain cannot be
+ * followed with confidence the answer is out_of_scope (rule "version").
+ */
+export async function runCheck(
   db: Db,
   contract: CheckContractRow,
   tx: CheckTransaction,
+  caller: CheckCaller,
   now: Date = new Date(),
-): Promise<CheckResponse> {
-  const effective = await resolveEffectiveContract(db, contract);
+): Promise<RunCheckResult> {
+  if (!(await canCheckContract(db, contract, caller))) return { forbidden: true };
+
+  const { contract: effective, problem } = await resolveEffectiveContract(db, contract);
+  if (effective !== contract && !(await canCheckContract(db, effective, caller))) return { forbidden: true };
+
   const terms = termsFromMachineReadable(
     effective.machine_readable as Record<string, unknown> | null | undefined,
     effective.expiry_date,
+    effective.created_at,
   );
   const outcome = checkTransaction(terms, effective.status, tx, now);
+  if (problem) {
+    outcome.checks.unshift({ rule: 'version', result: 'fail', note: problem });
+    outcome.reasons.unshift(problem);
+    outcome.verdict = 'out_of_scope';
+  }
   return {
-    ...outcome,
-    contract_id: contract.contract_id,
-    effective_contract_id: effective.contract_id,
-    status: effective.status,
-    sha256_hash: effective.sha256_hash,
-    checked_at: now.toISOString(),
-    reader_url: `https://getamber.dev/reader/${effective.sha256_hash}`,
+    forbidden: false,
+    result: {
+      ...outcome,
+      contract_id: contract.contract_id,
+      effective_contract_id: effective.contract_id,
+      status: effective.status,
+      sha256_hash: effective.sha256_hash,
+      checked_at: now.toISOString(),
+      reader_url: `https://getamber.dev/reader/${effective.sha256_hash}`,
+    },
   };
 }
 

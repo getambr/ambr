@@ -1,4 +1,4 @@
-import { deriveCapabilities, type ContractCapabilities } from '@/lib/contract-capabilities';
+import { deriveCapabilities, type ContractCapabilities, type Money } from '@/lib/contract-capabilities';
 
 /**
  * "Does this payment fit the agreement?" as a pure function. No server
@@ -8,10 +8,13 @@ import { deriveCapabilities, type ContractCapabilities } from '@/lib/contract-ca
  * Ambr never holds funds and does not track spend: the caller supplies the
  * amount already spent in the period (`period_spent`) or the monthly rule is
  * reported as not evaluated. A rule the agreement sets no limit for is never
- * reported as a pass: it is `not_evaluated`.
+ * reported as a pass: it is `not_evaluated`. When a rule HAS a limit but the
+ * caller did not send what it needs (category, action, currency, period_spent),
+ * the verdict is `incomplete` rather than `in_scope`.
  */
 
 export type CheckRule =
+  | 'version'
   | 'status'
   | 'validity_window'
   | 'currency'
@@ -31,7 +34,8 @@ export interface CheckLine {
   note?: string;
 }
 
-export type Verdict = 'in_scope' | 'out_of_scope' | 'needs_approval';
+/** Precedence: out_of_scope > incomplete > needs_approval > in_scope. */
+export type Verdict = 'in_scope' | 'out_of_scope' | 'needs_approval' | 'incomplete';
 
 export interface CheckOutcome {
   verdict: Verdict;
@@ -52,6 +56,8 @@ export interface CheckTransaction {
 export type CheckTerms = ContractCapabilities & {
   /** The contract's `expiry_date` column, when set. */
   expiryDate?: string | null;
+  /** The contract's `created_at`; a `duration_months` runs from here. */
+  createdAt?: string | null;
 };
 
 export class CheckInputError extends Error {}
@@ -60,9 +66,10 @@ export class CheckInputError extends Error {}
 export function termsFromMachineReadable(
   machineReadable: Record<string, unknown> | null | undefined,
   expiryDate?: string | null,
+  createdAt?: string | null,
 ): CheckTerms {
   const caps = deriveCapabilities(machineReadable, { always: true });
-  return { mayDo: [], mayNotDo: [], categories: [], ...caps, expiryDate };
+  return { mayDo: [], mayNotDo: [], categories: [], ...caps, expiryDate, createdAt };
 }
 
 function badNumber(v: unknown): boolean {
@@ -96,6 +103,17 @@ function endMs(s: string | null | undefined): number | undefined {
   return DATE_ONLY.test(s as string) ? t + DAY_MS - 1 : t;
 }
 
+/** Postgres-style month arithmetic: the day clamps to the end of a shorter month. */
+function addMonths(ms: number, months: number): number {
+  const d = new Date(ms);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d.getTime();
+}
+
 const norm = (s: string) => s.trim().toLowerCase();
 
 export function checkTransaction(
@@ -109,6 +127,8 @@ export function checkTransaction(
 
   const checks: CheckLine[] = [];
   const reasons: string[] = [];
+  // Rules that have a limit in the agreement but lack the caller's input.
+  const missing: string[] = [];
   const fail = (line: CheckLine, reason: string) => {
     checks.push({ ...line, result: 'fail' });
     reasons.push(reason);
@@ -124,60 +144,90 @@ export function checkTransaction(
     );
   }
 
-  // validity window
+  // validity window. The end is, in order: end_date, the expiry_date column,
+  // then duration_months from created_at (the same order the database uses
+  // to fill expiry_date: compute_contract_expiry in the 20260611 migration).
   const nowMs = now.getTime();
   const from = startMs(terms.startDate);
   const until = endMs(terms.endDate);
-  const expiry = endMs(terms.expiryDate);
+  let expiry = endMs(terms.expiryDate);
+  let endLabel = terms.endDate ?? terms.expiryDate ?? undefined;
+  let durationUnreadable = false;
+  if (until === undefined && expiry === undefined && terms.durationMonths !== undefined) {
+    const created = startMs(terms.createdAt);
+    if (created === undefined) {
+      durationUnreadable = true;
+    } else {
+      expiry = addMonths(created, terms.durationMonths);
+      endLabel = new Date(expiry).toISOString().slice(0, 10);
+    }
+  }
   if (from === undefined && until === undefined && expiry === undefined) {
     checks.push({
       rule: 'validity_window',
       result: 'not_evaluated',
-      note: 'The agreement sets no readable start, end or expiry date.',
+      note: durationUnreadable
+        ? 'The agreement runs for a number of months but its creation date is unknown, so the end could not be worked out.'
+        : 'The agreement sets no readable start, end or expiry date.',
     });
   } else {
-    const window = `${terms.startDate ?? '-'} to ${terms.endDate ?? terms.expiryDate ?? '-'}`;
+    const window = `${terms.startDate ?? '-'} to ${endLabel ?? '-'}`;
     const line: CheckLine = { rule: 'validity_window', result: 'pass', limit: window, value: now.toISOString() };
     if (from !== undefined && nowMs < from) {
       fail(line, `The agreement has not started yet (starts ${terms.startDate}).`);
     } else if (until !== undefined && nowMs > until) {
       fail(line, `The agreement ended on ${terms.endDate}.`);
     } else if (expiry !== undefined && nowMs > expiry) {
-      fail(line, `The agreement expired on ${terms.expiryDate}.`);
+      fail(line, `The agreement expired on ${endLabel}.`);
     } else {
       checks.push(line);
     }
   }
 
-  // currency: the one the agreement names, else the currency of its limits
-  const agreementCurrency =
-    terms.currency ?? terms.perTxLimit?.currency ?? terms.monthlyLimit?.currency ?? terms.approvalAbove?.currency;
-  let currencyOk = true;
-  if (!agreementCurrency) {
-    checks.push({ rule: 'currency', result: 'not_evaluated', note: 'The agreement names no currency.' });
+  // currency. Each limit is compared in its own currency. A bare-number limit
+  // in an agreement that names no currency has none to compare: its amount is
+  // used as given and the currency rule says so; USD is never assumed.
+  const named = new Map<string, string>();
+  if (terms.currency) named.set(norm(terms.currency), terms.currency);
+  for (const l of [terms.perTxLimit, terms.monthlyLimit, terms.approvalAbove]) {
+    if (l && !l.assumedCurrency) named.set(norm(l.currency), l.currency);
+  }
+  const namedList = [...named.values()];
+  const hasLimit = !!(terms.perTxLimit || terms.monthlyLimit || terms.approvalAbove);
+  const comparable = (l: Money) =>
+    !!l.assumedCurrency || !tx.currency || norm(l.currency) === norm(tx.currency);
+  const skipped = 'This limit is in a different currency than the payment, so amounts are not compared.';
+
+  if (namedList.length === 0) {
+    checks.push({
+      rule: 'currency',
+      result: 'not_evaluated',
+      note: hasLimit
+        ? 'The agreement names no currency; its limits are compared as plain numbers.'
+        : 'The agreement names no currency.',
+    });
   } else if (!tx.currency) {
     checks.push({
       rule: 'currency',
       result: 'not_evaluated',
-      limit: agreementCurrency,
+      limit: namedList.length === 1 ? namedList[0] : namedList,
       note: 'No currency was given for the payment, so amounts are compared as they are.',
     });
-  } else if (norm(tx.currency) === norm(agreementCurrency)) {
-    checks.push({ rule: 'currency', result: 'pass', limit: agreementCurrency, value: tx.currency });
+    missing.push(`No currency was sent, but the agreement is in ${namedList.join(' / ')}.`);
+  } else if (namedList.every((c) => norm(c) === norm(tx.currency as string))) {
+    checks.push({ rule: 'currency', result: 'pass', limit: namedList.length === 1 ? namedList[0] : namedList, value: tx.currency });
   } else {
-    currencyOk = false;
     fail(
-      { rule: 'currency', result: 'fail', limit: agreementCurrency, value: tx.currency },
-      `The agreement is in ${agreementCurrency}, the payment is in ${tx.currency}.`,
+      { rule: 'currency', result: 'fail', limit: namedList.length === 1 ? namedList[0] : namedList, value: tx.currency },
+      `The agreement is in ${namedList.join(' / ')}, the payment is in ${tx.currency}.`,
     );
   }
-  const skipped = 'The payment is in a different currency, so amounts are not compared.';
 
   // per-transaction limit
   const perTx = terms.perTxLimit;
   if (!perTx) {
     checks.push({ rule: 'per_transaction_limit', result: 'not_evaluated', note: 'The agreement sets no per-transaction limit.' });
-  } else if (!currencyOk) {
+  } else if (!comparable(perTx)) {
     checks.push({ rule: 'per_transaction_limit', result: 'not_evaluated', limit: perTx.amount, value: tx.amount, note: skipped });
   } else if (tx.amount <= perTx.amount + EPS) {
     checks.push({ rule: 'per_transaction_limit', result: 'pass', limit: perTx.amount, value: tx.amount });
@@ -192,7 +242,7 @@ export function checkTransaction(
   const monthly = terms.monthlyLimit;
   if (!monthly) {
     checks.push({ rule: 'monthly_limit', result: 'not_evaluated', note: 'The agreement sets no monthly limit.' });
-  } else if (!currencyOk) {
+  } else if (!comparable(monthly)) {
     checks.push({ rule: 'monthly_limit', result: 'not_evaluated', limit: monthly.amount, note: skipped });
   } else if (tx.period_spent === undefined) {
     checks.push({
@@ -201,6 +251,7 @@ export function checkTransaction(
       limit: monthly.amount,
       note: 'Ambr does not track spend. Send period_spent (what was already spent this month) to check the monthly limit.',
     });
+    missing.push('No period_spent was sent, so the monthly limit could not be checked.');
   } else {
     const total = tx.period_spent + tx.amount;
     if (total <= monthly.amount + EPS) {
@@ -223,6 +274,7 @@ export function checkTransaction(
       limit: terms.categories,
       note: 'The agreement lists approved categories but no category was given.',
     });
+    missing.push('No category was sent, but the agreement lists approved categories.');
   } else if (terms.categories.some((c) => norm(c) === norm(tx.category as string))) {
     checks.push({ rule: 'category', result: 'pass', limit: terms.categories, value: tx.category });
   } else {
@@ -242,6 +294,7 @@ export function checkTransaction(
       limit: terms.mayDo,
       note: 'The agreement lists enumerated actions but no action was given.',
     });
+    missing.push('No action was sent, but the agreement lists enumerated actions.');
   } else if (terms.mayDo.some((a) => norm(a) === norm(tx.action as string))) {
     checks.push({ rule: 'action', result: 'pass', limit: terms.mayDo, value: tx.action });
   } else {
@@ -256,7 +309,7 @@ export function checkTransaction(
   let needsApproval = false;
   if (!approval) {
     checks.push({ rule: 'approval_threshold', result: 'not_evaluated', note: 'The agreement sets no approval threshold.' });
-  } else if (!currencyOk) {
+  } else if (!comparable(approval)) {
     checks.push({ rule: 'approval_threshold', result: 'not_evaluated', limit: approval.amount, note: skipped });
   } else if (tx.amount > approval.amount + EPS) {
     needsApproval = true;
@@ -271,13 +324,20 @@ export function checkTransaction(
     checks.push({ rule: 'approval_threshold', result: 'pass', limit: approval.amount, value: tx.amount });
   }
 
-  let verdict: Verdict = 'in_scope';
+  // An agreement with nothing to check against must not read as a pass.
+  const noLimits = !hasLimit && terms.categories.length === 0 && terms.mayDo.length === 0;
+
   if (checks.some((c) => c.result === 'fail')) {
-    verdict = 'out_of_scope';
-  } else if (needsApproval) {
-    verdict = 'needs_approval';
+    return { verdict: 'out_of_scope', checks, reasons };
+  }
+  if (needsApproval) {
     reasons.push(`The amount ${tx.amount} is above the approval threshold of ${approval?.amount}.`);
   }
+  if (noLimits) reasons.push('The agreement sets no limits to check against.');
+  reasons.push(...missing);
 
+  let verdict: Verdict = 'in_scope';
+  if (noLimits || missing.length > 0) verdict = 'incomplete';
+  else if (needsApproval) verdict = 'needs_approval';
   return { verdict, checks, reasons };
 }

@@ -10,7 +10,8 @@
  * worth surfacing (e.g. a pure commerce/consumer contract).
  */
 
-export type Money = { amount: number; currency: string };
+/** `assumedCurrency` marks a currency filled in as USD because the agreement named none. */
+export type Money = { amount: number; currency: string; assumedCurrency?: true };
 
 export interface ContractCapabilities {
   purpose?: string;
@@ -49,13 +50,15 @@ function asString(v: unknown): string | undefined {
 
 function money(v: unknown, fallbackCurrency?: string): Money | undefined {
   const cur = fallbackCurrency ?? 'USD';
-  if (typeof v === 'number' && isFinite(v)) return { amount: v, currency: cur };
+  const assumed = fallbackCurrency ? {} : { assumedCurrency: true as const };
+  if (typeof v === 'number' && isFinite(v)) return { amount: v, currency: cur, ...assumed };
   const r = asRecord(v);
   if (r && typeof r.amount === 'number' && isFinite(r.amount as number)) {
-    return { amount: r.amount as number, currency: asString(r.currency) ?? cur };
+    const own = asString(r.currency);
+    return { amount: r.amount as number, currency: own ?? cur, ...(own ? {} : assumed) };
   }
   if (typeof v === 'string' && v.trim() && !isNaN(Number(v))) {
-    return { amount: Number(v), currency: cur };
+    return { amount: Number(v), currency: cur, ...assumed };
   }
   return undefined;
 }

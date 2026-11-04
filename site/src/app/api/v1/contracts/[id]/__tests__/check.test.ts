@@ -5,7 +5,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const validateApiKey = vi.fn();
 const logAudit = vi.fn();
 let contractRow: Record<string, unknown> | null = null;
-let childRows: Record<string, unknown>[] = [];
+// Rows reachable by uuid (the version an approved amendment points at), and the proposals themselves.
+let rowsById: Record<string, Record<string, unknown>> = {};
+let proposals: { resulting_contract_id: string | null }[] = [];
 let tokenRow: Record<string, unknown> | null = null;
 
 vi.mock('@/lib/api-auth', () => ({ validateApiKey: (...a: unknown[]) => validateApiKey(...a) }));
@@ -17,14 +19,26 @@ vi.mock('@/lib/rate-limit', () => ({
 vi.mock('@/lib/supabase-admin', () => ({
   getSupabaseAdmin: () => ({
     from: (table: string) => {
+      if (table === 'amendment_proposals') {
+        const p: Record<string, unknown> = {};
+        p.select = () => p;
+        p.eq = () => p;
+        p.then = (resolve: (v: unknown) => unknown) => resolve({ data: proposals, error: null });
+        return p;
+      }
+      const q: { col?: string; val?: unknown } = {};
       const chain: Record<string, unknown> = {};
       chain.select = () => chain;
-      chain.eq = () => chain;
-      chain.order = () => chain;
-      // child lookup (amendment chain) ends in limit(); the first lookup ends in single()
-      chain.limit = async () => ({ data: childRows, error: null });
+      chain.eq = (col: string, val: unknown) => {
+        q.col = col;
+        q.val = val;
+        return chain;
+      };
       chain.single = async () => {
-        const data = table === 'share_tokens' ? tokenRow : contractRow;
+        let data: Record<string, unknown> | null;
+        if (table === 'share_tokens') data = tokenRow;
+        else if (q.col === 'id') data = rowsById[q.val as string] ?? null;
+        else data = contractRow;
         return { data, error: data ? null : { message: 'not found' } };
       };
       return chain;
@@ -34,6 +48,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 
 const CREATOR_KEY = 'key-creator';
 const HASH = 'a'.repeat(64);
+const HASH2 = 'b'.repeat(64);
 
 const machineReadable = {
   financial_terms: {
@@ -44,6 +59,8 @@ const machineReadable = {
   },
   scope_of_delegation: { approved_categories: ['compute'] },
 };
+
+const FULL = { currency: 'USD', category: 'compute', period_spent: 0 };
 
 async function check(body: unknown, opts: { id?: string; key?: string | null; query?: string; raw?: string } = {}) {
   const { POST } = await import('../check/route');
@@ -58,10 +75,29 @@ async function check(body: unknown, opts: { id?: string; key?: string | null; qu
   return POST(req, { params: Promise.resolve({ id }) });
 }
 
+/** An amended original (amb-2026-0001) and its replacement. */
+function amend(child: Record<string, unknown> = {}, opts: { approved?: boolean } = {}) {
+  contractRow!.status = 'amended';
+  rowsById['row-2'] = {
+    id: 'row-2',
+    contract_id: 'amb-2026-0002',
+    status: 'active',
+    sha256_hash: HASH2,
+    parent_contract_hash: HASH,
+    amendment_type: 'amendment',
+    api_key_id: CREATOR_KEY,
+    visibility: 'private',
+    machine_readable: { financial_terms: { currency: 'USD', spending_limit_per_tx: 500 } },
+    ...child,
+  };
+  proposals = opts.approved === false ? [] : [{ resulting_contract_id: 'row-2' }];
+}
+
 beforeEach(() => {
   validateApiKey.mockReset();
   logAudit.mockReset();
   validateApiKey.mockResolvedValue({ keyId: CREATOR_KEY });
+  logAudit.mockResolvedValue(undefined);
   contractRow = {
     id: 'row-1',
     contract_id: 'amb-2026-0001',
@@ -72,13 +108,14 @@ beforeEach(() => {
     machine_readable: machineReadable,
     expiry_date: null,
   };
-  childRows = [];
+  rowsById = {};
+  proposals = [];
   tokenRow = null;
 });
 
 describe('POST /api/v1/contracts/[id]/check', () => {
   it('answers in_scope for a payment inside the agreement', async () => {
-    const res = await check({ amount: 40, currency: 'USD', category: 'compute', period_spent: 200 });
+    const res = await check({ ...FULL, amount: 40, period_spent: 200 });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toMatchObject({
@@ -104,27 +141,71 @@ describe('POST /api/v1/contracts/[id]/check', () => {
 
   it('answers needs_approval above the approval threshold', async () => {
     contractRow!.machine_readable = { financial_terms: { currency: 'USD', requires_approval_above: 500 } };
-    const res = await check({ amount: 900 });
+    const res = await check({ amount: 900, currency: 'USD' });
     expect((await res.json()).verdict).toBe('needs_approval');
   });
 
-  it('checks the newest version of an amended agreement', async () => {
-    contractRow!.status = 'amended';
-    childRows = [{
-      id: 'row-2',
-      contract_id: 'amb-2026-0002',
-      status: 'active',
-      sha256_hash: 'b'.repeat(64),
-      parent_contract_hash: HASH,
-      amendment_type: 'amendment',
-      machine_readable: { financial_terms: { currency: 'USD', spending_limit_per_tx: 500 } },
-    }];
-    const json = await (await check({ amount: 300 })).json();
-    expect(json).toMatchObject({
-      verdict: 'in_scope',
-      contract_id: 'amb-2026-0001',
-      effective_contract_id: 'amb-2026-0002',
-      sha256_hash: 'b'.repeat(64),
+  it('answers incomplete, not in_scope, when an input the agreement limits is missing', async () => {
+    const json = await (await check({ amount: 40, currency: 'USD', category: 'compute' })).json();
+    expect(json.verdict).toBe('incomplete');
+    expect(json.reasons.join(' ')).toMatch(/period_spent/);
+  });
+
+  it('answers incomplete for an agreement with no limits', async () => {
+    contractRow!.machine_readable = { scope_of_delegation: { purpose: 'anything' } };
+    const json = await (await check({ amount: 40 })).json();
+    expect(json.verdict).toBe('incomplete');
+    expect(json.reasons).toEqual(['The agreement sets no limits to check against.']);
+  });
+
+  describe('amended agreements', () => {
+    it('checks the newest version, reached through an approved amendment', async () => {
+      amend();
+      const json = await (await check({ amount: 300, currency: 'USD' })).json();
+      expect(json).toMatchObject({
+        verdict: 'in_scope',
+        contract_id: 'amb-2026-0001',
+        effective_contract_id: 'amb-2026-0002',
+        sha256_hash: HASH2,
+      });
+    });
+
+    it('ignores a forged child row that only claims the parent hash', async () => {
+      // No approved proposal points at it, so it is unreachable.
+      amend({}, { approved: false });
+      const json = await (await check({ ...FULL, amount: 300 })).json();
+      expect(json.verdict).toBe('out_of_scope');
+      expect(json.effective_contract_id).toBe('amb-2026-0001');
+      expect(json.checks[0]).toMatchObject({ rule: 'version', result: 'fail' });
+      expect(json.reasons[0]).toMatch(/no approved amendment/);
+    });
+
+    it('fails closed when the replacement belongs to another account', async () => {
+      amend({ api_key_id: 'someone-else' });
+      const json = await (await check({ ...FULL, amount: 10 })).json();
+      expect(json.verdict).toBe('out_of_scope');
+      expect(json.checks[0]).toMatchObject({ rule: 'version', result: 'fail' });
+    });
+
+    it('fails closed when the replacement does not name the original as its parent', async () => {
+      amend({ parent_contract_hash: 'c'.repeat(64) });
+      const json = await (await check({ ...FULL, amount: 10 })).json();
+      expect(json.verdict).toBe('out_of_scope');
+      expect(json.checks[0].rule).toBe('version');
+    });
+
+    it('refuses to show a stricter amendment to a caller who could not read it', async () => {
+      contractRow!.visibility = 'public';
+      amend({ visibility: 'private' });
+      validateApiKey.mockResolvedValue(null);
+      const anon = await check({ amount: 10, currency: 'USD' }, { key: null });
+      expect(anon.status).toBe(403);
+      expect(logAudit).not.toHaveBeenCalled();
+      // the owner may still check it
+      validateApiKey.mockResolvedValue({ keyId: CREATOR_KEY });
+      const owner = await check({ amount: 10, currency: 'USD' });
+      expect(owner.status).toBe(200);
+      expect((await owner.json()).effective_contract_id).toBe('amb-2026-0002');
     });
   });
 

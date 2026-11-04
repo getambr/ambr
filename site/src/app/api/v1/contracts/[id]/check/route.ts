@@ -6,10 +6,9 @@ import { logAudit } from '@/lib/audit';
 import { corsOptions } from '@/lib/cors';
 import { CheckInputError } from '@/lib/contract/check-terms';
 import {
-  canCheckContract,
-  checkAgainstAgreement,
   checkTransactionSchema,
   lookupContractForCheck,
+  runCheck,
 } from '@/lib/contract/check-payment';
 
 export const runtime = 'nodejs';
@@ -20,7 +19,9 @@ export const runtime = 'nodejs';
  * Check one payment against what an agreement allows: status, validity
  * window, currency, per-transaction and monthly limits, approved categories,
  * enumerated actions and the approval threshold. If the agreement was
- * amended, the newest version is the one checked.
+ * amended, the newest approved version is the one checked. The verdict is
+ * in_scope, out_of_scope, needs_approval, or incomplete (a rule has a limit
+ * but the request did not send what it needs to be checked).
  *
  * Read-only and free: no credits are burned and nothing is stored (apart from
  * an audit-log line). Ambr does not hold funds or track spend, so the monthly
@@ -66,19 +67,21 @@ export async function POST(
   const { contract } = found;
 
   const shareToken = new URL(request.url).searchParams.get('token');
-  if (!(await canCheckContract(db, contract, { keyId, shareToken }))) {
-    return NextResponse.json(
-      {
-        error: 'forbidden',
-        message: 'Send the contract creator\'s API key (X-API-Key) or a share token (?token=) to check this contract.',
-      },
-      { status: 403 },
-    );
-  }
 
   try {
-    const result = await checkAgainstAgreement(db, contract, parsed.data);
-    logAudit({
+    const run = await runCheck(db, contract, parsed.data, { keyId, shareToken });
+    if (run.forbidden) {
+      return NextResponse.json(
+        {
+          error: 'forbidden',
+          message: 'Send the contract creator\'s API key (X-API-Key) or a share token (?token=) to check this contract.',
+        },
+        { status: 403 },
+      );
+    }
+    const { result } = run;
+    // Awaited: Vercel can drop work that is still running after the response.
+    await logAudit({
       event_type: 'contract_check',
       actor: keyId ?? 'anonymous',
       details: {
