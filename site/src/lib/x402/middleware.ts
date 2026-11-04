@@ -58,14 +58,37 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-/** The EIP-3009 / Permit2 nonce of the signed authorization, to quote to support. */
-function nonceOf(payload: unknown): string | undefined {
+type SignedAuthorization = { from?: unknown; nonce?: unknown };
+
+/**
+ * The signed authorization a payment carries, chosen the way the facilitator
+ * chooses it: @x402/evm treats a payload as Permit2 when the key
+ * `permit2Authorization` is present at all (even beside `authorization`) and
+ * verifies the signature over that one. Reading `authorization` first would let
+ * a payload carry the attacker's real Permit2 signature and a victim's address in
+ * a decoy `authorization.from`. A payload with both is `ambiguous`: refused.
+ */
+function authorizationOf(
+  payload: unknown,
+): { kind: 'permit2' | 'eip3009'; auth: SignedAuthorization | undefined } | { kind: 'ambiguous' } {
   const inner = (
     payload as {
-      payload?: { authorization?: { nonce?: unknown }; permit2Authorization?: { nonce?: unknown } };
+      payload?: { authorization?: SignedAuthorization; permit2Authorization?: SignedAuthorization };
     }
   )?.payload;
-  const nonce = inner?.authorization?.nonce ?? inner?.permit2Authorization?.nonce;
+  if (inner && typeof inner === 'object') {
+    const hasPermit2 = 'permit2Authorization' in inner;
+    if (hasPermit2 && 'authorization' in inner) return { kind: 'ambiguous' };
+    if (hasPermit2) return { kind: 'permit2', auth: inner.permit2Authorization ?? undefined };
+  }
+  return { kind: 'eip3009', auth: inner?.authorization ?? undefined };
+}
+
+/** The EIP-3009 / Permit2 nonce of the signed authorization, to quote to support. */
+function nonceOf(payload: unknown): string | undefined {
+  const chosen = authorizationOf(payload);
+  if (chosen.kind === 'ambiguous') return undefined;
+  const nonce = chosen.auth?.nonce;
   return typeof nonce === 'string' ? nonce : undefined;
 }
 
@@ -312,12 +335,9 @@ function reasonFromHeaders(headers: Record<string, string>): string | undefined 
 }
 
 function payerOf(payload: unknown): string | undefined {
-  const inner = (
-    payload as {
-      payload?: { authorization?: { from?: unknown }; permit2Authorization?: { from?: unknown } };
-    }
-  )?.payload;
-  const from = inner?.authorization?.from ?? inner?.permit2Authorization?.from;
+  const chosen = authorizationOf(payload);
+  if (chosen.kind === 'ambiguous') return undefined;
+  const from = chosen.auth?.from;
   return typeof from === 'string' ? from.toLowerCase() : undefined;
 }
 
@@ -400,6 +420,23 @@ export async function authenticateRequest(
     // Payment verified by the facilitator. Velocity check before money moves.
     const { paymentPayload, paymentRequirements, declaredExtensions } = result;
     const amountUsd = Number(paymentRequirements.amount) / 1_000_000;
+    if (authorizationOf(paymentPayload).kind === 'ambiguous') {
+      // Two authorizations in one payload: which of them was verified decides who
+      // paid, so a payload that carries both is never accepted.
+      logAudit({
+        event_type: 'x402_payload_ambiguous',
+        severity: 'warn',
+        actor: 'unknown',
+        details: { template: templateSlug },
+      });
+      return {
+        challenge: {
+          status: 402,
+          headers: challengeHeaders({}),
+          body: await humanBody(cfg, templateSlug, 'ambiguous_payment_payload'),
+        },
+      };
+    }
     const payerFromPayload = payerOf(paymentPayload);
     if (!payerFromPayload) {
       // Without a payer there is nothing to rate-limit against.
