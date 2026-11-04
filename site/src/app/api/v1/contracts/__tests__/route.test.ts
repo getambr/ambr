@@ -15,7 +15,13 @@ const grantCredits = vi.fn();
 const storeContract = vi.fn();
 const logAudit = vi.fn();
 const accountPrincipalWallet = vi.fn();
+const callerOwnsParent = vi.fn();
 
+// Whether the caller created the named parent (lib/contract/__tests__/parent-link.test.ts covers the lookup).
+vi.mock('@/lib/contract/parent-link', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/contract/parent-link')>()),
+  callerOwnsParent: (...a: unknown[]) => callerOwnsParent(...a),
+}));
 // The creating account's proven wallet (lib/contract/account-wallets.ts has its own tests).
 vi.mock('@/lib/contract/account-wallets', () => ({
   accountPrincipalWallet: (...a: unknown[]) => accountPrincipalWallet(...a),
@@ -111,10 +117,11 @@ beforeEach(() => {
     is_one_sided: false,
     price_cents: 20,
   };
-  for (const m of [authenticateRequest, buildPaymentChallenge, linkPaymentToContract, generateContract, decrementCredits, grantCredits, storeContract, logAudit, accountPrincipalWallet]) {
+  for (const m of [authenticateRequest, buildPaymentChallenge, linkPaymentToContract, generateContract, decrementCredits, grantCredits, storeContract, logAudit, accountPrincipalWallet, callerOwnsParent]) {
     m.mockReset();
   }
   accountPrincipalWallet.mockResolvedValue(null);
+  callerOwnsParent.mockResolvedValue(false);
   buildPaymentChallenge.mockResolvedValue({ status: 402, headers: {}, body: { error: 'payment_required' } });
   generateContract.mockResolvedValue({ humanReadable: 'h', machineReadable: {} });
   storeContract.mockResolvedValue({ id: 'row-1', contract_id: 'AMB-2026-0001', sha256_hash: 'hash', status: 'draft', created_at: 'now' });
@@ -627,5 +634,68 @@ describe('POST /api/v1/contracts next_step', () => {
     expect(res.status).toBe(201);
     expect(body.next_step).toMatch(/Only the principal signs/);
     expect(body.next_step).not.toMatch(/both parties/i);
+  });
+});
+
+describe('POST /api/v1/contracts: amendment fields come only from the amendment flow', () => {
+  const PARENT = 'c'.repeat(64);
+
+  it.each(['amendment', 'extension'])('answers 400 for amendment_type %s before authenticating, burning or storing anything', async (amendment_type) => {
+    const res = await callPost({ ...validBody, amendment_type });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('amendment_fields_not_allowed');
+    expect(authenticateRequest).not.toHaveBeenCalled();
+    expect(decrementCredits).not.toHaveBeenCalled();
+    expect(generateContract).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('refuses a forged amendment of another account contract, whoever the caller is', async () => {
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-forger'));
+    const res = await callPost({ ...validBody, parent_contract_hash: PARENT, amendment_type: 'amendment' });
+    expect(res.status).toBe(400);
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('answers 400 invalid_parent_contract when the caller did not create the parent, before any credit is burned', async () => {
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-stranger'));
+    callerOwnsParent.mockResolvedValue(false);
+    const res = await callPost({ ...validBody, parent_contract_hash: PARENT });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('invalid_parent_contract');
+    expect(callerOwnsParent).toHaveBeenCalledWith(PARENT, { keyId: 'key-stranger', payerWallet: null });
+    expect(decrementCredits).not.toHaveBeenCalled();
+    expect(generateContract).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('checks an x402 payer by wallet and refuses a parent it did not create without settling', async () => {
+    const settle = vi.fn();
+    authenticateRequest.mockResolvedValue(x402Auth(settle));
+    callerOwnsParent.mockResolvedValue(false);
+    const res = await callPost({ ...validBody, parent_contract_hash: PARENT });
+    expect(res.status).toBe(400);
+    expect(callerOwnsParent).toHaveBeenCalledWith(PARENT, { keyId: null, payerWallet: PAYER });
+    expect(settle).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('stores a parent the caller created, and never passes an amendment type to storeContract', async () => {
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-owner'));
+    decrementCredits.mockResolvedValue(980);
+    callerOwnsParent.mockResolvedValue(true);
+    const res = await callPost({ ...validBody, parent_contract_hash: PARENT, amendment_type: 'original' });
+    expect(res.status).toBe(201);
+    const stored = storeContract.mock.calls[0][0] as Record<string, unknown>;
+    expect(stored.parentContractHash).toBe(PARENT);
+    expect(stored.amendmentType).toBeUndefined();
+  });
+
+  it('does not look up a parent when none is sent', async () => {
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-plain'));
+    decrementCredits.mockResolvedValue(980);
+    expect((await callPost()).status).toBe(201);
+    expect(callerOwnsParent).not.toHaveBeenCalled();
+    expect((storeContract.mock.calls[0][0] as Record<string, unknown>).parentContractHash).toBeUndefined();
   });
 });
