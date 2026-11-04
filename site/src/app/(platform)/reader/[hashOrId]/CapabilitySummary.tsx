@@ -112,7 +112,7 @@ export default function CapabilitySummary({
             <Limit
               label={
                 cap.approvalBasis === 'monthly_aggregate'
-                  ? 'Your approval needed above (monthly total)'
+                  ? 'Your approval needed once the month’s total passes'
                   : 'Your approval needed above'
               }
               value={formatMoney(cap.approvalAbove)}
