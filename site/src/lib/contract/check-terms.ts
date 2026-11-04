@@ -114,7 +114,7 @@ function addMonths(ms: number, months: number): number {
   return d.getTime();
 }
 
-const norm = (s: string) => s.trim().toLowerCase().replace(/[\s-]+/g, '_');
+const norm = (s: string) => s.trim().toLowerCase().replace(/[\s.:-]+/g, '_');
 
 export function checkTransaction(
   terms: CheckTerms,
@@ -308,7 +308,13 @@ export function checkTransaction(
       `The action "${tx.action}" is prohibited by the agreement.`,
     );
   } else if (terms.mayDo.length === 0) {
-    checks.push({ rule: 'action', result: 'pass', limit: prohibited, value: tx.action });
+    checks.push({
+      rule: 'action',
+      result: 'not_evaluated',
+      limit: prohibited,
+      value: tx.action,
+      note: 'The agreement only lists prohibited actions, so this action is not on that list but is not confirmed as allowed.',
+    });
   } else if (terms.mayDo.some((a) => norm(a) === norm(tx.action as string))) {
     checks.push({ rule: 'action', result: 'pass', limit: terms.mayDo, value: tx.action });
   } else {

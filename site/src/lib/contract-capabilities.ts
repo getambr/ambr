@@ -100,15 +100,16 @@ export function deriveCapabilities(
   const prohibitedActions = slugList(authority?.prohibited_actions);
   const categories = asStringArray(scope?.approved_categories ?? mr.categories);
 
-  const perTxLimit = money(fin?.spending_limit_per_tx ?? mr.spending_limit_per_tx, currency);
+  const perTxLimit = money(fin?.spending_limit_per_tx ?? fin?.spending_limit_per_transaction ?? mr.spending_limit_per_tx, currency);
   const monthlyLimit = money(fin?.spending_limit_monthly ?? mr.spending_limit_monthly, currency);
   const explicitApproval = money(fin?.requires_approval_above ?? mr.requires_approval_above, currency);
   const escalation = explicitApproval ? undefined : money(fin?.escalation_threshold, currency);
   const approvalAbove = explicitApproval ?? escalation;
-  const approvalBasis =
-    escalation && fin?.escalation_required_above === 'monthly_aggregate'
-      ? ('monthly_aggregate' as const)
-      : undefined;
+  // Only a missing or clearly per-payment value compares the single amount;
+  // any other value is read as the monthly total, the stricter reading.
+  const basisRaw = asString(fin?.escalation_required_above)?.toLowerCase();
+  const perPayment = !basisRaw || ['per_transaction', 'transaction', 'single'].includes(basisRaw);
+  const approvalBasis = escalation && !perPayment ? ('monthly_aggregate' as const) : undefined;
 
   const purpose =
     asString(scope?.purpose) ?? asString(mr.scope) ?? asString(mr.service_description);

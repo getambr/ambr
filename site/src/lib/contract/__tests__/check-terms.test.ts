@@ -448,3 +448,43 @@ describe('checkTransaction: scope_of_authority shape', () => {
     expect(r.verdict).toBe('in_scope');
   });
 });
+
+describe('review fixes', () => {
+  const run = (terms: CheckTerms, tx: Parameters<typeof checkTransaction>[2]) =>
+    checkTransaction(terms, 'active', tx, NOW);
+
+  it('does not pass an action on a deny-list-only agreement', () => {
+    const terms = termsFromMachineReadable({
+      financial_terms: { currency: 'USD', spending_limit_monthly: 500 },
+      scope_of_authority: { prohibited_actions: ['transfer_assets'] },
+    });
+    const ok = run(terms, { currency: 'USD', action: 'buy_credits', amount: 5, period_spent: 0 });
+    expect(rule(ok, 'action').result).toBe('not_evaluated');
+    expect(ok.verdict).toBe('in_scope');
+    const bad = run(terms, { currency: 'USD', action: 'Transfer.Assets', amount: 5, period_spent: 0 });
+    expect(bad.verdict).toBe('out_of_scope');
+  });
+
+  it('folds dots and colons in actions', () => {
+    const terms = termsFromMachineReadable({ scope_of_authority: { enumerated_actions: ['credits.buy:api'] } });
+    expect(rule(run(terms, { amount: 1, action: 'Credits Buy-API' }), 'action').result).toBe('pass');
+  });
+
+  it('reads an unknown escalation_required_above as the monthly total, a per-payment one as the amount', () => {
+    const mr = (basis?: string) => ({
+      financial_terms: { currency: 'USD', escalation_threshold: 50, ...(basis ? { escalation_required_above: basis } : {}) },
+    });
+    expect(termsFromMachineReadable(mr('rolling_30_days')).approvalBasis).toBe('monthly_aggregate');
+    for (const b of ['per_transaction', 'single', undefined]) {
+      expect(termsFromMachineReadable(mr(b)).approvalBasis).toBeUndefined();
+    }
+  });
+
+  it('reads spending_limit_per_transaction, ignoring null and none', () => {
+    const lim = (v: unknown) =>
+      termsFromMachineReadable({ financial_terms: { currency: 'USD', spending_limit_per_transaction: v } }).perTxLimit;
+    expect(lim(25)?.amount).toBe(25);
+    expect(lim('25')?.amount).toBe(25);
+    for (const v of [null, 'none', '']) expect(lim(v)).toBeUndefined();
+  });
+});

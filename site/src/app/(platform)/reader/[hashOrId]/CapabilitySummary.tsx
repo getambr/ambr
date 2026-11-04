@@ -109,7 +109,14 @@ export default function CapabilitySummary({
             <Limit key={l.label} label={l.label} value={`≤ ${formatMoney(l.value)}`} />
           ))}
           {cap.approvalAbove && (
-            <Limit label="Your approval needed above" value={formatMoney(cap.approvalAbove)} />
+            <Limit
+              label={
+                cap.approvalBasis === 'monthly_aggregate'
+                  ? 'Your approval needed above (monthly total)'
+                  : 'Your approval needed above'
+              }
+              value={formatMoney(cap.approvalAbove)}
+            />
           )}
         </div>
       )}
