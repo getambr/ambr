@@ -91,8 +91,10 @@ export async function followAmendments(
  * proposal points at (resulting_contract_id, written by the approve route).
  * parent_contract_hash alone is not trusted: POST /contracts takes it from the
  * request body, so anyone could attach a fake "newer version" to a contract.
- * The new version must also belong to the same API key and name `current` as
- * its parent.
+ * The approved proposal row, which only the approve route writes, is the trust
+ * anchor; the new version must also name `current` as its parent. Its
+ * api_key_id is NOT compared: the counterparty approves, and the new version
+ * is stored under the approver's key.
  */
 async function findApprovedNext(db: Db, current: CheckContractRow): Promise<NextVersion> {
   const { data: proposals } = await db
@@ -112,9 +114,6 @@ async function findApprovedNext(db: Db, current: CheckContractRow): Promise<Next
     return { problem: `The amended version of ${current.contract_id} could not be found.` };
   }
   const next = child as unknown as CheckContractRow;
-  if ((next.api_key_id ?? null) !== (current.api_key_id ?? null)) {
-    return { problem: `The amended version of ${current.contract_id} belongs to a different account, so it is not trusted.` };
-  }
   if (next.parent_contract_hash !== current.sha256_hash) {
     return { problem: `The amended version of ${current.contract_id} does not name it as its parent.` };
   }
@@ -159,6 +158,26 @@ export async function canCheckContract(db: Db, contract: CheckContractRow, calle
   return false;
 }
 
+const VISIBILITY_RANK: Record<string, number> = { public: 0, metadata_only: 1, private: 2, encrypted: 2 };
+const rank = (visibility?: string | null) => VISIBILITY_RANK[visibility || 'private'] ?? 2;
+
+/**
+ * Having passed on the contract asked for, a caller may also be shown the
+ * version that replaced it when that version is no stricter in visibility, or
+ * when the caller is a party to it: the original's creator key, or the key the
+ * new version is stored under (the approver). Otherwise an amendment that
+ * tightened visibility would leak its limits to someone who cannot read them.
+ */
+function mayCheckAmendment(
+  original: CheckContractRow,
+  effective: CheckContractRow,
+  caller: CheckCaller,
+): boolean {
+  if (rank(effective.visibility) <= rank(original.visibility)) return true;
+  const key = caller.keyId;
+  return !!key && (key === original.api_key_id || key === effective.api_key_id);
+}
+
 export interface CheckResponse extends CheckOutcome {
   contract_id: string;
   effective_contract_id: string;
@@ -187,7 +206,9 @@ export async function runCheck(
   if (!(await canCheckContract(db, contract, caller))) return { forbidden: true };
 
   const { contract: effective, problem } = await resolveEffectiveContract(db, contract);
-  if (effective !== contract && !(await canCheckContract(db, effective, caller))) return { forbidden: true };
+  if (effective !== contract && !mayCheckAmendment(contract, effective, caller)) {
+    return { forbidden: true };
+  }
 
   const terms = termsFromMachineReadable(
     effective.machine_readable as Record<string, unknown> | null | undefined,

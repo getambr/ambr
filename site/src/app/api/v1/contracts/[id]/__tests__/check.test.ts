@@ -47,6 +47,7 @@ vi.mock('@/lib/supabase-admin', () => ({
 }));
 
 const CREATOR_KEY = 'key-creator';
+const APPROVER_KEY = 'key-approver';
 const HASH = 'a'.repeat(64);
 const HASH2 = 'b'.repeat(64);
 
@@ -85,7 +86,8 @@ function amend(child: Record<string, unknown> = {}, opts: { approved?: boolean }
     sha256_hash: HASH2,
     parent_contract_hash: HASH,
     amendment_type: 'amendment',
-    api_key_id: CREATOR_KEY,
+    // The counterparty approves, so the new version is stored under their key.
+    api_key_id: APPROVER_KEY,
     visibility: 'private',
     machine_readable: { financial_terms: { currency: 'USD', spending_limit_per_tx: 500 } },
     ...child,
@@ -180,11 +182,23 @@ describe('POST /api/v1/contracts/[id]/check', () => {
       expect(json.reasons[0]).toMatch(/no approved amendment/);
     });
 
-    it('fails closed when the replacement belongs to another account', async () => {
-      amend({ api_key_id: 'someone-else' });
-      const json = await (await check({ ...FULL, amount: 10 })).json();
-      expect(json.verdict).toBe('out_of_scope');
-      expect(json.checks[0]).toMatchObject({ rule: 'version', result: 'fail' });
+    it('evaluates an amendment stored under the approver key normally, for the creator and the approver', async () => {
+      amend();
+      for (const keyId of [CREATOR_KEY, APPROVER_KEY]) {
+        validateApiKey.mockResolvedValue({ keyId });
+        contractRow!.visibility = 'private';
+        const res = await check({ amount: 300, currency: 'USD' });
+        // the approver is not the original's creator and holds no token: only the creator may ask
+        if (keyId === APPROVER_KEY) {
+          expect(res.status).toBe(403);
+        } else {
+          expect((await res.json())).toMatchObject({ verdict: 'in_scope', effective_contract_id: 'amb-2026-0002' });
+        }
+      }
+      // a public original lets the approver in, and the version is evaluated
+      contractRow!.visibility = 'public';
+      validateApiKey.mockResolvedValue({ keyId: APPROVER_KEY });
+      expect((await (await check({ amount: 300, currency: 'USD' })).json()).verdict).toBe('in_scope');
     });
 
     it('fails closed when the replacement does not name the original as its parent', async () => {
@@ -200,12 +214,16 @@ describe('POST /api/v1/contracts/[id]/check', () => {
       validateApiKey.mockResolvedValue(null);
       const anon = await check({ amount: 10, currency: 'USD' }, { key: null });
       expect(anon.status).toBe(403);
+      validateApiKey.mockResolvedValue({ keyId: 'someone-else' });
+      expect((await check({ amount: 10, currency: 'USD' })).status).toBe(403);
       expect(logAudit).not.toHaveBeenCalled();
-      // the owner may still check it
-      validateApiKey.mockResolvedValue({ keyId: CREATOR_KEY });
-      const owner = await check({ amount: 10, currency: 'USD' });
-      expect(owner.status).toBe(200);
-      expect((await owner.json()).effective_contract_id).toBe('amb-2026-0002');
+      // the original's creator and the approver may both check it
+      for (const keyId of [CREATOR_KEY, APPROVER_KEY]) {
+        validateApiKey.mockResolvedValue({ keyId });
+        const res = await check({ amount: 10, currency: 'USD' });
+        expect(res.status, keyId).toBe(200);
+        expect((await res.json()).effective_contract_id).toBe('amb-2026-0002');
+      }
     });
   });
 
