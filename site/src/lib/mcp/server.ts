@@ -14,6 +14,12 @@ import { evaluateContractValidity } from '@/lib/contract/validity';
 import { effectivePrincipalWallet, findPartyWalletProblem } from '@/lib/contract/same-wallet';
 import { mcpNextStepLines } from '@/lib/contract/next-step';
 import { accountPrincipalWallet } from '@/lib/contract/account-wallets';
+import {
+  AMENDMENT_TYPE_NOT_ALLOWED,
+  PARENT_CONTRACT_NOT_ACCEPTED,
+  callerOwnsParent,
+  forgesAmendmentType,
+} from '@/lib/contract/parent-link';
 import { resolveOversight, applyThresholdToDocument } from '@/lib/compliance/oversight-gate';
 import { generateContract } from '@/lib/llm/generate-contract';
 import {
@@ -172,10 +178,11 @@ Args:
   - principal_wallet (string, optional): the deploying party's own wallet. It must differ from the
     counterparty wallet in parameters (same_wallet_both_parties otherwise); left out, the first
     wallet that signs fills the principal side
-  - parent_contract_hash (string, optional): SHA-256 hash of parent contract for amendments
+  - parent_contract_hash (string, optional): SHA-256 hash of a contract you created, which this one is
+    created under (its oversight threshold then applies). Not for amendments: propose those with
+    POST /api/v1/contracts/{id}/amend
   - oversight_threshold_usd (number, optional): spending level above which work created under
     this contract needs human approval. Children exceeding it halt at awaiting_principal_approval.
-  - amendment_type (string, optional): "original" | "amendment" | "extension"
 
 Returns:
   - contract_id: Unique ID (e.g. "amb-2026-0042")
@@ -220,7 +227,8 @@ Legibility: ${LEGIBILITY_CLAUSE}`,
         },
         parent_contract_hash: {
           type: 'string',
-          description: 'SHA-256 hash of parent contract (for amendments)',
+          description:
+            'SHA-256 hash of a contract you created, which this one is created under. Amendments are proposed with POST /api/v1/contracts/{id}/amend, not here.',
         },
         oversight_threshold_usd: {
           type: 'number',
@@ -228,10 +236,6 @@ Legibility: ${LEGIBILITY_CLAUSE}`,
             'Spending level above which work created UNDER this contract requires human approval. ' +
             'A child contract exceeding the parent threshold is held at awaiting_principal_approval ' +
             'until a human signs, and cannot be signed or activated before then (EU AI Act Art. 14).',
-        },
-        amendment_type: {
-          type: 'string',
-          enum: ['original', 'amendment', 'extension'],
         },
       },
       required: ['template', 'parameters', 'principal_declaration'],
@@ -640,6 +644,34 @@ async function handleCreateContract(
     };
   }
 
+  // Amendment rows come only from the approval flow (lib/contract/parent-link.ts).
+  // A parent link must name a contract this caller created. Refused before any
+  // credit is burned or payment settled, as on the REST route.
+  if (forgesAmendmentType(args.amendment_type)) {
+    return {
+      content: [{ type: 'text', text: `Error: ${AMENDMENT_TYPE_NOT_ALLOWED.error}. ${AMENDMENT_TYPE_NOT_ALLOWED.message}` }],
+      isError: true,
+      structuredContent: { ...AMENDMENT_TYPE_NOT_ALLOWED },
+    };
+  }
+  if (args.parent_contract_hash !== undefined && args.parent_contract_hash !== null) {
+    const parentHash = args.parent_contract_hash;
+    const ownsParent =
+      typeof parentHash === 'string' &&
+      /^[a-f0-9]{64}$/.test(parentHash) &&
+      (await callerOwnsParent(parentHash, {
+        keyId: apiKeyCtx?.keyId ?? null,
+        payerWallet: authCtx?.type === 'x402' ? authCtx.payerWallet : null,
+      }));
+    if (!ownsParent) {
+      return {
+        content: [{ type: 'text', text: `Error: ${PARENT_CONTRACT_NOT_ACCEPTED.error}. ${PARENT_CONTRACT_NOT_ACCEPTED.message}` }],
+        isError: true,
+        structuredContent: { ...PARENT_CONTRACT_NOT_ACCEPTED },
+      };
+    }
+  }
+
   // Lookup template
   const db = getSupabaseAdmin();
   const { data: tmpl } = await db
@@ -843,11 +875,6 @@ async function handleCreateContract(
           : null,
       ),
       isOneSided: Boolean(tmpl.is_one_sided),
-      amendmentType: args.amendment_type as
-        | 'original'
-        | 'amendment'
-        | 'extension'
-        | undefined,
     });
 
     contractStored = true;

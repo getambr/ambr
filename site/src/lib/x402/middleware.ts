@@ -219,7 +219,7 @@ const contractDiscovery = declareDiscoveryExtension({
       template: { type: 'string', description: 'Template slug, see GET /api/v1/templates' },
       parameters: { type: 'object', description: 'Template parameters' },
       principal_declaration: { type: 'object', description: 'Who the agent acts for' },
-      parent_contract_hash: { type: 'string', description: 'SHA-256 of a parent contract (amendments)' },
+      parent_contract_hash: { type: 'string', description: 'SHA-256 of a contract you created, which this one is created under (not for amendments: use POST /api/v1/contracts/{id}/amend)' },
       visibility: { type: 'string', enum: ['private', 'metadata_only', 'public', 'encrypted'] },
     },
     required: ['template', 'parameters', 'principal_declaration'],

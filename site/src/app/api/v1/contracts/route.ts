@@ -38,6 +38,12 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { authenticateRequest, buildPaymentChallenge, linkPaymentToContract } from '@/lib/x402/middleware';
 import type { AuthContext } from '@/lib/adapters/payment/index';
 import { corsOptions } from '@/lib/cors';
+import {
+  AMENDMENT_TYPE_NOT_ALLOWED,
+  PARENT_CONTRACT_NOT_ACCEPTED,
+  callerOwnsParent,
+  forgesAmendmentType,
+} from '@/lib/contract/parent-link';
 import { resolveOversight, applyThresholdToDocument } from '@/lib/compliance/oversight-gate';
 import { checkAgentLimit, incrementAgentUsage } from '@/lib/agent-limits';
 import { verifyMessage } from 'ethers';
@@ -216,6 +222,13 @@ export async function POST(request: Request) {
     return NextResponse.json(walletProblem, { status: 400 });
   }
 
+  // 1a-2. Amendment rows come only from the approval flow, which writes the
+  // type and the parent hash from the parent it loaded itself. Refuse the type
+  // before any payment is verified; the parent is checked once the caller is known.
+  if (forgesAmendmentType(parsed.data.amendment_type)) {
+    return NextResponse.json(AMENDMENT_TYPE_NOT_ALLOWED, { status: 400 });
+  }
+
   // 1b. Provider known to be out of quota: say so before verifying or charging
   // anything. A bare request (no key, no signature) still gets the 402 below so
   // price discovery keeps working.
@@ -259,6 +272,19 @@ export async function POST(request: Request) {
       { error: 'rate_limited', message: 'Too many requests. Limit: 10/min.', retry_after_ms: rl.resetAt - Date.now() },
       { status: 429, headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
     );
+  }
+
+  // 3b. A parent link (it feeds the Article 14 gate below and is stored on the
+  // row) must name a contract this caller created. Otherwise the new row would
+  // claim a place in someone else's contract chain.
+  if (parsed.data.parent_contract_hash) {
+    const ownsParent = await callerOwnsParent(parsed.data.parent_contract_hash, {
+      keyId: authCtx.type === 'api_key' ? authCtx.keyId : null,
+      payerWallet: authCtx.type === 'x402' ? authCtx.payerWallet : null,
+    });
+    if (!ownsParent) {
+      return NextResponse.json(PARENT_CONTRACT_NOT_ACCEPTED, { status: 400 });
+    }
   }
 
   // 4b. Per-agent daily limit (delegated agents only)
@@ -504,7 +530,6 @@ export async function POST(request: Request) {
       paymentMethod: authCtx.type,
       visibility: parsed.data.visibility,
       parentContractHash: parsed.data.parent_contract_hash,
-      amendmentType: parsed.data.amendment_type,
       initialStatus,
       oversightThresholdUsd,
       principalApprovalRequired: requiresPrincipalApproval,

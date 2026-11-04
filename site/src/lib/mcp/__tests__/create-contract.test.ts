@@ -8,6 +8,7 @@ const generateContract = vi.fn();
 const storeContract = vi.fn();
 const linkPaymentToContract = vi.fn();
 const logAudit = vi.fn();
+const callerOwnsParent = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({ getSupabase: () => ({}) }));
 let tplRow: Record<string, unknown> = { id: 'tpl-1', slug: 'a1-service-purchase', category: 'consumer', price_cents: 20 };
@@ -35,6 +36,10 @@ vi.mock('@/lib/rate-limit', () => ({ rateLimit: () => ({ allowed: true, resetAt:
 vi.mock('@/lib/audit', () => ({ logAudit: (...a: unknown[]) => logAudit(...a) }));
 vi.mock('@/lib/x402/middleware', () => ({
   linkPaymentToContract: (...a: unknown[]) => linkPaymentToContract(...a),
+}));
+vi.mock('@/lib/contract/parent-link', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/contract/parent-link')>()),
+  callerOwnsParent: (...a: unknown[]) => callerOwnsParent(...a),
 }));
 vi.mock('@/lib/agent-limits', () => ({
   checkAgentLimit: vi.fn().mockResolvedValue({ allowed: true }),
@@ -84,8 +89,9 @@ async function call(authCtx: ReturnType<typeof x402Ctx>) {
 beforeEach(() => {
   tplRow = { id: 'tpl-1', slug: 'a1-service-purchase', category: 'consumer', price_cents: 20 };
   clearProviderUnavailable();
-  for (const m of [generateContract, storeContract, linkPaymentToContract, logAudit]) m.mockReset();
+  for (const m of [generateContract, storeContract, linkPaymentToContract, logAudit, callerOwnsParent]) m.mockReset();
   generateContract.mockResolvedValue({ humanReadable: 'h', machineReadable: {} });
+  callerOwnsParent.mockResolvedValue(false);
   storeContract.mockResolvedValue({ id: 'row-1', contract_id: 'AMB-2026-0001', sha256_hash: 'hash', status: 'draft', created_at: 'now' });
 });
 
@@ -298,5 +304,61 @@ describe('MCP ambr_create_contract stores the template category as contract_type
     const { result } = await call(x402Ctx(settle));
     expect(result.isError).toBeUndefined();
     expect(storeContract).toHaveBeenCalledWith(expect.objectContaining({ contractType: 'delegation' }));
+  });
+});
+
+describe('MCP ambr_create_contract: amendment fields come only from the amendment flow', () => {
+  const PARENT = 'c'.repeat(64);
+
+  async function callWith(extra: Record<string, unknown>, settle: () => Promise<unknown> = vi.fn()) {
+    const { handleMcpMessage } = await import('../server');
+    const msg = createCall();
+    Object.assign(msg.params.arguments, extra);
+    const res = await handleMcpMessage(msg, undefined, x402Ctx(settle) as never);
+    return res?.result as { content: { text: string }[]; isError?: boolean; structuredContent?: Record<string, unknown> };
+  }
+
+  it.each(['amendment', 'extension'])('refuses amendment_type %s before generating, settling or storing', async (amendment_type) => {
+    const settle = vi.fn();
+    const result = await callWith({ amendment_type }, settle);
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent?.error).toBe('amendment_fields_not_allowed');
+    expect(generateContract).not.toHaveBeenCalled();
+    expect(settle).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('refuses a forged amendment of a contract the caller did not create', async () => {
+    const settle = vi.fn();
+    const result = await callWith({ parent_contract_hash: PARENT, amendment_type: 'amendment' }, settle);
+    expect(result.isError).toBe(true);
+    expect(storeContract).not.toHaveBeenCalled();
+    expect(settle).not.toHaveBeenCalled();
+  });
+
+  it('refuses a parent the caller did not create, checking the x402 payer wallet', async () => {
+    const result = await callWith({ parent_contract_hash: PARENT });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent?.error).toBe('invalid_parent_contract');
+    expect(callerOwnsParent).toHaveBeenCalledWith(PARENT, { keyId: null, payerWallet: PAYER });
+    expect(generateContract).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('refuses a parent that is not a SHA-256 hash without a lookup', async () => {
+    const result = await callWith({ parent_contract_hash: 'amb-2026-0001' });
+    expect(result.isError).toBe(true);
+    expect(callerOwnsParent).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('stores a parent the caller created, and never passes an amendment type', async () => {
+    callerOwnsParent.mockResolvedValue(true);
+    const settle = vi.fn().mockResolvedValue({ ok: true, payerWallet: PAYER, txHash: TX_HASH, headers: {} });
+    const result = await callWith({ parent_contract_hash: PARENT, amendment_type: 'original' }, settle);
+    expect(result.isError).toBeFalsy();
+    const stored = storeContract.mock.calls[0][0] as Record<string, unknown>;
+    expect(stored.parentContractHash).toBe(PARENT);
+    expect(stored.amendmentType).toBeUndefined();
   });
 });
