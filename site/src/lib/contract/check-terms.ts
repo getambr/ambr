@@ -114,7 +114,7 @@ function addMonths(ms: number, months: number): number {
   return d.getTime();
 }
 
-const norm = (s: string) => s.trim().toLowerCase();
+const norm = (s: string) => s.trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 export function checkTransaction(
   terms: CheckTerms,
@@ -244,6 +244,12 @@ export function checkTransaction(
     checks.push({ rule: 'monthly_limit', result: 'not_evaluated', note: 'The agreement sets no monthly limit.' });
   } else if (!comparable(monthly)) {
     checks.push({ rule: 'monthly_limit', result: 'not_evaluated', limit: monthly.amount, note: skipped });
+  } else if (tx.period_spent === undefined && tx.amount > monthly.amount + EPS) {
+    // One payment above the monthly limit can never fit, whatever was spent before.
+    fail(
+      { rule: 'monthly_limit', result: 'fail', limit: monthly.amount, value: tx.amount },
+      `This payment alone (${tx.amount}) is above the monthly limit of ${monthly.amount}.`,
+    );
   } else if (tx.period_spent === undefined) {
     checks.push({
       rule: 'monthly_limit',
@@ -285,16 +291,24 @@ export function checkTransaction(
   }
 
   // action
-  if (terms.mayDo.length === 0) {
+  const prohibited = terms.prohibitedActions ?? [];
+  if (terms.mayDo.length === 0 && prohibited.length === 0) {
     checks.push({ rule: 'action', result: 'not_evaluated', note: 'The agreement lists no enumerated actions.' });
   } else if (!tx.action) {
     checks.push({
       rule: 'action',
       result: 'not_evaluated',
-      limit: terms.mayDo,
-      note: 'The agreement lists enumerated actions but no action was given.',
+      limit: terms.mayDo.length > 0 ? terms.mayDo : prohibited,
+      note: 'The agreement restricts actions but no action was given.',
     });
-    missing.push('No action was sent, but the agreement lists enumerated actions.');
+    missing.push('No action was sent, but the agreement restricts actions.');
+  } else if (prohibited.some((a) => norm(a) === norm(tx.action as string))) {
+    fail(
+      { rule: 'action', result: 'fail', limit: prohibited, value: tx.action },
+      `The action "${tx.action}" is prohibited by the agreement.`,
+    );
+  } else if (terms.mayDo.length === 0) {
+    checks.push({ rule: 'action', result: 'pass', limit: prohibited, value: tx.action });
   } else if (terms.mayDo.some((a) => norm(a) === norm(tx.action as string))) {
     checks.push({ rule: 'action', result: 'pass', limit: terms.mayDo, value: tx.action });
   } else {
@@ -311,27 +325,49 @@ export function checkTransaction(
     checks.push({ rule: 'approval_threshold', result: 'not_evaluated', note: 'The agreement sets no approval threshold.' });
   } else if (!comparable(approval)) {
     checks.push({ rule: 'approval_threshold', result: 'not_evaluated', limit: approval.amount, note: skipped });
-  } else if (tx.amount > approval.amount + EPS) {
-    needsApproval = true;
-    checks.push({
-      rule: 'approval_threshold',
-      result: 'not_evaluated',
-      limit: approval.amount,
-      value: tx.amount,
-      note: 'Above the approval threshold: a human must approve this payment.',
-    });
   } else {
-    checks.push({ rule: 'approval_threshold', result: 'pass', limit: approval.amount, value: tx.amount });
+    // A monthly_aggregate threshold compares the month's total. Without
+    // period_spent only the payment alone is known: enough to say approval is
+    // needed, never enough to say it is not.
+    const aggregate = terms.approvalBasis === 'monthly_aggregate';
+    const subject = aggregate && tx.period_spent !== undefined ? tx.period_spent + tx.amount : tx.amount;
+    if (subject > approval.amount + EPS) {
+      needsApproval = true;
+      checks.push({
+        rule: 'approval_threshold',
+        result: 'not_evaluated',
+        limit: approval.amount,
+        value: subject,
+        note: 'Above the approval threshold: a human must approve this payment.',
+      });
+    } else if (aggregate && tx.period_spent === undefined) {
+      checks.push({
+        rule: 'approval_threshold',
+        result: 'not_evaluated',
+        limit: approval.amount,
+        value: tx.amount,
+        note: 'The threshold applies to the monthly total. Send period_spent to check it.',
+      });
+      const msg = 'No period_spent was sent, so the monthly limit could not be checked.';
+      if (!missing.includes(msg)) missing.push('No period_spent was sent, so the approval threshold could not be checked.');
+    } else {
+      checks.push({ rule: 'approval_threshold', result: 'pass', limit: approval.amount, value: subject });
+    }
   }
 
   // An agreement with nothing to check against must not read as a pass.
-  const noLimits = !hasLimit && terms.categories.length === 0 && terms.mayDo.length === 0;
+  const noLimits =
+    !hasLimit && terms.categories.length === 0 && terms.mayDo.length === 0 && prohibited.length === 0;
 
   if (checks.some((c) => c.result === 'fail')) {
     return { verdict: 'out_of_scope', checks, reasons };
   }
   if (needsApproval) {
-    reasons.push(`The amount ${tx.amount} is above the approval threshold of ${approval?.amount}.`);
+    reasons.push(
+      terms.approvalBasis === 'monthly_aggregate' && tx.period_spent !== undefined
+        ? `Spend this month would reach ${tx.period_spent + tx.amount}, above the approval threshold of ${approval?.amount}.`
+        : `The amount ${tx.amount} is above the approval threshold of ${approval?.amount}.`,
+    );
   }
   if (noLimits) reasons.push('The agreement sets no limits to check against.');
   reasons.push(...missing);

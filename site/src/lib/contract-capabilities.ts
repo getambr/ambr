@@ -19,10 +19,14 @@ export interface ContractCapabilities {
   agentType?: string;
   mayDo: string[];
   mayNotDo: string[];
+  /** Slug-like prohibited actions (`scope_of_authority.prohibited_actions`); prose lists are left out, a sentence cannot be matched. */
+  prohibitedActions?: string[];
   categories: string[];
   perTxLimit?: Money;
   monthlyLimit?: Money;
   approvalAbove?: Money;
+  /** `monthly_aggregate` when the approval threshold applies to the month's total, not the single payment. */
+  approvalBasis?: 'monthly_aggregate';
   /** Currency the agreement names for its limits, when it names one. */
   currency?: string;
   geographic?: string;
@@ -48,6 +52,14 @@ function asString(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 
+const SLUG = /^[a-z0-9_.:-]+$/i;
+
+/** The list when every entry is slug-like; otherwise empty (prose sentences stay unparsed). */
+function slugList(v: unknown): string[] {
+  const list = asStringArray(v).map((x) => x.trim());
+  return list.length > 0 && list.every((x) => SLUG.test(x)) ? list : [];
+}
+
 function money(v: unknown, fallbackCurrency?: string): Money | undefined {
   const cur = fallbackCurrency ?? 'USD';
   const assumed = fallbackCurrency ? {} : { assumedCurrency: true as const };
@@ -71,6 +83,7 @@ export function deriveCapabilities(
   if (!mr) return null;
 
   const scope = asRecord(mr.scope_of_delegation);
+  const authority = asRecord(mr.scope_of_authority);
   const fin = asRecord(mr.financial_terms);
   const agent = asRecord(mr.agent_identification);
   const duration = asRecord(mr.duration);
@@ -80,13 +93,22 @@ export function deriveCapabilities(
 
   const currency = asString(fin?.currency) ?? asString(mr.currency);
 
-  const mayDo = asStringArray(scope?.enumerated_actions);
+  let mayDo = asStringArray(scope?.enumerated_actions);
+  if (mayDo.length === 0) mayDo = asStringArray(authority?.enumerated_actions);
+  if (mayDo.length === 0) mayDo = slugList(authority?.permitted_actions);
   const mayNotDo = asStringArray(scope?.boundaries);
+  const prohibitedActions = slugList(authority?.prohibited_actions);
   const categories = asStringArray(scope?.approved_categories ?? mr.categories);
 
   const perTxLimit = money(fin?.spending_limit_per_tx ?? mr.spending_limit_per_tx, currency);
   const monthlyLimit = money(fin?.spending_limit_monthly ?? mr.spending_limit_monthly, currency);
-  const approvalAbove = money(fin?.requires_approval_above ?? mr.requires_approval_above, currency);
+  const explicitApproval = money(fin?.requires_approval_above ?? mr.requires_approval_above, currency);
+  const escalation = explicitApproval ? undefined : money(fin?.escalation_threshold, currency);
+  const approvalAbove = explicitApproval ?? escalation;
+  const approvalBasis =
+    escalation && fin?.escalation_required_above === 'monthly_aggregate'
+      ? ('monthly_aggregate' as const)
+      : undefined;
 
   const purpose =
     asString(scope?.purpose) ?? asString(mr.scope) ?? asString(mr.service_description);
@@ -125,10 +147,12 @@ export function deriveCapabilities(
     agentType,
     mayDo,
     mayNotDo,
+    ...(prohibitedActions.length > 0 ? { prohibitedActions } : {}),
     categories,
     perTxLimit,
     monthlyLimit,
     approvalAbove,
+    ...(approvalBasis ? { approvalBasis } : {}),
     currency,
     geographic,
     startDate,

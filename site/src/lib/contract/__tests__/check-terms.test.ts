@@ -326,3 +326,125 @@ describe('followAmendments', () => {
     expect(out.problem).toMatch(/longer than 20/);
   });
 });
+
+describe('checkTransaction: scope_of_authority shape', () => {
+  const authorityMr = (extra: Record<string, unknown> = {}, fin: Record<string, unknown> = {}) => ({
+    financial_terms: {
+      currency: 'USD',
+      escalation_threshold: 50,
+      spending_limit_monthly: 50,
+      escalation_required_above: 'monthly_aggregate',
+      spending_limit_per_transaction: null,
+      ...fin,
+    },
+    scope_of_authority: {
+      description: 'Buy API credits on behalf of principal',
+      enumerated_actions: ['purchase_api_credits', 'maintain_records'],
+      ultra_vires_clause: true,
+      ...extra,
+    },
+  });
+  const t = (extra?: Record<string, unknown>, fin?: Record<string, unknown>) =>
+    termsFromMachineReadable(authorityMr(extra, fin));
+  const run = (terms: CheckTerms, tx: Parameters<typeof checkTransaction>[2]) =>
+    checkTransaction(terms, 'active', tx, NOW);
+  const ok = { currency: 'USD', action: 'purchase_api_credits' };
+
+  it('blocks a single payment above the monthly limit when period_spent is missing', () => {
+    const r = run(t(), { ...ok, amount: 80 });
+    expect(r.verdict).toBe('out_of_scope');
+    expect(rule(r, 'monthly_limit')).toMatchObject({ result: 'fail', limit: 50, value: 80 });
+    expect(r.reasons).toContain('This payment alone (80) is above the monthly limit of 50.');
+  });
+
+  it('keeps a payment within the limit incomplete while period_spent is missing', () => {
+    const r = run(t(), { ...ok, amount: 40 });
+    expect(r.verdict).toBe('incomplete');
+    expect(rule(r, 'monthly_limit').result).toBe('not_evaluated');
+  });
+
+  it('passes $49 with nothing spent: the month total is not above the threshold', () => {
+    const r = run(t(), { ...ok, amount: 49, period_spent: 0 });
+    expect(r.verdict).toBe('in_scope');
+    expect(rule(r, 'approval_threshold')).toMatchObject({ result: 'pass', value: 49, limit: 50 });
+  });
+
+  it('fails $30 on top of 30 already spent', () => {
+    const r = run(t(), { ...ok, amount: 30, period_spent: 30 });
+    expect(r.verdict).toBe('out_of_scope');
+    expect(rule(r, 'monthly_limit').result).toBe('fail');
+  });
+
+  it('fails an action the agreement does not enumerate', () => {
+    const r = run(t(), { ...ok, action: 'transfer_company_assets', amount: 10, period_spent: 0 });
+    expect(r.verdict).toBe('out_of_scope');
+    expect(rule(r, 'action').result).toBe('fail');
+  });
+
+  it('normalises case, spaces and hyphens in the action', () => {
+    for (const action of ['Purchase API Credits', 'purchase-api-credits']) {
+      const r = run(t(), { ...ok, action, amount: 10, period_spent: 0 });
+      expect(rule(r, 'action').result).toBe('pass');
+      expect(r.verdict).toBe('in_scope');
+    }
+  });
+
+  it('fails an action in a slug-like prohibited list', () => {
+    const r = run(t({ prohibited_actions: ['transfer_company_assets'] }), {
+      ...ok, action: 'Transfer Company Assets', amount: 10, period_spent: 0,
+    });
+    expect(r.verdict).toBe('out_of_scope');
+    expect(rule(r, 'action').limit).toEqual(['transfer_company_assets']);
+  });
+
+  it('leaves prose permitted_actions and prohibited_actions unparsed', () => {
+    const terms = termsFromMachineReadable({
+      financial_terms: { currency: 'USD', spending_limit_monthly: 500 },
+      scope_of_authority: {
+        permitted_actions: ['Purchase API credits on behalf of the Principal'],
+        prohibited_actions: ['Transfer funds to third parties'],
+      },
+    });
+    expect(terms.mayDo).toEqual([]);
+    expect(terms.prohibitedActions).toBeUndefined();
+    const r = run(terms, { currency: 'USD', action: 'anything', amount: 10, period_spent: 0 });
+    expect(rule(r, 'action').result).toBe('not_evaluated');
+    expect(r.verdict).toBe('in_scope');
+  });
+
+  it('reads a slug-like permitted_actions list', () => {
+    const terms = termsFromMachineReadable({ scope_of_authority: { permitted_actions: ['pay_invoice'] } });
+    expect(terms.mayDo).toEqual(['pay_invoice']);
+  });
+
+  it('asks for an action when the agreement restricts actions and none is sent', () => {
+    const r = run(t(), { currency: 'USD', amount: 10, period_spent: 0 });
+    expect(rule(r, 'action').result).toBe('not_evaluated');
+    expect(r.verdict).toBe('incomplete');
+  });
+
+  it('needs approval when the monthly total passes the threshold but not the limit', () => {
+    const r = run(t({}, { spending_limit_monthly: 200 }), { ...ok, amount: 30, period_spent: 30 });
+    expect(r.verdict).toBe('needs_approval');
+    expect(rule(r, 'approval_threshold')).toMatchObject({ value: 60, limit: 50 });
+  });
+
+  it('needs approval on a single payment above the threshold when period_spent is missing', () => {
+    const r = run(t({}, { spending_limit_monthly: 200 }), { ...ok, amount: 60 });
+    expect(rule(r, 'approval_threshold').value).toBe(60);
+    expect(r.reasons.join(' ')).toContain('approval threshold');
+  });
+
+  it('does not pass the threshold when period_spent is missing and the payment alone is below it', () => {
+    const r = run(t({}, { spending_limit_monthly: 200 }), { ...ok, amount: 20 });
+    expect(rule(r, 'approval_threshold').result).toBe('not_evaluated');
+    expect(r.verdict).toBe('incomplete');
+  });
+
+  it('compares the payment alone when the threshold is not a monthly aggregate', () => {
+    const r = run(t({}, { spending_limit_monthly: 200, escalation_required_above: 'per_transaction' }), {
+      ...ok, amount: 30, period_spent: 30,
+    });
+    expect(r.verdict).toBe('in_scope');
+  });
+});
