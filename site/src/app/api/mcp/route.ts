@@ -209,6 +209,7 @@ export async function GET(request: Request) {
         'ambr_get_contract_status',
         'ambr_verify_hash',
         'ambr_agent_handshake',
+        'ambr_check_transaction',
       ],
       payment: {
         methods: ['api_key', 'x402'],

@@ -22,7 +22,10 @@ export interface ContractCapabilities {
   perTxLimit?: Money;
   monthlyLimit?: Money;
   approvalAbove?: Money;
+  /** Currency the agreement names for its limits, when it names one. */
+  currency?: string;
   geographic?: string;
+  startDate?: string;
   endDate?: string;
   durationMonths?: number;
   subDelegationAllowed?: boolean;
@@ -59,6 +62,8 @@ function money(v: unknown, fallbackCurrency?: string): Money | undefined {
 
 export function deriveCapabilities(
   mr: Record<string, unknown> | null | undefined,
+  /** Return the parsed terms even when there is no scope or limit worth showing (the payment check wants dates and thresholds alone). */
+  { always = false }: { always?: boolean } = {},
 ): ContractCapabilities | null {
   if (!mr) return null;
 
@@ -85,6 +90,7 @@ export function deriveCapabilities(
   const agentId = asString(agent?.agent_id) ?? asString(mr.agent_id);
   const agentType = asString(agent?.agent_type) ?? asString(mr.agent_type);
   const geographic = asString(scope?.geographic_limitations);
+  const startDate = asString(duration?.start_date) ?? asString(mr.start_date);
   const endDate = asString(duration?.end_date) ?? asString(mr.end_date);
   const durationMonths =
     typeof duration?.duration_months === 'number'
@@ -108,7 +114,7 @@ export function deriveCapabilities(
     !!perTxLimit ||
     !!monthlyLimit ||
     !!agentId;
-  if (!hasContent) return null;
+  if (!hasContent && !always) return null;
 
   return {
     purpose,
@@ -120,7 +126,9 @@ export function deriveCapabilities(
     perTxLimit,
     monthlyLimit,
     approvalAbove,
+    currency,
     geographic,
+    startDate,
     endDate,
     durationMonths,
     subDelegationAllowed,

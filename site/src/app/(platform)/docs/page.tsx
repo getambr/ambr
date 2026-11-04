@@ -290,6 +290,12 @@ export default function DocsPage() {
               </tr>
               <tr className="border-b border-border">
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
+                <td className="py-3 pr-4 font-mono text-xs">/v1/contracts/:id/check</td>
+                <td className="py-3 pr-4 text-xs">API key or share token (public contracts: none)</td>
+                <td className="py-3 text-xs">Check a payment against the agreement (free)</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
                 <td className="py-3 pr-4 font-mono text-xs">/v1/contracts/:id/wallet-auth</td>
                 <td className="py-3 pr-4 text-xs">Wallet signature</td>
                 <td className="py-3 text-xs">Prove wallet association</td>
