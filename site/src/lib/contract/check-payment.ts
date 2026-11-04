@@ -113,11 +113,13 @@ async function findApprovedNext(db: Db, current: CheckContractRow): Promise<Next
   if (!child) {
     return { problem: `The amended version of ${current.contract_id} could not be found.` };
   }
-  const next = child as unknown as CheckContractRow;
-  if (next.parent_contract_hash !== current.sha256_hash) {
-    return { problem: `The amended version of ${current.contract_id} does not name it as its parent.` };
-  }
-  return { next };
+  // The trust anchor is the approved proposal: only the approval route writes
+  // resulting_contract_id, and amendment_proposals has RLS on with no policies,
+  // so callers cannot write it. parent_contract_hash is not compared, because
+  // a parent's sha256_hash can be re-derived after the amendment was stored
+  // (the admin rehash route, the post-storage integrity fix), which would
+  // strand a real amendment.
+  return { next: child as unknown as CheckContractRow };
 }
 
 export function resolveEffectiveContract(db: Db, start: CheckContractRow): Promise<EffectiveVersion> {

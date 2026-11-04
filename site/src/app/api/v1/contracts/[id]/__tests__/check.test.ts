@@ -201,11 +201,11 @@ describe('POST /api/v1/contracts/[id]/check', () => {
       expect((await (await check({ amount: 300, currency: 'USD' })).json()).verdict).toBe('in_scope');
     });
 
-    it('fails closed when the replacement does not name the original as its parent', async () => {
+    it('follows an approved amendment even when the parent was rehashed after it', async () => {
       amend({ parent_contract_hash: 'c'.repeat(64) });
-      const json = await (await check({ ...FULL, amount: 10 })).json();
-      expect(json.verdict).toBe('out_of_scope');
-      expect(json.checks[0].rule).toBe('version');
+      const json = await (await check({ amount: 300, currency: 'USD' })).json();
+      expect(json.effective_contract_id).toBe('amb-2026-0002');
+      expect(json.checks[0].rule).not.toBe('version');
     });
 
     it('refuses to show a stricter amendment to a caller who could not read it', async () => {
