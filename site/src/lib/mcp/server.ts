@@ -406,7 +406,9 @@ Legibility: the handshake itself is auditable — delegation scope, agent identi
   },
   {
     name: 'ambr_check_transaction',
-    description: `Check one payment against what an agreement allows, before releasing funds.
+    description: `Check one payment against what an agreement allows. Advisory only: Ambr compares what
+you report with the agreement's terms; it does not authorize, block or see payments, and in_scope
+is not an approval or a guarantee.
 
 Tests the payment against the agreement's status, validity window, currency, per-transaction
 limit, monthly limit, approved categories, enumerated actions and approval threshold. If the
@@ -1575,6 +1577,8 @@ async function handleCheckTransaction(
           text: [
             `Verdict: ${result.verdict}`,
             ...result.reasons.map((r) => `- ${r}`),
+            '',
+            result.advisory_note,
             '',
             '```json',
             JSON.stringify(result, null, 2),

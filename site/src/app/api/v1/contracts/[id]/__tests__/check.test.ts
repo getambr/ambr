@@ -123,6 +123,8 @@ describe('POST /api/v1/contracts/[id]/check', () => {
     expect(json).toMatchObject({
       verdict: 'in_scope',
       reasons: [],
+      advisory: true,
+      advisory_note: expect.stringMatching(/not an approval or a guarantee/),
       contract_id: 'amb-2026-0001',
       effective_contract_id: 'amb-2026-0001',
       sha256_hash: HASH,

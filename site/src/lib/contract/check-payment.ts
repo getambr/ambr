@@ -180,7 +180,18 @@ function mayCheckAmendment(
   return !!key && (key === original.api_key_id || key === effective.api_key_id);
 }
 
+/**
+ * Sent with every check answer. The check compares what the caller reports with
+ * the agreement's terms; it does not authorize, block or see payments.
+ */
+export const CHECK_ADVISORY_NOTE =
+  'Advisory only: this compares the payment you reported with the agreement terms. ' +
+  'Ambr does not authorize, block or see payments, and relies on the amount, action and ' +
+  'period_spent you send. in_scope is not an approval or a guarantee.';
+
 export interface CheckResponse extends CheckOutcome {
+  advisory: true;
+  advisory_note: string;
   contract_id: string;
   effective_contract_id: string;
   status: string;
@@ -227,6 +238,8 @@ export async function runCheck(
     forbidden: false,
     result: {
       ...outcome,
+      advisory: true,
+      advisory_note: CHECK_ADVISORY_NOTE,
       contract_id: contract.contract_id,
       effective_contract_id: effective.contract_id,
       status: effective.status,
