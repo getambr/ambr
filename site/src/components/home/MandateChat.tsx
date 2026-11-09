@@ -260,7 +260,7 @@ export default function MandateChat() {
         </Reveal>
         <Reveal delay={0.1}>
           <h2 className="mt-4 max-w-2xl" style={{ ...serif, fontSize: 'clamp(1.85rem, 3.6vw, 3rem)', lineHeight: 1.0, letterSpacing: '-0.02em' }}>
-            Describe it. The agent drafts the mandate.
+            Describe it. The agent drafts the agreement.
           </h2>
         </Reveal>
 

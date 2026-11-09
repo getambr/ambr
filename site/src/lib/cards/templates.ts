@@ -9,6 +9,7 @@
  */
 
 import { OG } from '@/lib/og/og-constants';
+import { BRAND } from '@/lib/brand';
 
 export type TemplateName = 'mechanics' | 'milestone' | 'founder';
 
@@ -25,7 +26,7 @@ export const TEMPLATES: Record<TemplateName, TemplateDefaults> = {
   mechanics: {
     eyebrow: '§ — Mechanics',
     footL: '@ambr_run',
-    footR: 'The liability record for autonomous agents',
+    footR: BRAND.tagline,
     bylineFooter: false,
   },
   milestone: {

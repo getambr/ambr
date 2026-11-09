@@ -5,10 +5,10 @@ import DocsShell from '@/components/docs/DocsShell';
 export const metadata: Metadata = {
   title: 'Documentation | Ambr',
   description:
-    'Ambr API documentation — the liability record for autonomous agents. Create, sign, and verify Agent Mandates via REST, MCP, and A2A, with wallet-based execution on Base.',
+    'Ambr API documentation — the signed record of what an AI agent may do. Create, sign, and verify agreements via REST, MCP, and A2A, with wallet-based execution on Base.',
   ...createOgMetadata({
     title: 'Documentation | Ambr',
-    description: 'Ambr API documentation — the liability record for autonomous agents. Create, sign, and verify Agent Mandates via REST, MCP, and A2A, with wallet-based execution on Base.',
+    description: 'Ambr API documentation — the signed record of what an AI agent may do. Create, sign, and verify agreements via REST, MCP, and A2A, with wallet-based execution on Base.',
     path: '/docs',
     label: 'Documentation',
     domain: 'getamber.dev',

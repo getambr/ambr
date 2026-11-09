@@ -14,7 +14,7 @@ export default function MandateClose() {
       />
       <div className="relative mx-auto max-w-[1100px] text-center">
         <Reveal>
-          <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>§ 07 — The mandate</p>
+          <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>§ 07 — The record</p>
         </Reveal>
         <Reveal delay={0.08}>
           <h2 className="mx-auto mt-6 max-w-4xl" style={{ ...serif, fontSize: 'clamp(2.6rem, 6.5vw, 6rem)', lineHeight: 0.92, letterSpacing: '-0.03em' }}>

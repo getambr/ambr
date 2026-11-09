@@ -10,8 +10,7 @@ export default function DocsPage() {
         <p className="text-micro mb-3">§ 01 — Getting Started</p>
         <h2 className="font-serif text-3xl text-text-primary mb-4">What is Ambr</h2>
         <p className="text-[#a39b8c] text-sm leading-relaxed">
-          Ambr is the Agent Mandate &amp; Binding Registry: the authorization and liability record for
-          autonomous agents. An Agent Mandate records who authorized an agent, in what scope, under
+          Ambr is the signed record of what an AI agent may do. Each agreement records who authorized an agent, in what scope, under
           which law. Create, sign, and verify these dual-format Ricardian contracts through a single API
           -- no human bottleneck, no PDF workflows.
         </p>

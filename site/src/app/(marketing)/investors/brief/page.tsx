@@ -137,11 +137,11 @@ export default async function InvestorBriefPage() {
         <div className="mt-5">
           <Eyebrow>§ 01 — What it is</Eyebrow>
           <h1 className="mt-4" style={{ ...DISPLAY.section, maxWidth: '18ch' }}>
-            The liability record for{' '}
-            <span style={{ color: EDITORIAL.brass }}>autonomous agents.</span>
+            The signed record of what{' '}
+            <span style={{ color: EDITORIAL.brass }}>an AI agent may do.</span>
           </h1>
           <p className="mt-5 text-[13px] leading-relaxed" style={{ color: EDITORIAL.lead, maxWidth: '68ch' }}>
-            Ambr is the Agent Mandate &amp; Binding Registry. It issues the authorization an AI agent
+            Ambr issues the signed record of the authority an AI agent
             acts under — human-readable legal text and machine-parsable JSON bound by one SHA-256
             hash, signed by both parties and minted as paired cNFTs on Base mainnet. When an agent
             acts in someone&apos;s name, the mandate says who authorized it, what it covered, and

@@ -276,7 +276,7 @@ export default function HeroUnicornCombo() {
       <div className="hu-content relative z-10 flex min-h-screen flex-col px-6 sm:px-10 lg:px-16">
         <div className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col">
         <div className="hu-in hu-in-0 flex items-center justify-between pt-10 pb-6 text-[11px] uppercase" style={{ ...mono, color: '#9a8e78', letterSpacing: '0.22em' }}>
-          <span className="hidden sm:inline">Ambr — Agent Mandate &amp; Binding Registry</span>
+          <span className="hidden sm:inline">Ambr — Agent authority, on record</span>
           <span className="hidden sm:block" style={{ color: '#c6a87c' }}>Est. on Base L2 · MMXXVI</span>
         </div>
         <div className="hu-rule" aria-hidden="true" />
@@ -284,7 +284,7 @@ export default function HeroUnicornCombo() {
         <div className="flex flex-1 items-center py-10">
           <div className="max-w-[820px]">
             <p className="hu-in hu-in-1 mb-7 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>
-              № 001 — The accountability record for autonomous agents
+              № 001 — The signed record of what an AI agent may do
             </p>
             <h1 className="hu-head" style={serif}>
               <span className="block">Your AI is</span>
@@ -293,9 +293,8 @@ export default function HeroUnicornCombo() {
             </h1>
             <div className="hu-in hu-in-2 mt-10 max-w-md">
               <p className="text-[15px] leading-relaxed" style={{ color: '#cfc8ba' }}>
-                Every act leaves a fossil. An <span style={{ color: '#f4f4f0' }}>Agent Mandate</span> records
-                who authorized it, in what scope, under which law. Readable as
-                prose, executable as code, revocable on record.
+                Every act leaves a fossil. Ambr records who let it act, within which limits,
+                under which law. Readable by people and by code, revocable at any time.
               </p>
             </div>
             <div className="hu-in hu-in-3 mt-9 flex flex-wrap items-center gap-7">
@@ -313,7 +312,7 @@ export default function HeroUnicornCombo() {
         <div className="grid grid-cols-1 gap-px pb-10 pt-7 sm:grid-cols-3">
           {[
             ['01', 'Authorize', 'Scopes · governing law · time windows'],
-            ['02', 'Act', 'A mandate both sides can trust'],
+            ['02', 'Act', 'Terms both sides can read'],
             ['03', 'Prove', 'Revocable, with the full history on record'],
           ].map(([n, t, d], i) => (
             <div key={n} className={`hu-in hu-in-${4 + i} flex items-baseline gap-4 ${i === 0 ? '' : 'sm:pl-8'}`}>

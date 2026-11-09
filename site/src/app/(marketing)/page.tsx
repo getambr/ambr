@@ -13,12 +13,12 @@ import MandateClose from '@/components/home/MandateClose';
 import SmoothScroll from '@/components/ui/SmoothScroll';
 
 export const metadata: Metadata = {
-  title: 'Ambr — Agent Mandate & Binding Registry | The liability record for autonomous agents',
+  title: 'Ambr | The signed record of what an AI agent may do',
   description:
-    'An Agent Mandate records who authorized your AI, in what scope, under which law. Readable as prose, executable as code, revocable on record.',
+    'Ambr records who let your AI act, within which limits, under which law. Readable by people and by code, revocable at any time.',
   ...createOgMetadata({
-    title: 'Agent Mandate & Binding Registry',
-    description: 'The liability record for autonomous agents.',
+    title: 'Agent authority, on record',
+    description: 'The signed record of what an AI agent may do.',
     path: '/',
     label: 'Ambr',
     domain: 'ambr.run',

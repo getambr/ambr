@@ -1,8 +1,8 @@
 # Ambr
 
-> The liability record for autonomous agents
+> The signed record of what an AI agent may do
 
-Ambr provides delegation authority, commerce contracts, and compliance audit trails for AI agents. Contracts are dual-format Ricardian: human-readable legal text paired with machine-parsable JSON, linked by SHA-256 hash.
+Ambr records what an AI agent may do: who authorized it, within which limits, until when, and which version of the terms applied. It sits above payment rails (x402, AP2, card networks), which enforce; Ambr records and signs. Contracts are dual-format Ricardian: human-readable legal text paired with machine-parsable JSON, linked by SHA-256 hash.
 
 ## Legibility principle
 
@@ -28,9 +28,9 @@ Every action facilitated by Ambr produces a dual-format Ricardian Contract — t
 - Supports bilateral amendments with paired cryptographic NFTs
 - Provides agent handshake protocol for delegation acceptance
 
-## Standard route for agent contracts
+## Open format
 
-Ambr is establishing `urn:ambr:ricardian-v1` as a shared route for agent contracting. The URN, the JSON shape, the canonical hash algorithm, and the open-source templates are documented at [/spec/ricardian-v1](https://ambr.run/spec/ricardian-v1) under MIT. Third parties can declare `compliesWith: ['urn:ambr:ricardian-v1']` on their own agent cards to federate against the same format. The intent is convergence, not lock-in — contract schemas that more than one implementation reads are the ones that survive.
+The agreement format, `urn:ambr:ricardian-v1`, is an open spec under MIT: the URN, the JSON shape, the hash algorithm and the templates are at [/spec/ricardian-v1](https://ambr.run/spec/ricardian-v1). Ambr is not a payment mandate format; an agreement can reference the mandate or token a payment rail issued.
 
 ## For AI Agents
 

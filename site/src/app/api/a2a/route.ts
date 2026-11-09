@@ -43,7 +43,7 @@ export async function GET() {
     {
       name: 'Ambr A2A Server',
       version: '1.0.0',
-      description: 'The liability record for autonomous agents. Create and verify Agent Mandates (Ricardian contracts) via the A2A protocol.',
+      description: 'The signed record of what an AI agent may do. Create and verify agreements (Ricardian contracts) via the A2A protocol.',
       protocol: 'A2A',
       methods: ['message/send', 'tasks/get', 'tasks/cancel'],
       agent_card: ['/.well-known/agent.json', '/.well-known/agent-card.json'],

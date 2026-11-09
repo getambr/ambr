@@ -11,7 +11,7 @@ import ReaderPortal from '@/components/how-it-works/ReaderPortal';
 import AmendmentChain from '@/components/how-it-works/AmendmentChain';
 
 export const metadata: Metadata = {
-  title: 'How It Works | Ambr — Agent Mandate & Binding Registry',
+  title: 'How It Works | Ambr',
   description:
     'How authorization becomes a record: Ambr turns agent delegation into a readable, revocable Agent Mandate — an Agent Mandate records who authorized it, in what scope, under which law.',
   ...createOgMetadata({

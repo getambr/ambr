@@ -41,7 +41,7 @@ export async function buildAgentCard() {
   return {
     name: 'Ambr',
     description:
-      'The liability record for autonomous agents. Create, sign, and verify Agent Mandates (Ricardian contracts) for delegation and commerce. Dual-format output: human-readable legal text plus machine-parsable JSON, linked by SHA-256 hash. Legible by construction.',
+      'The signed record of what an AI agent may do. Create, sign, and verify agreements (Ricardian contracts) for delegation and commerce. Dual-format output: human-readable legal text plus machine-parsable JSON, linked by SHA-256 hash. Legible by construction.',
     url: a2aUrl,
     version: '1.0.0',
     apiVersion: '1.0.0',
