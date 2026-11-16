@@ -174,6 +174,7 @@ export class TeardownEngine {
     window.removeEventListener('pointermove', this.onPointer);
     this.disposables.forEach((d) => d.dispose());
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     this.labelHost.remove();
   }

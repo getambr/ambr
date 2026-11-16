@@ -17,7 +17,10 @@ const mono = { fontFamily: 'var(--font-jetbrains-mono), monospace' } as const;
 function webglAvailable() {
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    // Release the probe context so it does not count against the page's limit.
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
   } catch {
     return false;
   }
