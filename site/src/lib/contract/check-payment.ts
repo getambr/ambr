@@ -3,7 +3,7 @@ import type { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { contractRefColumn, INVALID_CONTRACT_REF } from './lookup';
 import {
   checkTransaction,
-  termsFromMachineReadable,
+  termsFromAgreement,
   type CheckOutcome,
   type CheckTransaction,
 } from './check-terms';
@@ -18,7 +18,7 @@ import {
 type Db = ReturnType<typeof getSupabaseAdmin>;
 
 export const CHECK_CONTRACT_COLUMNS =
-  'id, contract_id, status, sha256_hash, parent_contract_hash, amendment_type, api_key_id, visibility, machine_readable, expiry_date, created_at';
+  'id, contract_id, status, sha256_hash, parent_contract_hash, amendment_type, api_key_id, visibility, machine_readable, parameters, template_id, templates(slug), expiry_date, created_at, oversight_threshold_usd';
 
 export interface CheckContractRow {
   id: string;
@@ -30,8 +30,25 @@ export interface CheckContractRow {
   api_key_id?: string | null;
   visibility?: string | null;
   machine_readable?: unknown;
+  /** The form answers: the limits the check reads. */
+  parameters?: unknown;
+  template_id?: string | null;
+  /** The joined template (a single row, or a list of one). */
+  templates?: { slug?: string | null } | { slug?: string | null }[] | null;
   expiry_date?: string | null;
   created_at?: string | null;
+  /**
+   * The human-oversight threshold the create route writes. An amendment's text is
+   * regenerated without it, so this column of the effective version is where it
+   * survives: the check reads it, and never only the text.
+   */
+  oversight_threshold_usd?: number | string | null;
+}
+
+/** The slug of the row's template, when the join came back with one. */
+export function templateSlugOf(row: CheckContractRow): string | undefined {
+  const t = Array.isArray(row.templates) ? row.templates[0] : row.templates;
+  return typeof t?.slug === 'string' && t.slug !== '' ? t.slug : undefined;
 }
 
 export const MAX_AMENDMENT_HOPS = 20;
@@ -182,12 +199,16 @@ function mayCheckAmendment(
 
 /**
  * Sent with every check answer. The check compares what the caller reports with
- * the agreement's terms; it does not authorize, block or see payments.
+ * the figures stored with the agreement and nothing else: it does not read the
+ * agreement's wording, and it does not authorize, block or see the payments it checks.
  */
 export const CHECK_ADVISORY_NOTE =
-  'Advisory only: this compares the payment you reported with the agreement terms. ' +
-  'Ambr does not authorize, block or see payments, and relies on the amount, action and ' +
-  'period_spent you send. in_scope is not an approval or a guarantee.';
+  'Advisory only: this checks the payment you reported against the figures stored with the agreement (its form ' +
+  'answers) and the exact labels in its lists. within_limits means those figures passed. It says nothing about terms ' +
+  'written in words, which this check does not read, and it is not an approval or a guarantee. Always read the ' +
+  "agreement's scope and conditions yourself; not_checked lists parts to start with, as a best-effort hint and not a " +
+  'complete list. Ambr does not authorize, block or see the payments it checks, and relies on the amount, currency, ' +
+  'category, action and period_spent you send.';
 
 export interface CheckResponse extends CheckOutcome {
   advisory: true;
@@ -223,11 +244,16 @@ export async function runCheck(
     return { forbidden: true };
   }
 
-  const terms = termsFromMachineReadable(
-    effective.machine_readable as Record<string, unknown> | null | undefined,
-    effective.expiry_date,
-    effective.created_at,
-  );
+  // The effective version's own form answers and template: an amendment is a
+  // new row with its own parameters, so nothing is carried over from the original.
+  const terms = termsFromAgreement({
+    templateSlug: templateSlugOf(effective),
+    parameters: effective.parameters,
+    machineReadable: effective.machine_readable,
+    expiryDate: effective.expiry_date,
+    createdAt: effective.created_at,
+    oversightThresholdUsd: effective.oversight_threshold_usd,
+  });
   const outcome = checkTransaction(terms, effective.status, tx, now);
   if (problem) {
     outcome.checks.unshift({ rule: 'version', result: 'fail', note: problem });

@@ -406,17 +406,49 @@ Legibility: the handshake itself is auditable — delegation scope, agent identi
   },
   {
     name: 'ambr_check_transaction',
-    description: `Check one payment against what an agreement allows. Advisory only: Ambr compares what
-you report with the agreement's terms; it does not authorize, block or see payments, and in_scope
-is not an approval or a guarantee.
+    description: `Check one payment against the limits of an agreement. Advisory only: Ambr compares what you
+report with the figures stored with the agreement; it does not authorize, block or see the payments it
+checks, and a "within_limits" answer is not an approval or a guarantee.
 
-Tests the payment against the agreement's status, validity window, currency, per-transaction
-limit, monthly limit, approved categories, enumerated actions and approval threshold. If the
-agreement was amended, the newest approved version is checked. Free: no credits are burned.
-Ambr does not hold funds or track spend, so the monthly limit is checked only when you pass
-period_spent. A rule the agreement sets no limit for comes back as not_evaluated, never as a pass.
-If a rule has a limit but you did not send what it needs (category, action, currency, period_spent),
-the verdict is "incomplete", not "in_scope". Send everything the agreement limits.
+It checks only what a program can check exactly: status, validity window, currency, per-transaction and
+monthly limits, a total budget, a price or monthly fee, the approval and escalation thresholds, and the
+category and action labels you send, matched exactly against the agreement's lists (case, spaces, dots,
+colons and hyphens are folded, and a leading "do not", "don't", "no", "not", "never", "avoid", "without" or "prohibited:" on a prohibited entry is ignored). The
+limits come from the form answers stored with the agreement, not from its text. It reads the delegation
+templates (general authorization, power of attorney, limited service, fleet) and the commerce templates
+(API access, compute SLA, task execution). If the agreement was amended, the newest approved version is
+checked. Free: no credits are burned. Amounts are compared in USD (USDC counts as USD) or in the
+template's own currency; a payment in another currency is not compared and the verdict is "incomplete".
+
+It does NOT read the agreement's human-readable text. Anything written in words (the scope, conditions,
+geographic limits, who may be paid, how a limit is measured) is for you to read yourself: always read the
+agreement's scope and conditions before acting on any answer. The response's "not_checked" lists, by path
+and never the text, parts to start with (each has a kind and a short reason; at most thirty are listed,
+"not_checked_count" has the total). It is a best-effort hint, not a complete list: an empty or short list
+does not mean there is nothing to read. Read the agreement itself through the contract read.
+
+Verdicts:
+  - "within_limits": the template is one the check reads, the form answers are stored and valid, every
+    limit they set was evaluated and passed, every figure written in digits or in common number words
+    in the agreement's machine-readable text is accounted for, and at least one spending limit or price
+    was evaluated. It says nothing about terms
+    written in words.
+  - "out_of_scope": a limit definitely fails (status, validity window, a cap, a payment that must equal
+    what is left of a task price, a category or action that is not on a list held in the form
+    answers, or that is prohibited). A permitted-action or category list found only in the agreement's text
+    is never trusted to decide this: a miss there is "incomplete".
+  - "needs_approval": an approval or escalation threshold is exceeded. "also_incomplete": true then means
+    some limit could not be evaluated either; the reasons still carry it.
+  - "incomplete": something could not be checked or placed: an input you did not send (category, action,
+    currency, period_spent), a form answer the check cannot use, a figure or statement in the agreement's
+    text that the form answers do not explain or contradict, wording beside a limit that names another period
+    than the one period_spent covers, a date the check cannot place as the agreement's end, a miss on a
+    permitted-action or category list found only in the agreement's text, a payment that is not a whole number of calls
+    at the price per call, permitted counterparties (the request carries none), a payment model the check
+    cannot match, an agreement without stored form answers or made from another template.
+Ambr does not hold funds or track spend: period_spent is what was already spent in the period the limit
+covers (this month for a monthly limit, fee or fleet budget, for a fleet the whole fleet's; the whole
+agreement so far for a total budget or task price). One payment above a limit fails without it.
 
 Access: a public contract is open to anyone; otherwise use the creator's API key or pass a share_token.
 
@@ -424,12 +456,12 @@ Args:
   - contract_id (string, required): Contract ID (amb-YYYY-NNNN), SHA-256 hash, or UUID
   - amount (number, required): payment amount, zero or more
   - currency (string, optional): e.g. "USD"
-  - category (string, optional): spending category
-  - action (string, optional): the action the agent is taking
-  - period_spent (number, optional): already spent this month, to check the monthly limit
+  - category (string, optional): your own category label, matched exactly against the agreement's list
+  - action (string, optional): the action the agent is taking, matched exactly against the agreement's lists
+  - period_spent (number, optional): already spent in the period the limit covers (this month, or the whole agreement for a total budget)
   - share_token (string, optional): share token for a private contract
 
-Returns: verdict ("in_scope" | "out_of_scope" | "incomplete" | "needs_approval"), the per-rule checks, plain-language reasons, and the contract that was checked (contract_id, effective_contract_id, sha256_hash, reader_url).`,
+Returns: verdict ("within_limits" | "out_of_scope" | "incomplete" | "needs_approval"), the per-rule checks, plain-language reasons, "not_checked" and "not_checked_count", "also_incomplete" when it applies, and the contract that was checked (contract_id, effective_contract_id, sha256_hash, reader_url).`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -438,7 +470,7 @@ Returns: verdict ("in_scope" | "out_of_scope" | "incomplete" | "needs_approval")
         currency: { type: 'string', description: 'Payment currency, e.g. USD' },
         category: { type: 'string', description: 'Spending category' },
         action: { type: 'string', description: 'Action the agent is taking' },
-        period_spent: { type: 'number', minimum: 0, description: 'Already spent this month' },
+        period_spent: { type: 'number', minimum: 0, description: 'Already spent in the period the limit covers (this month, or the whole agreement for a total budget)' },
         share_token: { type: 'string', description: 'Share token for a private contract' },
       },
       required: ['contract_id', 'amount'],
@@ -1577,6 +1609,14 @@ async function handleCheckTransaction(
           text: [
             `Verdict: ${result.verdict}`,
             ...result.reasons.map((r) => `- ${r}`),
+            ...(result.not_checked_count > 0
+              ? [
+                  '',
+                  `Not checked (read these yourself): ${result.not_checked.map((n) => n.path).join(', ')}${
+                    result.not_checked_count > result.not_checked.length ? ` and ${result.not_checked_count - result.not_checked.length} more` : ''
+                  }`,
+                ]
+              : []),
             '',
             result.advisory_note,
             '',

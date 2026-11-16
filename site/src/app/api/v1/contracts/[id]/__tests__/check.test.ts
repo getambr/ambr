@@ -51,15 +51,33 @@ const APPROVER_KEY = 'key-approver';
 const HASH = 'a'.repeat(64);
 const HASH2 = 'b'.repeat(64);
 
-const machineReadable = {
+// The form answers of a general agent authorization: the limits the check reads.
+const parameters = {
+  principal_name: 'Example Corp',
+  principal_type: 'corporation',
+  principal_registration_number: 'REG-000000',
+  principal_address: '1 Example Street, Example City',
+  agent_id: `0x${'a'.repeat(40)}`,
+  agent_type: 'supervised',
+  scope: 'Buy compute',
+  categories: ['compute'],
+  spending_limit_per_tx: 100,
+  spending_limit_monthly: 1000,
+  requires_approval_above: 500,
+  duration_months: 12,
+  governing_law: 'Singapore',
+};
+const limitsText = (perTx: number, monthly: number, approval: number) => ({
   financial_terms: {
     currency: 'USD',
-    spending_limit_per_tx: 100,
-    spending_limit_monthly: 1000,
-    requires_approval_above: 500,
+    spending_limit_per_tx: perTx,
+    spending_limit_monthly: monthly,
+    requires_approval_above: approval,
   },
   scope_of_delegation: { approved_categories: ['compute'] },
-};
+});
+const machineReadable = limitsText(100, 1000, 500);
+const template = { slug: 'd1-general-auth' };
 
 const FULL = { currency: 'USD', category: 'compute', period_spent: 0 };
 
@@ -89,7 +107,11 @@ function amend(child: Record<string, unknown> = {}, opts: { approved?: boolean }
     // The counterparty approves, so the new version is stored under their key.
     api_key_id: APPROVER_KEY,
     visibility: 'private',
-    machine_readable: { financial_terms: { currency: 'USD', spending_limit_per_tx: 500 } },
+    machine_readable: limitsText(500, 1000, 500),
+    parameters: { ...parameters, spending_limit_per_tx: 500 },
+    created_at: new Date().toISOString(),
+    template_id: 'tpl-1',
+    templates: template,
     ...child,
   };
   proposals = opts.approved === false ? [] : [{ resulting_contract_id: 'row-2' }];
@@ -108,7 +130,12 @@ beforeEach(() => {
     api_key_id: CREATOR_KEY,
     visibility: 'private',
     machine_readable: machineReadable,
+    parameters,
+    template_id: 'tpl-1',
+    templates: template,
     expiry_date: null,
+    // A duration runs from the creation time, and a test runs at the real time.
+    created_at: new Date().toISOString(),
   };
   rowsById = {};
   proposals = [];
@@ -116,20 +143,24 @@ beforeEach(() => {
 });
 
 describe('POST /api/v1/contracts/[id]/check', () => {
-  it('answers in_scope for a payment inside the agreement', async () => {
+  it('answers within_limits for a payment inside the agreement', async () => {
     const res = await check({ ...FULL, amount: 40, period_spent: 200 });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toMatchObject({
-      verdict: 'in_scope',
+      verdict: 'within_limits',
       reasons: [],
       advisory: true,
       advisory_note: expect.stringMatching(/not an approval or a guarantee/),
+      not_checked: [{ path: 'scope', kind: 'free_text_answer', why: expect.any(String) }],
+      not_checked_count: 1,
       contract_id: 'amb-2026-0001',
       effective_contract_id: 'amb-2026-0001',
       sha256_hash: HASH,
       reader_url: `https://getamber.dev/reader/${HASH}`,
     });
+    // Paths only, never the text itself.
+    expect(JSON.stringify(json)).not.toContain('Buy compute');
     expect(Number.isNaN(Date.parse(json.checked_at))).toBe(false);
     expect(json.checks.find((c: { rule: string }) => c.rule === 'monthly_limit')).toMatchObject({ result: 'pass', value: 240 });
     expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ event_type: 'contract_check', actor: CREATOR_KEY }));
@@ -144,30 +175,50 @@ describe('POST /api/v1/contracts/[id]/check', () => {
   });
 
   it('answers needs_approval above the approval threshold', async () => {
-    contractRow!.machine_readable = { financial_terms: { currency: 'USD', requires_approval_above: 500 } };
-    const res = await check({ amount: 900, currency: 'USD' });
+    contractRow!.parameters = { ...parameters, spending_limit_per_tx: 5000, spending_limit_monthly: 5000 };
+    contractRow!.machine_readable = limitsText(5000, 5000, 500);
+    const res = await check({ ...FULL, amount: 900 });
     expect((await res.json()).verdict).toBe('needs_approval');
   });
 
-  it('answers incomplete, not in_scope, when an input the agreement limits is missing', async () => {
+  it('answers incomplete, not within_limits, when an input the agreement limits is missing', async () => {
     const json = await (await check({ amount: 40, currency: 'USD', category: 'compute' })).json();
     expect(json.verdict).toBe('incomplete');
     expect(json.reasons.join(' ')).toMatch(/period_spent/);
   });
 
-  it('answers incomplete for an agreement with no limits', async () => {
-    contractRow!.machine_readable = { scope_of_delegation: { purpose: 'anything' } };
-    const json = await (await check({ amount: 40 })).json();
+  it('answers incomplete, never within_limits, for an agreement with no stored form answers', async () => {
+    contractRow!.parameters = null;
+    const json = await (await check({ ...FULL, amount: 40 })).json();
     expect(json.verdict).toBe('incomplete');
-    expect(json.reasons).toEqual(['The agreement sets no limits to check against.']);
+    expect(json.reasons.join(' ')).toMatch(/no stored form answers/);
+    expect(json.checks.some((c: { rule: string }) => c.rule === 'agreement_terms')).toBe(true);
+  });
+
+  it('answers incomplete for a template the check does not read, and reads the joined template as a list too', async () => {
+    contractRow!.templates = { slug: 'a1-service-purchase' };
+    const json = await (await check({ ...FULL, amount: 40 })).json();
+    expect(json.verdict).toBe('incomplete');
+    expect(json.reasons.join(' ')).toMatch(/a1-service-purchase/);
+    contractRow!.templates = [template];
+    expect((await (await check({ ...FULL, amount: 40 })).json()).verdict).toBe('within_limits');
+    contractRow!.templates = null;
+    expect((await (await check({ ...FULL, amount: 40 })).json()).verdict).toBe('incomplete');
+  });
+
+  it('answers incomplete when the agreement text states a limit the form answers do not hold', async () => {
+    contractRow!.machine_readable = { ...machineReadable, payment_terms: { max_per_invoice: 500 } };
+    const json = await (await check({ ...FULL, amount: 40 })).json();
+    expect(json.verdict).toBe('incomplete');
+    expect(json.reasons.join(' ')).toContain('payment_terms.max_per_invoice');
   });
 
   describe('amended agreements', () => {
     it('checks the newest version, reached through an approved amendment', async () => {
       amend();
-      const json = await (await check({ amount: 300, currency: 'USD' })).json();
+      const json = await (await check({ ...FULL, amount: 300 })).json();
       expect(json).toMatchObject({
-        verdict: 'in_scope',
+        verdict: 'within_limits',
         contract_id: 'amb-2026-0001',
         effective_contract_id: 'amb-2026-0002',
         sha256_hash: HASH2,
@@ -189,23 +240,23 @@ describe('POST /api/v1/contracts/[id]/check', () => {
       for (const keyId of [CREATOR_KEY, APPROVER_KEY]) {
         validateApiKey.mockResolvedValue({ keyId });
         contractRow!.visibility = 'private';
-        const res = await check({ amount: 300, currency: 'USD' });
+        const res = await check({ ...FULL, amount: 300 });
         // the approver is not the original's creator and holds no token: only the creator may ask
         if (keyId === APPROVER_KEY) {
           expect(res.status).toBe(403);
         } else {
-          expect((await res.json())).toMatchObject({ verdict: 'in_scope', effective_contract_id: 'amb-2026-0002' });
+          expect((await res.json())).toMatchObject({ verdict: 'within_limits', effective_contract_id: 'amb-2026-0002' });
         }
       }
       // a public original lets the approver in, and the version is evaluated
       contractRow!.visibility = 'public';
       validateApiKey.mockResolvedValue({ keyId: APPROVER_KEY });
-      expect((await (await check({ amount: 300, currency: 'USD' })).json()).verdict).toBe('in_scope');
+      expect((await (await check({ ...FULL, amount: 300 })).json()).verdict).toBe('within_limits');
     });
 
     it('follows an approved amendment even when the parent was rehashed after it', async () => {
       amend({ parent_contract_hash: 'c'.repeat(64) });
-      const json = await (await check({ amount: 300, currency: 'USD' })).json();
+      const json = await (await check({ ...FULL, amount: 300 })).json();
       expect(json.effective_contract_id).toBe('amb-2026-0002');
       expect(json.checks[0].rule).not.toBe('version');
     });
