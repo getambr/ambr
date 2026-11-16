@@ -292,7 +292,7 @@ export default function ApiOverview() {
           <h3 className="font-serif text-lg text-text-primary mb-4">MCP Integration</h3>
           <p className="text-sm text-[#a39b8c] mb-4">
             Add Ambr to your AI agent with one config block. Works with Claude Code, Cursor, and any MCP-compatible client.
-            Your agent gets 6 tools: list templates, create mandates, get/verify mandates, check status, and agent handshake.
+            Your agent gets 7 tools: list templates, create mandates, get/verify mandates, check status, check a payment, and agent handshake.
           </p>
 
           <div className="space-y-4">
