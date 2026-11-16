@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { createOgMetadata } from '@/lib/og/create-og-metadata';
-import HeroUnicornCombo from '@/components/home/HeroUnicornCombo';
+import HeroTeardown from '@/components/home/HeroTeardown';
 import MandateFlow from '@/components/home/MandateFlow';
 import MandateChat from '@/components/home/MandateChat';
 import MandateDemo from '@/components/home/MandateDemo';
@@ -29,7 +29,7 @@ export default function Home() {
   return (
     <main id="main-content" style={{ background: '#0a0a0a' }}>
       <SmoothScroll />
-      <HeroUnicornCombo />
+      <HeroTeardown />
       <MandateFlow />
       <MandateChat />
       <MandateDemo />

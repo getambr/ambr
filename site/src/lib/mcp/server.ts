@@ -14,6 +14,12 @@ import { evaluateContractValidity } from '@/lib/contract/validity';
 import { effectivePrincipalWallet, findPartyWalletProblem } from '@/lib/contract/same-wallet';
 import { mcpNextStepLines } from '@/lib/contract/next-step';
 import { accountPrincipalWallet } from '@/lib/contract/account-wallets';
+import {
+  AMENDMENT_TYPE_NOT_ALLOWED,
+  PARENT_CONTRACT_NOT_ACCEPTED,
+  callerOwnsParent,
+  forgesAmendmentType,
+} from '@/lib/contract/parent-link';
 import { resolveOversight, applyThresholdToDocument } from '@/lib/compliance/oversight-gate';
 import { generateContract } from '@/lib/llm/generate-contract';
 import {
@@ -26,6 +32,12 @@ import {
 } from '@/lib/contract-engine';
 import { hasEnoughCredits, UNLIMITED_CREDITS } from '@/lib/credits';
 import { logAudit } from '@/lib/audit';
+import { CheckInputError, validateTransaction } from '@/lib/contract/check-terms';
+import {
+  checkTransactionSchema,
+  lookupContractForCheck,
+  runCheck,
+} from '@/lib/contract/check-payment';
 import { rateLimit } from '@/lib/rate-limit';
 import { linkPaymentToContract } from '@/lib/x402/middleware';
 import {
@@ -172,10 +184,11 @@ Args:
   - principal_wallet (string, optional): the deploying party's own wallet. It must differ from the
     counterparty wallet in parameters (same_wallet_both_parties otherwise); left out, the first
     wallet that signs fills the principal side
-  - parent_contract_hash (string, optional): SHA-256 hash of parent contract for amendments
+  - parent_contract_hash (string, optional): SHA-256 hash of a contract you created, which this one is
+    created under (its oversight threshold then applies). Not for amendments: propose those with
+    POST /api/v1/contracts/{id}/amend
   - oversight_threshold_usd (number, optional): spending level above which work created under
     this contract needs human approval. Children exceeding it halt at awaiting_principal_approval.
-  - amendment_type (string, optional): "original" | "amendment" | "extension"
 
 Returns:
   - contract_id: Unique ID (e.g. "amb-2026-0042")
@@ -220,7 +233,8 @@ Legibility: ${LEGIBILITY_CLAUSE}`,
         },
         parent_contract_hash: {
           type: 'string',
-          description: 'SHA-256 hash of parent contract (for amendments)',
+          description:
+            'SHA-256 hash of a contract you created, which this one is created under. Amendments are proposed with POST /api/v1/contracts/{id}/amend, not here.',
         },
         oversight_threshold_usd: {
           type: 'number',
@@ -228,10 +242,6 @@ Legibility: ${LEGIBILITY_CLAUSE}`,
             'Spending level above which work created UNDER this contract requires human approval. ' +
             'A child contract exceeding the parent threshold is held at awaiting_principal_approval ' +
             'until a human signs, and cannot be signed or activated before then (EU AI Act Art. 14).',
-        },
-        amendment_type: {
-          type: 'string',
-          enum: ['original', 'amendment', 'extension'],
         },
       },
       required: ['template', 'parameters', 'principal_declaration'],
@@ -389,6 +399,52 @@ Legibility: the handshake itself is auditable — delegation scope, agent identi
     },
     annotations: {
       readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  {
+    name: 'ambr_check_transaction',
+    description: `Check one payment against what an agreement allows. Advisory only: Ambr compares what
+you report with the agreement's terms; it does not authorize, block or see payments, and in_scope
+is not an approval or a guarantee.
+
+Tests the payment against the agreement's status, validity window, currency, per-transaction
+limit, monthly limit, approved categories, enumerated actions and approval threshold. If the
+agreement was amended, the newest approved version is checked. Free: no credits are burned.
+Ambr does not hold funds or track spend, so the monthly limit is checked only when you pass
+period_spent. A rule the agreement sets no limit for comes back as not_evaluated, never as a pass.
+If a rule has a limit but you did not send what it needs (category, action, currency, period_spent),
+the verdict is "incomplete", not "in_scope". Send everything the agreement limits.
+
+Access: a public contract is open to anyone; otherwise use the creator's API key or pass a share_token.
+
+Args:
+  - contract_id (string, required): Contract ID (amb-YYYY-NNNN), SHA-256 hash, or UUID
+  - amount (number, required): payment amount, zero or more
+  - currency (string, optional): e.g. "USD"
+  - category (string, optional): spending category
+  - action (string, optional): the action the agent is taking
+  - period_spent (number, optional): already spent this month, to check the monthly limit
+  - share_token (string, optional): share token for a private contract
+
+Returns: verdict ("in_scope" | "out_of_scope" | "incomplete" | "needs_approval"), the per-rule checks, plain-language reasons, and the contract that was checked (contract_id, effective_contract_id, sha256_hash, reader_url).`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        contract_id: { type: 'string', description: 'Contract ID, SHA-256 hash, or UUID' },
+        amount: { type: 'number', minimum: 0, description: 'Payment amount' },
+        currency: { type: 'string', description: 'Payment currency, e.g. USD' },
+        category: { type: 'string', description: 'Spending category' },
+        action: { type: 'string', description: 'Action the agent is taking' },
+        period_spent: { type: 'number', minimum: 0, description: 'Already spent this month' },
+        share_token: { type: 'string', description: 'Share token for a private contract' },
+      },
+      required: ['contract_id', 'amount'],
+    },
+    annotations: {
+      readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: false,
@@ -640,6 +696,34 @@ async function handleCreateContract(
     };
   }
 
+  // Amendment rows come only from the approval flow (lib/contract/parent-link.ts).
+  // A parent link must name a contract this caller created. Refused before any
+  // credit is burned or payment settled, as on the REST route.
+  if (forgesAmendmentType(args.amendment_type)) {
+    return {
+      content: [{ type: 'text', text: `Error: ${AMENDMENT_TYPE_NOT_ALLOWED.error}. ${AMENDMENT_TYPE_NOT_ALLOWED.message}` }],
+      isError: true,
+      structuredContent: { ...AMENDMENT_TYPE_NOT_ALLOWED },
+    };
+  }
+  if (args.parent_contract_hash !== undefined && args.parent_contract_hash !== null) {
+    const parentHash = args.parent_contract_hash;
+    const ownsParent =
+      typeof parentHash === 'string' &&
+      /^[a-f0-9]{64}$/.test(parentHash) &&
+      (await callerOwnsParent(parentHash, {
+        keyId: apiKeyCtx?.keyId ?? null,
+        payerWallet: authCtx?.type === 'x402' ? authCtx.payerWallet : null,
+      }));
+    if (!ownsParent) {
+      return {
+        content: [{ type: 'text', text: `Error: ${PARENT_CONTRACT_NOT_ACCEPTED.error}. ${PARENT_CONTRACT_NOT_ACCEPTED.message}` }],
+        isError: true,
+        structuredContent: { ...PARENT_CONTRACT_NOT_ACCEPTED },
+      };
+    }
+  }
+
   // Lookup template
   const db = getSupabaseAdmin();
   const { data: tmpl } = await db
@@ -843,11 +927,6 @@ async function handleCreateContract(
           : null,
       ),
       isOneSided: Boolean(tmpl.is_one_sided),
-      amendmentType: args.amendment_type as
-        | 'original'
-        | 'amendment'
-        | 'extension'
-        | undefined,
     });
 
     contractStored = true;
@@ -1445,6 +1524,75 @@ async function handleAgentHandshake(
   };
 }
 
+async function handleCheckTransaction(
+  args: Record<string, unknown>,
+  apiKey: string | undefined,
+  clientIp: string | undefined,
+): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
+  const fail = (text: string) => ({ content: [{ type: 'text', text: `Error: ${text}` }], isError: true });
+
+  const contractId = args.contract_id;
+  if (typeof contractId !== 'string' || !contractId) return fail('contract_id is required.');
+
+  const { contract_id: _contractId, share_token: shareToken, ...txArgs } = args;
+  const parsed = checkTransactionSchema.safeParse(txArgs);
+  if (!parsed.success || validateTransaction(parsed.data)) {
+    return fail('amount is required and must be a number, zero or more (period_spent too, if given).');
+  }
+
+  const apiCtx = apiKey ? await validateApiKeyDirect(apiKey) : null;
+  const rl = rateLimit(`check:${apiCtx?.keyId ?? clientIp ?? 'mcp-anonymous'}`, 60, 60_000);
+  if (!rl.allowed) return fail('rate_limited. Try again in a minute.');
+
+  const db = getSupabaseAdmin();
+  const found = await lookupContractForCheck(db, contractId);
+  if (!found.ok) {
+    return fail(found.status === 404 ? `Contract '${contractId}' not found.` : INVALID_CONTRACT_REF.message);
+  }
+
+  try {
+    const run = await runCheck(db, found.contract, parsed.data, {
+      keyId: apiCtx?.keyId,
+      shareToken: typeof shareToken === 'string' ? shareToken : null,
+    });
+    if (run.forbidden) {
+      return fail("forbidden. Pass the contract creator's API key (X-API-Key header) or a share_token to check this contract.");
+    }
+    const { result } = run;
+    // Awaited: Vercel can drop work that is still running after the response.
+    await logAudit({
+      event_type: 'contract_check',
+      actor: apiCtx?.keyId ?? 'anonymous',
+      details: {
+        contract_id: result.contract_id,
+        effective_contract_id: result.effective_contract_id,
+        verdict: result.verdict,
+        via: 'mcp',
+      },
+    });
+    return {
+      content: [
+        {
+          type: 'text',
+          text: [
+            `Verdict: ${result.verdict}`,
+            ...result.reasons.map((r) => `- ${r}`),
+            '',
+            result.advisory_note,
+            '',
+            '```json',
+            JSON.stringify(result, null, 2),
+            '```',
+          ].join('\n'),
+        },
+      ],
+    };
+  } catch (err) {
+    if (err instanceof CheckInputError) return fail(err.message);
+    throw err;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tool dispatcher
 // ---------------------------------------------------------------------------
@@ -1455,6 +1603,7 @@ async function callTool(
   apiKey: string | undefined,
   authCtx?: AuthContext,
   requestStartedAt?: number,
+  clientIp?: string,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   switch (name) {
     case 'ambr_list_templates':
@@ -1469,6 +1618,8 @@ async function callTool(
       return handleVerifyHash(args);
     case 'ambr_agent_handshake':
       return handleAgentHandshake(args, apiKey);
+    case 'ambr_check_transaction':
+      return handleCheckTransaction(args, apiKey, clientIp);
     default:
       return {
         content: [{ type: 'text', text: `Error: Unknown tool '${name}'.` }],
@@ -1511,6 +1662,7 @@ export async function handleMcpMessage(
   apiKey: string | undefined,
   authCtx?: AuthContext,
   requestStartedAt?: number,
+  clientIp?: string,
 ): Promise<JsonRpcResponse | null> {
   if (!body || typeof body !== 'object' || !('method' in body)) {
     return jsonRpcError(null, -32600, 'Invalid Request');
@@ -1574,6 +1726,7 @@ export async function handleMcpMessage(
         apiKey,
         authCtx,
         requestStartedAt,
+        clientIp,
       );
       return jsonRpcOk(id, result);
     }

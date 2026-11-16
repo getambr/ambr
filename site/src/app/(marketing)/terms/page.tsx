@@ -20,7 +20,7 @@ export default function TermsPage() {
       <SectionWrapper>
         <div className="mx-auto max-w-3xl prose-invert">
           <h1 className="text-3xl text-text-primary mb-6">Terms of Service</h1>
-          <p className="text-sm text-text-secondary mb-8">Last updated: April 8, 2026</p>
+          <p className="text-sm text-text-secondary mb-8">Last updated: November 5, 2026</p>
 
           <div className="space-y-6 text-sm text-text-secondary leading-relaxed">
             <section>
@@ -40,6 +40,15 @@ export default function TermsPage() {
                 machine-parsable) from structured, jurisdiction-aware templates. The Service
                 includes contract generation via API, hash-based verification, a contract
                 reader portal, and export functionality.
+              </p>
+              <p className="mt-2">
+                The Service also includes a payment check (the contract check endpoint and the
+                ambr_check_transaction tool), which compares a payment or action you describe with
+                the terms of a stored agreement. Its answer is advisory. Ambr does not authorize,
+                block, hold or process payments, does not see the payments that are made, and
+                relies on the amounts, actions and spend totals the caller reports. An
+                &quot;in scope&quot; answer is not an approval or a guarantee; you remain
+                responsible for deciding whether to make a payment.
               </p>
               <p className="mt-2 font-medium text-amber">
                 Ambr is NOT a law firm. We do NOT provide legal advice, legal

@@ -41,9 +41,12 @@ export interface CreateAgreementInput {
   visibility?: Visibility;
   /** Deployer's connected wallet — lets the principal sign their own agreement. */
   principalWallet?: string;
-  /** For amendments/extensions: the parent agreement's sha256 hash. */
+  /**
+   * The sha256 hash of an agreement you created, which this one is created under
+   * (its oversight threshold then applies). Not for amendments: those are
+   * proposed with POST /api/v1/contracts/{id}/amend and approved by the counterparty.
+   */
   parentContractHash?: string;
-  amendmentType?: 'original' | 'amendment' | 'extension';
   requireZkIdentity?: boolean;
   /** Idempotency / cross-reference key for your side. */
   clientDraftId?: string;
@@ -188,7 +191,6 @@ export class AmbrClient {
     if (input.visibility) body.visibility = input.visibility;
     if (input.principalWallet) body.principal_wallet = input.principalWallet;
     if (input.parentContractHash) body.parent_contract_hash = input.parentContractHash;
-    if (input.amendmentType) body.amendment_type = input.amendmentType;
     if (input.requireZkIdentity != null) body.require_zk_identity = input.requireZkIdentity;
     if (input.clientDraftId) body.client_draft_id = input.clientDraftId;
 

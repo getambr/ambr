@@ -312,3 +312,50 @@ describe('x402 v2 authenticateRequest', () => {
     expect(facilitator.getSupported).not.toHaveBeenCalled();
   });
 });
+
+describe('x402 payer comes from the authorization the facilitator verifies', () => {
+  const VICTIM = '0x' + 'c'.repeat(40);
+  const ATTACKER = '0x' + 'd'.repeat(40);
+
+  async function authWith(payload: Record<string, unknown>) {
+    const { authenticateRequest } = await load();
+    const { required } = await challengeRequirements(authenticateRequest);
+    const signature = encodePaymentSignatureHeader({
+      x402Version: 2,
+      resource: required.resource,
+      accepted: required.accepts[0],
+      payload,
+    });
+    return authenticateRequest(post({ 'PAYMENT-SIGNATURE': signature }), 'a1-service-purchase');
+  }
+
+  it('refuses a payload that carries both authorization and permit2Authorization, and settles nothing', async () => {
+    const res = await authWith({
+      authorization: { from: VICTIM, nonce: '0x01' },
+      permit2Authorization: { from: ATTACKER, nonce: '1' },
+      signature: '0xsig',
+    });
+    expect(res.auth).toBeUndefined();
+    expect(res.challenge.status).toBe(402);
+    expect(res.challenge.body.reason).toBe('ambiguous_payment_payload');
+    expect(facilitator.settle).not.toHaveBeenCalled();
+  });
+
+  it('takes the payer of a permit2-only payload from permit2Authorization', async () => {
+    const res = await authWith({ permit2Authorization: { from: ATTACKER, nonce: '1' }, signature: '0xsig' });
+    expect(res.challenge).toBeUndefined();
+    expect(res.auth.payerWallet).toBe(ATTACKER);
+  });
+
+  it('does not fall back to a missing permit2 payer', async () => {
+    const res = await authWith({ permit2Authorization: { nonce: '1' }, signature: '0xsig' });
+    expect(res.auth).toBeUndefined();
+    expect(res.challenge.body.reason).toBe('payer_unknown');
+  });
+
+  it('still takes the payer of an authorization-only payload from authorization', async () => {
+    const res = await authWith({ authorization: { from: VICTIM, nonce: '0x01' }, signature: '0xsig' });
+    expect(res.challenge).toBeUndefined();
+    expect(res.auth.payerWallet).toBe(VICTIM);
+  });
+});

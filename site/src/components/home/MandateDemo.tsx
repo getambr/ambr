@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import Reveal from '@/components/ui/Reveal';
+import { checkTransaction, type CheckTerms } from '@/lib/contract/check-terms';
 
 const serif = { fontFamily: 'var(--font-instrument-serif), serif' } as const;
 const mono = { fontFamily: 'var(--font-jetbrains-mono), monospace' } as const;
@@ -51,17 +52,32 @@ export default function MandateDemo() {
 
   const evaluated = useMemo(() => {
     type Row = { label: string; cat: string; amount: number; authorized: boolean; reason: string };
+    // The same evaluator the API and the MCP tool use, fed the mandate above.
+    const { spending_limit, authorized_categories } = mandate.scope;
+    const terms: CheckTerms = {
+      mayDo: [],
+      mayNotDo: [],
+      categories: authorized_categories,
+      currency: spending_limit.currency,
+      monthlyLimit: { amount: spending_limit.amount, currency: spending_limit.currency },
+    };
+    const now = new Date();
     return TX.reduce(
       (acc: { rows: Row[]; running: number }, t) => {
-        const allowedCat = mandate.scope.authorized_categories.includes(t.cat);
-        const fits = acc.running + t.amount <= cap;
-        const authorized = allowedCat && fits;
-        const row: Row = { ...t, authorized, reason: !allowedCat ? 'category not in mandate scope' : !fits ? 'exceeds monthly cap' : '' };
+        const result = checkTransaction(
+          terms,
+          'active',
+          { amount: t.amount, currency: spending_limit.currency, category: t.cat, period_spent: acc.running },
+          now,
+        );
+        const authorized = result.verdict !== 'out_of_scope';
+        const categoryFailed = result.checks.some((c) => c.rule === 'category' && c.result === 'fail');
+        const row: Row = { ...t, authorized, reason: authorized ? '' : categoryFailed ? 'category not in mandate scope' : 'exceeds monthly cap' };
         return { rows: [...acc.rows, row], running: authorized ? acc.running + t.amount : acc.running };
       },
       { rows: [] as Row[], running: 0 },
     ).rows;
-  }, [cap, mandate]);
+  }, [mandate]);
 
   const totalAuthorized = evaluated.reduce((s, e) => (e.authorized ? s + e.amount : s), 0);
   const blocked = evaluated.filter((e) => !e.authorized).length;

@@ -78,9 +78,10 @@ export async function probeAnthropicGeneration(
       };
     }
     return { status: 'degraded', latency_ms, detail: `generation probe HTTP ${res.status}` };
-  } catch (e) {
+  } catch {
+    // Fixed phrases only: an invalid-header TypeError repeats the key it rejected.
     const aborted = controller.signal.aborted;
-    return { status: 'down', detail: aborted ? 'timeout' : e instanceof Error ? e.message : 'unknown' };
+    return { status: 'down', detail: aborted ? 'timeout' : 'Could not reach Anthropic.' };
   } finally {
     clearTimeout(timer);
   }

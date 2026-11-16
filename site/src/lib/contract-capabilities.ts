@@ -10,7 +10,8 @@
  * worth surfacing (e.g. a pure commerce/consumer contract).
  */
 
-export type Money = { amount: number; currency: string };
+/** `assumedCurrency` marks a currency filled in as USD because the agreement named none. */
+export type Money = { amount: number; currency: string; assumedCurrency?: true };
 
 export interface ContractCapabilities {
   purpose?: string;
@@ -18,11 +19,18 @@ export interface ContractCapabilities {
   agentType?: string;
   mayDo: string[];
   mayNotDo: string[];
+  /** Slug-like prohibited actions (`scope_of_authority.prohibited_actions`); prose lists are left out, a sentence cannot be matched. */
+  prohibitedActions?: string[];
   categories: string[];
   perTxLimit?: Money;
   monthlyLimit?: Money;
   approvalAbove?: Money;
+  /** `monthly_aggregate` when the approval threshold applies to the month's total, not the single payment. */
+  approvalBasis?: 'monthly_aggregate';
+  /** Currency the agreement names for its limits, when it names one. */
+  currency?: string;
   geographic?: string;
+  startDate?: string;
   endDate?: string;
   durationMonths?: number;
   subDelegationAllowed?: boolean;
@@ -44,25 +52,38 @@ function asString(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 
+const SLUG = /^[a-z0-9_.:-]+$/i;
+
+/** The list when every entry is slug-like; otherwise empty (prose sentences stay unparsed). */
+function slugList(v: unknown): string[] {
+  const list = asStringArray(v).map((x) => x.trim());
+  return list.length > 0 && list.every((x) => SLUG.test(x)) ? list : [];
+}
+
 function money(v: unknown, fallbackCurrency?: string): Money | undefined {
   const cur = fallbackCurrency ?? 'USD';
-  if (typeof v === 'number' && isFinite(v)) return { amount: v, currency: cur };
+  const assumed = fallbackCurrency ? {} : { assumedCurrency: true as const };
+  if (typeof v === 'number' && isFinite(v)) return { amount: v, currency: cur, ...assumed };
   const r = asRecord(v);
   if (r && typeof r.amount === 'number' && isFinite(r.amount as number)) {
-    return { amount: r.amount as number, currency: asString(r.currency) ?? cur };
+    const own = asString(r.currency);
+    return { amount: r.amount as number, currency: own ?? cur, ...(own ? {} : assumed) };
   }
   if (typeof v === 'string' && v.trim() && !isNaN(Number(v))) {
-    return { amount: Number(v), currency: cur };
+    return { amount: Number(v), currency: cur, ...assumed };
   }
   return undefined;
 }
 
 export function deriveCapabilities(
   mr: Record<string, unknown> | null | undefined,
+  /** Return the parsed terms even when there is no scope or limit worth showing (the payment check wants dates and thresholds alone). */
+  { always = false }: { always?: boolean } = {},
 ): ContractCapabilities | null {
   if (!mr) return null;
 
   const scope = asRecord(mr.scope_of_delegation);
+  const authority = asRecord(mr.scope_of_authority);
   const fin = asRecord(mr.financial_terms);
   const agent = asRecord(mr.agent_identification);
   const duration = asRecord(mr.duration);
@@ -72,19 +93,30 @@ export function deriveCapabilities(
 
   const currency = asString(fin?.currency) ?? asString(mr.currency);
 
-  const mayDo = asStringArray(scope?.enumerated_actions);
+  let mayDo = asStringArray(scope?.enumerated_actions);
+  if (mayDo.length === 0) mayDo = asStringArray(authority?.enumerated_actions);
+  if (mayDo.length === 0) mayDo = slugList(authority?.permitted_actions);
   const mayNotDo = asStringArray(scope?.boundaries);
+  const prohibitedActions = slugList(authority?.prohibited_actions);
   const categories = asStringArray(scope?.approved_categories ?? mr.categories);
 
-  const perTxLimit = money(fin?.spending_limit_per_tx ?? mr.spending_limit_per_tx, currency);
+  const perTxLimit = money(fin?.spending_limit_per_tx ?? fin?.spending_limit_per_transaction ?? mr.spending_limit_per_tx, currency);
   const monthlyLimit = money(fin?.spending_limit_monthly ?? mr.spending_limit_monthly, currency);
-  const approvalAbove = money(fin?.requires_approval_above ?? mr.requires_approval_above, currency);
+  const explicitApproval = money(fin?.requires_approval_above ?? mr.requires_approval_above, currency);
+  const escalation = explicitApproval ? undefined : money(fin?.escalation_threshold, currency);
+  const approvalAbove = explicitApproval ?? escalation;
+  // Only a missing or clearly per-payment value compares the single amount;
+  // any other value is read as the monthly total, the stricter reading.
+  const basisRaw = asString(fin?.escalation_required_above)?.toLowerCase();
+  const perPayment = !basisRaw || ['per_transaction', 'transaction', 'single'].includes(basisRaw);
+  const approvalBasis = escalation && !perPayment ? ('monthly_aggregate' as const) : undefined;
 
   const purpose =
     asString(scope?.purpose) ?? asString(mr.scope) ?? asString(mr.service_description);
   const agentId = asString(agent?.agent_id) ?? asString(mr.agent_id);
   const agentType = asString(agent?.agent_type) ?? asString(mr.agent_type);
   const geographic = asString(scope?.geographic_limitations);
+  const startDate = asString(duration?.start_date) ?? asString(mr.start_date);
   const endDate = asString(duration?.end_date) ?? asString(mr.end_date);
   const durationMonths =
     typeof duration?.duration_months === 'number'
@@ -108,7 +140,7 @@ export function deriveCapabilities(
     !!perTxLimit ||
     !!monthlyLimit ||
     !!agentId;
-  if (!hasContent) return null;
+  if (!hasContent && !always) return null;
 
   return {
     purpose,
@@ -116,11 +148,15 @@ export function deriveCapabilities(
     agentType,
     mayDo,
     mayNotDo,
+    ...(prohibitedActions.length > 0 ? { prohibitedActions } : {}),
     categories,
     perTxLimit,
     monthlyLimit,
     approvalAbove,
+    ...(approvalBasis ? { approvalBasis } : {}),
+    currency,
     geographic,
+    startDate,
     endDate,
     durationMonths,
     subDelegationAllowed,

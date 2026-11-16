@@ -14,6 +14,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { getClientIp } from '@/lib/rate-limit';
 import { handleMcpMessage } from '@/lib/mcp/server';
 import { authenticateRequest } from '@/lib/x402/middleware';
 import { findPartyWalletProblem } from '@/lib/contract/same-wallet';
@@ -151,7 +152,7 @@ export async function POST(request: Request) {
   }
 
   // Unpaid tools and protocol methods — existing flow
-  const result = await handleMcpMessage(body, apiKey);
+  const result = await handleMcpMessage(body, apiKey, undefined, undefined, getClientIp(request));
 
   // Notifications have no response — return 202 Accepted
   if (result === null) {
@@ -209,6 +210,7 @@ export async function GET(request: Request) {
         'ambr_get_contract_status',
         'ambr_verify_hash',
         'ambr_agent_handshake',
+        'ambr_check_transaction',
       ],
       payment: {
         methods: ['api_key', 'x402'],
