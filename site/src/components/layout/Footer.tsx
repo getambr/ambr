@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import AmbrMark from '@/components/ui/AmbrMark';
+import { BRAND } from '@/lib/brand';
 import { usePathname } from 'next/navigation';
 
 const productLinks = [
@@ -67,7 +68,7 @@ export default function Footer() {
               <span className="text-lg font-serif text-amber">Ambr</span>
             </div>
             <p className="mt-3 font-mono text-xs text-[#8a8a8a]">
-              The Agent Mandate &amp; Binding Registry. The accountability record for autonomous agents.
+              The signed record of what an AI agent may do.
             </p>
           </div>
 
@@ -132,7 +133,7 @@ export default function Footer() {
 
         <div className="mt-8 border-t border-amber/20 pt-6 text-center">
           <p className="font-mono text-xs text-[#8a8a8a] mb-2">
-            Ambr is the Agent Mandate &amp; Binding Registry &mdash; infrastructure, not a law firm. Generated contracts are not legal advice.
+            {BRAND.legalDisclaimer}
           </p>
           <p className="font-mono text-xs text-[#8a8a8a]">
             &copy; {year} Ambr. All rights reserved.

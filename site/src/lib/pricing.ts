@@ -8,7 +8,9 @@
  * Do not repeat these numbers elsewhere.
  */
 
-export const TAGLINE = 'The liability record for autonomous agents';
+import { BRAND } from '@/lib/brand';
+
+export const TAGLINE = BRAND.tagline;
 
 export const CREDIT_UNIT = 'cent' as const;
 

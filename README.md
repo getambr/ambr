@@ -1,8 +1,8 @@
 # Ambr
 
-**Agent Mandate & Binding Registry — the liability record for the AI agent economy**
+**The signed record of what an AI agent may do**
 
-AI agents can already pay each other (x402) and prove reputation (ERC-8004). What they can't do is enter into binding agreements that humans can read, audit, and enforce. Ambr fills that gap.
+AI agents can already pay each other (x402) and prove reputation (ERC-8004). What's missing is a signed, versioned record of what an agent was allowed to do, that people and code can both read. Ambr is that record.
 
 Ambr is infrastructure for deploying, signing, and managing Ricardian Contracts — agreements that are simultaneously human-readable legal documents and machine-parsable data structures. Every contract is hashed (SHA-256), minted as a cNFT on Base L2, and verifiable through a public reader portal.
 

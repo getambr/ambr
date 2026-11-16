@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
+import { BRAND } from '@/lib/brand';
 import { loadInvestorFigures } from '@/lib/investor-figures';
 import InvestorLogoutButton from './InvestorLogoutButton';
 
@@ -67,7 +68,7 @@ export default async function InvestorContent() {
             Investor Package
           </p>
           <h1 className="text-4xl sm:text-5xl text-text-primary font-serif leading-tight mb-4">
-            The Agent Mandate &amp; Binding Registry
+            The signed record of what an AI agent may do
           </h1>
           <p className="text-lg text-text-secondary leading-relaxed max-w-3xl mb-8">
             {figures.hero}
@@ -292,7 +293,7 @@ export default async function InvestorContent() {
           </div>
 
           <p className="mt-6 text-xs text-text-secondary/60 leading-relaxed">
-            Ambr is the Agent Mandate &amp; Binding Registry. It sits between an agent and a counterparty (consumer, merchant, or another agent) and turns &ldquo;the agent did this&rdquo; into a redeemable, replayable, auditable record. The verticals above are the surfaces where that record is most needed first.
+            Ambr is the signed record of agent authority. It sits between an agent and a counterparty (consumer, merchant, or another agent) and turns &ldquo;the agent did this&rdquo; into a redeemable, replayable, auditable record. The verticals above are the surfaces where that record is most needed first.
           </p>
         </section>
 
@@ -536,7 +537,7 @@ export default async function InvestorContent() {
         {/* ───── Footer ───── */}
         <footer className="border-t border-amber/20 pt-6 text-center">
           <p className="font-mono text-xs text-text-secondary/60 mb-2">
-            Ambr is the Agent Mandate &amp; Binding Registry &mdash; infrastructure, not a law firm. Generated contracts are not legal advice.
+            {BRAND.legalDisclaimer}
           </p>
           <p className="text-micro text-amber/70">
             ambr · confidential · {today}

@@ -5,9 +5,9 @@
 
 export const BRAND = {
   name: 'Ambr',
-  tagline: 'The liability record for autonomous agents',
-  shortTagline: 'Agent Mandate & Binding Registry',
-  legalDisclaimer: 'Ambr is the Agent Mandate & Binding Registry — infrastructure, not a law firm. Generated contracts are not legal advice.',
+  tagline: 'The signed record of what an AI agent may do',
+  shortTagline: 'Agent authority, on record',
+  legalDisclaimer: 'Ambr is software infrastructure, not a law firm. Generated agreements are not legal advice.',
   copyright: (year: number) => `\u00A9 ${year} Ambr. All rights reserved.`,
   domains: {
     marketing: 'https://ambr.run',

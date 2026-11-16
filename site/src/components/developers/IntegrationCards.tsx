@@ -45,7 +45,7 @@ export default function IntegrationCards() {
       <p className="text-micro mb-2">Integrations</p>
       <h2 className="text-2xl text-text-primary mb-2 sm:text-3xl lg:text-4xl">Supported Stack</h2>
       <p className="text-text-secondary mb-8 max-w-2xl">
-        Production integrations powering the Agent Mandate &amp; Binding Registry.
+        Production integrations behind Ambr.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {integrations.map((item, i) => (

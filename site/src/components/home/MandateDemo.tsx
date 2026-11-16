@@ -128,7 +128,7 @@ export default function MandateDemo() {
 
               <div className="mt-8">
                 <div className="flex items-center justify-between text-[11px] uppercase" style={{ ...mono, color: '#8a8170', letterSpacing: '0.12em' }}>
-                  <span>Authorized this month</span>
+                  <span>Within limits this month</span>
                   <span style={{ color: '#c6a87c' }}>{usd(totalAuthorized)} / {usd(cap)}</span>
                 </div>
                 <div className="mt-2 h-1.5 w-full" style={{ background: 'rgba(198,168,124,0.15)' }}>
@@ -163,8 +163,8 @@ export default function MandateDemo() {
                     <div className="shrink-0 text-right">
                       {e.authorized ? (
                         <>
-                          <div className="inline-flex items-center justify-end gap-1.5 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.14em' }}><Check size={12} strokeWidth={2.5} aria-hidden /> Authorized</div>
-                          <div className="text-[10px]" style={{ ...mono, color: '#6f675b' }}>within scope</div>
+                          <div className="inline-flex items-center justify-end gap-1.5 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.14em' }}><Check size={12} strokeWidth={2.5} aria-hidden /> Within limits</div>
+                          <div className="text-[10px]" style={{ ...mono, color: '#6f675b' }}>within limits</div>
                         </>
                       ) : (
                         <div className="inline-flex items-center justify-end gap-1.5 text-[11px] uppercase" style={{ ...mono, color: '#9a7d52', letterSpacing: '0.14em' }}><X size={12} strokeWidth={2.5} aria-hidden /> Out of scope</div>

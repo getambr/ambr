@@ -93,7 +93,7 @@ export default function AgentCardSection() {
                   {data?.name || 'Ambr'}
                 </h3>
                 <p className="mt-2 max-w-md text-[13px] leading-relaxed" style={{ color: '#a39b8c' }}>
-                  {data ? data.description.split('.')[0] + '.' : 'The liability record for autonomous agents.'}
+                  {data ? data.description.split('.')[0] + '.' : 'The signed record of what an AI agent may do.'}
                 </p>
 
                 {/* Divider */}

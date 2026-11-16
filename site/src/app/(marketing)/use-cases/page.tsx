@@ -8,12 +8,12 @@ import { serif, mono, DISPLAY, MICRO, EDITORIAL, SECTION_PAD, MEASURE, MEASURE_N
 import { useCases } from '@/lib/use-cases';
 
 export const metadata: Metadata = {
-  title: 'Use Cases | Ambr — Agent Mandate & Binding Registry',
+  title: 'Use Cases | Ambr',
   description:
-    'Four scenarios where an Agent Mandate becomes the liability record for autonomous agents: delegation authorization, agent-executed procurement, agent-signed service agreements, and compliance audit trails.',
+    'Four scenarios where a signed Ambr agreement becomes the record of what an agent was allowed to do: delegation authorization, agent-executed procurement, agent-signed service agreements, and compliance audit trails.',
   ...createOgMetadata({
     title: 'Use Cases | Ambr',
-    description: 'Where an Agent Mandate becomes the liability record for autonomous agents.',
+    description: 'Where a signed agreement becomes the record of what an agent was allowed to do.',
     path: '/use-cases',
     label: 'Use Cases',
     domain: 'ambr.run',
@@ -44,8 +44,8 @@ export default function UseCasesPage() {
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
               An Agent Mandate records who authorized an agent, in what scope, under which law. Readable as
               prose, executable as code, revocable on record. Four scenarios show how companies use Ambr, the
-              Agent Mandate &amp; Binding Registry, to authorize AI agents, let them act under recorded mandates,
-              and hold an accountability record for every action.
+              signed record of agent authority, to authorize AI agents, let them act under recorded terms,
+              and hold a signed record of every action.
             </p>
           </Reveal>
         </div>
@@ -156,7 +156,7 @@ export default function UseCasesPage() {
             <div className="border p-10 sm:p-14" style={{ borderColor: EDITORIAL.panelBorder, background: EDITORIAL.inset }}>
               <Eyebrow>§ 03 — The through-line</Eyebrow>
               <h2 className="mt-6 max-w-3xl" style={DISPLAY.panel}>
-                Every scenario resolves to a liability record.
+                Every scenario resolves to one signed record.
               </h2>
               <p className="mt-6 text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
                 Whether an agent buys supplies, procures compute, signs a service agreement, or fills a quarter of

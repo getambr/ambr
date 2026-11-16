@@ -26,7 +26,7 @@
  * — if any monetary field in the amendment exceeds the threshold, the whole
  * proposal is gated behind human principal approval.
  */
-const MONETARY_FIELDS = [
+export const MONETARY_FIELDS = [
   'spending_limit_per_tx',
   'spending_limit_monthly',
   'budget_usd',

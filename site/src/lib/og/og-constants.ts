@@ -8,6 +8,8 @@
  * completed it held five of the palette's colours and the OG route inlined
  * #e8d9bb and #9a7d52 as literals because they were missing here.
  */
+import { BRAND } from '@/lib/brand';
+
 export const OG = {
   width: 1200,
   height: 630,
@@ -27,7 +29,7 @@ export const OG = {
 
   // Default content
   siteName: 'Ambr',
-  tagline: 'Agent Mandate & Binding Registry',
+  tagline: BRAND.shortTagline,
   defaultDomain: 'ambr.run',
 } as const;
 

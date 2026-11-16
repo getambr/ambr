@@ -8,12 +8,12 @@ import { serif, mono, DISPLAY, MICRO, EDITORIAL, SECTION_PAD, MEASURE, MEASURE_N
 import FiveLayerStack from '@/components/shared/FiveLayerStack';
 
 export const metadata: Metadata = {
-  title: 'Ecosystem | Ambr — Agent Mandate & Binding Registry',
+  title: 'Ecosystem | Ambr',
   description:
-    'Ambr is the Agent Mandate & Binding Registry: the authorization and liability record for autonomous agents, built to integrate with the AI agent commerce stack (KAMIYO, Nevermined, ZK Identity, x402 V2).',
+    'Ambr is the signed record of what an AI agent may do, built to sit above the AI agent commerce stack (KAMIYO, Nevermined, ZK Identity, x402 V2).',
   ...createOgMetadata({
     title: 'Ecosystem | Ambr',
-    description: 'The liability record for autonomous agents, built for the AI agent commerce stack.',
+    description: 'The signed record of what an AI agent may do, above the payment rails.',
     path: '/ecosystem',
     label: 'Ecosystem',
     domain: 'ambr.run',
@@ -90,7 +90,7 @@ export default function EcosystemPage() {
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-              Ambr is the Agent Mandate &amp; Binding Registry, the authorization and liability record that plugs
+              Ambr is the signed, versioned record that plugs
               into the emerging AI agent commerce stack. These are the projects we integrate with.
             </p>
           </Reveal>
@@ -154,7 +154,7 @@ export default function EcosystemPage() {
             <div className="border p-10 sm:p-14" style={{ borderColor: EDITORIAL.panelBorder, background: EDITORIAL.inset }}>
               <Eyebrow>§ 04 — Purpose</Eyebrow>
               <h2 className="mt-6 max-w-3xl" style={DISPLAY.panel}>
-                Ambr&apos;s role: the Agent Mandate &amp; Binding Registry.
+                Ambr&apos;s role: the signed record above the rails.
               </h2>
               <p className="mt-6 text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
                 Discovery protocols help agents find each other. Trust registries verify identity. Escrow holds

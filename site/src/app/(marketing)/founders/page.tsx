@@ -9,13 +9,13 @@ import FounderEnrollForm from '@/components/founders/FounderEnrollForm';
 import FoundingPartnersList from '@/components/founders/FoundingPartnersList';
 
 export const metadata: Metadata = {
-  title: 'Founder Program | Ambr — Agent Mandate & Binding Registry',
+  title: 'Founder Program | Ambr',
   description:
-    'The first 10 organizations building on the Agent Mandate & Binding Registry, the liability record for autonomous agents. 24,000 free credits, 50% off self-serve list prices for 24 months, public listing as a founding partner.',
+    'The first 10 organizations building on Ambr, the signed record of what an AI agent may do. 24,000 free credits, 50% off self-serve list prices for 24 months, public listing as a founding partner.',
   ...createOgMetadata({
     title: 'Founder Program | Ambr',
     description:
-      'The first 10 organizations building on the liability record for autonomous agents. 24,000 free credits, 50% off for 24 months, founding-partner listing.',
+      'The first 10 organizations building on the signed record of what AI agents may do. 24,000 free credits, 50% off for 24 months, founding-partner listing.',
     path: '/founders',
     label: 'Founder Program',
     domain: 'ambr.run',
@@ -69,8 +69,7 @@ export default function FoundersPage() {
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-              Ambr is the Agent Mandate &amp; Binding Registry, the liability record for autonomous
-              agents. Join as a Founding Partner and help shape the standard for agent commerce.
+              Ambr is the signed record of what an AI agent may do. Join as a Founding Partner and help shape how agent commerce is recorded.
             </p>
           </Reveal>
           <Reveal delay={0.24}>

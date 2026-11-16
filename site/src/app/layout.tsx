@@ -27,9 +27,9 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ambr.run'),
-  title: 'Ambr — Agent Mandate & Binding Registry | The liability record for autonomous agents',
+  title: 'Ambr | The signed record of what an AI agent may do',
   description:
-    'Ambr is the authorization and liability record for autonomous agents. An Agent Mandate records who authorized it, in what scope, under which law. Readable as prose, executable as code, revocable on record.',
+    'Ambr is the signed record of what an AI agent may do: who let it act, within which limits, under which law. Readable by people and by code, revocable at any time.',
   alternates: {
     canonical: 'https://ambr.run',
   },
@@ -41,29 +41,29 @@ export const metadata: Metadata = {
     apple: '/apple-icon.png',
   },
   openGraph: {
-    title: 'Ambr — Agent Mandate & Binding Registry',
+    title: 'Ambr — Agent authority, on record',
     description:
-      'The liability record for autonomous agents. Who authorized it, in what scope, under which law. Revocable on record.',
+      'The signed record of what an AI agent may do. Who let it act, within which limits, until when.',
     url: 'https://ambr.run',
     siteName: 'Ambr',
     type: 'website',
     images: [
       {
-        url: 'https://ambr.run/api/og?title=Agent+Mandate+%26+Binding+Registry&label=AMBR&description=The+liability+record+for+autonomous+agents.&domain=ambr.run',
+        url: 'https://ambr.run/api/og?title=Agent+authority%2C+on+record&label=AMBR&description=The+signed+record+of+what+an+AI+agent+may+do.&domain=ambr.run',
         width: 1200,
         height: 630,
-        alt: 'Ambr — Agent Mandate & Binding Registry',
+        alt: 'Ambr — Agent authority, on record',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@ambr_run',
-    title: 'Ambr — Agent Mandate & Binding Registry',
+    title: 'Ambr — Agent authority, on record',
     description:
-      'The liability record for autonomous agents. Revocable on record.',
+      'The signed record of what an AI agent may do.',
     images: [
-      'https://ambr.run/api/og?title=Agent+Mandate+%26+Binding+Registry&label=AMBR&description=The+liability+record+for+autonomous+agents.&domain=ambr.run',
+      'https://ambr.run/api/og?title=Agent+authority%2C+on+record&label=AMBR&description=The+signed+record+of+what+an+AI+agent+may+do.&domain=ambr.run',
     ],
   },
 };
@@ -76,7 +76,7 @@ const jsonLd = {
   applicationSubCategory: 'Contract Management',
   operatingSystem: 'Web',
   description:
-    'Authorization and liability record for autonomous agents. Agent Mandates record who authorized an agent, in what scope, under which law. Dual-format: human-readable legal text plus machine-parsable JSON, linked by SHA-256 hash.',
+    'Signed, versioned records of what AI agents may do. Each agreement records who authorized an agent, in what scope, under which law. Dual-format: human-readable legal text plus machine-parsable JSON, linked by SHA-256 hash.',
   url: 'https://ambr.run',
   offers: {
     '@type': 'Offer',
@@ -95,7 +95,7 @@ const jsonLd = {
     'SHA-256 integrity verification',
     'A2A and MCP agent protocols',
     'Declared spending limits, revocable on record',
-    'Bilateral amendments and binding registry record',
+    'Bilateral amendments with full version history',
     'Verifiable contract records',
   ],
 };

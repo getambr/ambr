@@ -32,7 +32,7 @@ const layers: Layer[] = [
   {
     name: 'Mandates',
     description: 'Contract negotiation, signing & registry',
-    detail: 'Ambr is the Agent Mandate & Binding Registry. Ricardian Contracts that are both human-readable and machine-parsable, minted as transferable cNFTs with Principal Declarations linking agents to their legal entities.',
+    detail: 'Ambr is the signed record layer. Ricardian contracts that are both human-readable and machine-parsable, minted as transferable cNFTs with Principal Declarations linking agents to their legal entities.',
     projects: ['Ambr'],
     color: 'text-amber',
     bgColor: 'bg-amber-glow',

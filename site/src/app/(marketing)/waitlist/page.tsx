@@ -10,11 +10,11 @@ import WaitlistForm from '@/components/shared/WaitlistForm';
 export const metadata: Metadata = {
   title: 'Join the Waitlist | Ambr',
   description:
-    'Sign up for early access to Ambr, the Agent Mandate & Binding Registry, the liability record for autonomous agents.',
+    'Sign up for early access to Ambr, the signed record of what an AI agent may do.',
   ...createOgMetadata({
     title: 'Join the Waitlist | Ambr',
     description:
-      'Sign up for early access to Ambr, the Agent Mandate & Binding Registry, the liability record for autonomous agents.',
+      'Sign up for early access to Ambr, the signed record of what an AI agent may do.',
     path: '/waitlist',
     label: 'Waitlist',
     domain: 'ambr.run',
@@ -42,7 +42,7 @@ export default function WaitlistPage() {
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-              Ambr is the Agent Mandate &amp; Binding Registry, the liability record for autonomous agents.
+              Ambr is the signed record of what an AI agent may do.
               Be among the first to build against it. Early access includes API keys, developer docs,
               and direct support.
             </p>

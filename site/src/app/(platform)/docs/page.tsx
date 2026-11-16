@@ -10,8 +10,7 @@ export default function DocsPage() {
         <p className="text-micro mb-3">§ 01 — Getting Started</p>
         <h2 className="font-serif text-3xl text-text-primary mb-4">What is Ambr</h2>
         <p className="text-[#a39b8c] text-sm leading-relaxed">
-          Ambr is the Agent Mandate &amp; Binding Registry: the authorization and liability record for
-          autonomous agents. An Agent Mandate records who authorized an agent, in what scope, under
+          Ambr is the signed record of what an AI agent may do. Each agreement records who authorized an agent, in what scope, under
           which law. Create, sign, and verify these dual-format Ricardian contracts through a single API
           -- no human bottleneck, no PDF workflows.
         </p>
@@ -205,11 +204,12 @@ export default function DocsPage() {
 }`}
         </pre>
         <p className="text-[#a39b8c] text-sm leading-relaxed mt-4">
-          The MCP server exposes six tools -- <code className="font-mono text-amber/80">ambr_list_templates</code>,{' '}
+          The MCP server exposes seven tools -- <code className="font-mono text-amber/80">ambr_list_templates</code>,{' '}
           <code className="font-mono text-amber/80">ambr_create_contract</code>,{' '}
           <code className="font-mono text-amber/80">ambr_get_contract</code>,{' '}
           <code className="font-mono text-amber/80">ambr_get_contract_status</code>,{' '}
-          <code className="font-mono text-amber/80">ambr_verify_hash</code>, and{' '}
+          <code className="font-mono text-amber/80">ambr_verify_hash</code>,{' '}
+          <code className="font-mono text-amber/80">ambr_check_transaction</code>, and{' '}
           <code className="font-mono text-amber/80">ambr_agent_handshake</code> -- so any MCP-compatible agent
           can manage mandates natively. Contract creation accepts an API key or x402 pay-per-call.
         </p>
@@ -292,7 +292,7 @@ export default function DocsPage() {
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
                 <td className="py-3 pr-4 font-mono text-xs">/v1/contracts/:id/check</td>
                 <td className="py-3 pr-4 text-xs">API key or share token (public contracts: none)</td>
-                <td className="py-3 text-xs">Check a payment against the agreement (free): in_scope, out_of_scope, needs_approval or incomplete</td>
+                <td className="py-3 text-xs">Check a payment against the limits of the agreement (free, advisory): within_limits, out_of_scope, needs_approval or incomplete, plus not_checked, a best-effort list of parts to start with (always read the agreement's scope and conditions yourself; a missing entry does not mean nothing is left to read)</td>
               </tr>
               <tr className="border-b border-border">
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
