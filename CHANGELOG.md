@@ -2,6 +2,13 @@
 
 All notable changes to Ambr are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **Breaking for integrators:** `POST /api/v1/contracts` now returns HTTP 400 `zk_identity_unavailable` when `require_zk_identity` is `true`, while signing with a verified identity is not available yet. Send `false` or leave the field out.
+- `POST /api/v1/identity/verify` now requires `contract_id`, and a ZK proof must be generated under the context `ambr_contract:<contract_id>`. The server checks the proof's public signals and its Merkle root against the Demos node; errors are `zk_context_mismatch`, `zk_root_mismatch` and `zk_root_unverified` (HTTP 503).
+- The Demos SDK (`@kynesyslabs/demosdk`) is upgraded from 2.11.5 to 4.0.22.
+
 ## [0.4.0] — 2026-10-27
 
 ### Added
