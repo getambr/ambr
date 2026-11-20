@@ -88,7 +88,7 @@ export default function DocsPage() {
         <h2 className="font-serif text-3xl text-text-primary mb-4">Create</h2>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
           <code className="font-mono text-amber/80">POST /api/v1/contracts</code> creates a new
-          signed agreement (a dual-format Ricardian contract) from a template. The response includes the
+          agreement draft (a dual-format Ricardian contract) from a template. The response includes the
           agreement&apos;s ID, a SHA-256 content hash, a reader URL (with embedded share token), a sign URL,
           and a handshake URL.
         </p>
@@ -226,7 +226,7 @@ export default function DocsPage() {
       </section>
 
       <section id="x402-payments" className="scroll-mt-24 mb-16">
-        <h3 className="font-serif text-xl text-text-primary mb-4">x402 Pay-per-agreement</h3>
+        <h3 className="font-serif text-xl text-text-primary mb-4">Pay per agreement with x402</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed">
           Instead of an API key, agents can pay per agreement using the x402 protocol. Include a
           payment header with each request. The server validates the payment proof on-chain before
@@ -394,7 +394,7 @@ export default function DocsPage() {
         <p className="text-micro mb-3">§ 06 — Payment Methods</p>
         <h2 className="font-serif text-3xl text-text-primary mb-4">Pricing</h2>
 
-        <h4 className="font-serif text-lg text-text-primary mb-3 mt-6">x402 Pay-per-Agreement (Agent-Native)</h4>
+        <h4 className="font-serif text-lg text-text-primary mb-3 mt-6">Pay per agreement with x402 (agent-native)</h4>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
           No account needed. Agents pay per agreement in USDC on Base L2 with a standard x402 v2 client: the first call returns 402 with a <code className="font-mono text-amber/80">PAYMENT-REQUIRED</code> header, and the retry carries a signed <code className="font-mono text-amber/80">PAYMENT-SIGNATURE</code> header.
           Live rates for the full catalog: <code className="font-mono text-amber/80">GET /api/v1/pricing</code>.

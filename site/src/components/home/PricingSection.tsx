@@ -14,7 +14,7 @@ const tierCopy = [
     tier: 'consumer',
     label: 'Personal',
     fallbackPrice: '$0.20',
-    description: 'A person gives their own AI agent permission — one signature, instant activation. Micro-priced for high-volume personal permissions.',
+    description: 'A person gives their own AI agent permission — one signature, instant activation. Micro-priced for high-volume personal use.',
   },
   {
     tier: 'delegation',

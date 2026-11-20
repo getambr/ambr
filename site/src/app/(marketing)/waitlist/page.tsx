@@ -84,8 +84,8 @@ export default function WaitlistPage() {
                   ))}
                 </ul>
                 <p className="mt-8 text-[13px] leading-relaxed" style={{ color: '#6f675b' }}>
-                  Ambr records who let an agent act, within which limits, under which law.
-                  Readable by people and by code, revocable at any time.
+                  Ambr keeps a signed record of who let an agent act, within which limits, under which law:
+                  readable by people and by code, revoked or ended on record.
                 </p>
               </div>
             </Reveal>

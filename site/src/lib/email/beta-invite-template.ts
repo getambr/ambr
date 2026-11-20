@@ -16,7 +16,7 @@ const FEATURE_COPY = {
     description:
       'Chat-driven deployment of signed agreements — Power of Attorney (P2), Delegation (D1), and Agent-to-Agent (A2A).',
     bullets: [
-      'Describe the authority you want to grant and the agent drafts the agreement.',
+      'Describe the authority you want to grant, and the agent drafts the agreement.',
       'Review the structured fields, edit anything, then deploy in one click.',
       'Drafts auto-save locally — nothing leaves your browser until you deploy.',
     ],

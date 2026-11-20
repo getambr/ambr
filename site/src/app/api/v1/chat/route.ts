@@ -1083,7 +1083,7 @@ async function handleDeploy(
         ? "Something's misconfigured on Ambr's side — please reach out via support@ambr.run. Your work is preserved in the preview."
       : inFlowFallback
         ? "I hit a snag understanding that — could you rephrase, or use the preview to fill any remaining fields? Everything we've covered so far is still in the preview on the left."
-        : "Here are the Agent Mandates I can deploy:\n\n• P2 — Power of Attorney (one-sided grant to your own agent, $0.20)\n• D1 — Delegation (you authorize an AI agent to act on your behalf, $0.50)\n• A2A — Agent-to-Agent (one agent hires another for a task, payment on completion, $1.00)\n\nTell me which one fits in your own words, or click a chip above.";
+        : "Here are the agreements I can deploy:\n\n• P2 — Power of Attorney (one-sided grant to your own agent, $0.20)\n• D1 — Delegation (you authorize an AI agent to act on your behalf, $0.50)\n• A2A — Agent-to-Agent (one agent hires another for a task, payment on completion, $1.00)\n\nTell me which one fits in your own words, or click a chip above.";
     const fallbackNextQuestion = inFlowFallback ? '' : 'Which one fits — P2, D1, or A2A?';
     return withCors(
       NextResponse.json({

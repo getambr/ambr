@@ -176,7 +176,7 @@ export default function MandateDemo() {
               <p className="mt-5 text-[12px] leading-relaxed" style={{ color: '#8a8170' }}>
                 An illustration, not a live agent. Ambr never holds your keys, so it cannot stop a transaction. It makes
                 authority <span style={{ color: '#c6a87c' }}>provable</span>: a signed, hashed record your signer reads
-                before it releases funds, and a permanent record on Base&nbsp;L2 of what was authorised.
+                before it releases funds, and a permanent record on Base&nbsp;L2 of what was authorized.
               </p>
               <a
                 href="/activate"

@@ -30,8 +30,8 @@ const layers: Layer[] = [
     borderColor: 'border-amber/60',
   },
   {
-    name: 'Agreements',
-    description: 'Contract negotiation, signing & record',
+    name: 'Signed record',
+    description: 'Contract negotiation, signing and the signed record',
     detail: 'Ambr is the signed record layer. Ricardian contracts that are both human-readable and machine-parsable, minted as transferable cNFTs with Principal Declarations linking agents to their legal entities.',
     projects: ['Ambr'],
     color: 'text-amber',

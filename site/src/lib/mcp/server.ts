@@ -1013,7 +1013,7 @@ async function handleCreateContract(
                     `- **Approve URL:** https://getamber.dev/api/v1/contracts/${result.contract_id}/approve`,
                     '',
                     '**This contract cannot proceed to signing yet.** It exceeds the oversight',
-                    'threshold set by its parent mandate, so EU AI Act Article 14 human approval is',
+                    'threshold set by its parent contract, so EU AI Act Article 14 human approval is',
                     'required first. A human principal must POST a wallet signature to the Approve URL;',
                     'the signed message must contain the contract SHA-256 hash and state approval intent.',
                     'An agent cannot clear this gate on its own behalf.',

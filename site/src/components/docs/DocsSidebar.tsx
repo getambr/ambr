@@ -41,7 +41,7 @@ const sections: NavSection[] = [
       { id: 'a2a-discovery', label: 'A2A Discovery' },
       { id: 'mcp-server', label: 'MCP Server' },
       { id: 'rest-api', label: 'REST API' },
-      { id: 'x402-payments', label: 'x402 Pay-per-agreement' },
+      { id: 'x402-payments', label: 'Pay per agreement with x402' },
     ],
   },
   {
@@ -57,7 +57,7 @@ const sections: NavSection[] = [
     items: [
       { id: 'connect-wallet', label: 'Connect Wallet' },
       { id: 'wallet-auth', label: 'Wallet Auth' },
-      { id: 'cnft', label: 'Agreement NFTs' },
+      { id: 'cnft', label: 'Contract NFTs' },
       { id: 'transfers', label: 'Transfers' },
     ],
   },
