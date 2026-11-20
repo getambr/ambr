@@ -2,7 +2,9 @@
  * ZK Identity Proof Verification — server-side Groth16 verification.
  *
  * Uses the DemosSDK's built-in ProofGenerator.verifyProof which handles
- * verification key fetching from CDN and snarkjs groth16.verify internally.
+ * verification key loading (pinned ceremony key, fetched from GitHub and
+ * checked against a SHA-256 digest, cached per process) and snarkjs
+ * groth16.verify internally.
  */
 
 import type { IdentityAttestationPayload, ZKVerificationResult } from './types';
@@ -18,7 +20,7 @@ export async function verifyZKIdentityProof(
     }
 
     // Dynamic import — server-only (listed in serverExternalPackages).
-    // ProofGenerator.verifyProof fetches the CDN verification key internally.
+    // ProofGenerator.verifyProof loads the pinned verification key internally.
     const sdkPath = '@kynesyslabs/demosdk';
     const { ProofGenerator } = (await import(/* webpackIgnore: true */ sdkPath)).encryption.zK.identity;
     const valid = await ProofGenerator.verifyProof(proof, public_signals);

@@ -13,6 +13,7 @@ export interface IdentityAttestationPayload {
   nullifier_hash: string;
   merkle_root: string;
   proof: ZKProof;
+  /** demosdk 4.x order: [nullifier, context, merkleRoot] (2.x was [nullifier, merkleRoot, context]). */
   public_signals: string[];
   provider: string;
 }

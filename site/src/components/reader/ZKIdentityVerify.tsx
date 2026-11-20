@@ -8,13 +8,13 @@ type VerifyState = 'idle' | 'generating' | 'verified' | 'error';
 
 interface ZKIdentityVerifyProps {
   walletAddress: string;
+  /** Kept for callers; no longer part of the proof (see createAttestationTransaction below). */
   contractId: string;
   onVerified: (attestation: IdentityAttestationPayload) => void;
 }
 
 export default function ZKIdentityVerify({
   walletAddress,
-  contractId,
   onVerified,
 }: ZKIdentityVerifyProps) {
   const [state, setState] = useState<VerifyState>('idle');
@@ -48,9 +48,11 @@ export default function ZKIdentityVerify({
       const rpcUrl = 'https://rpc.demos.sh';
       await identity.createCommitmentTransaction(rpcUrl);
 
-      // Generate attestation (ZK proof)
-      const context = `ambr_contract:${contractId}`;
-      const attestation = await identity.createAttestationTransaction(rpcUrl, context);
+      // Generate attestation (ZK proof). demosdk 4.x proves under one fixed
+      // context (ZK_ATTESTATION_CONTEXT, the SDK default) and nodes reject any
+      // other, so the proof is no longer bound to this contract; per-contract
+      // replay is enforced by the sign route's nullifier check.
+      const attestation = await identity.createAttestationTransaction(rpcUrl);
 
       // Verify locally before submitting
       const locallyValid = await ZKIdentity.verifyAttestation(attestation);
