@@ -6,7 +6,7 @@ const mono = { fontFamily: 'var(--font-jetbrains-mono), monospace' } as const;
 const items = [
   { name: 'x402', layer: 'Payments', status: 'Live', accent: false, desc: 'How agents pay. HTTP-native multi-token payments billed per call within the contract terms.' },
   { name: 'A2A Protocol', layer: 'Discovery', status: 'Live', accent: false, desc: 'How agents discover Ambr. Agent-to-agent discovery + JSON-RPC, published at /.well-known/agent.json.' },
-  { name: 'ZK Identity', layer: 'Trust', status: 'Beta', accent: true, desc: 'Prove who an agent is — privately. Identity attestation via zero-knowledge proofs.' },
+  { name: 'ZK Identity', layer: 'Trust', status: 'Coming soon', accent: true, desc: 'Prove who an agent is — privately. Identity attestation via zero-knowledge proofs.' },
   { name: 'Self-custody wallet', layer: 'Custody', status: 'Building next', accent: true, desc: 'Provisioned on sign-up — the agent self-keys, the principal gets an email-provisioned wallet. Delegate to an agent without MetaMask or a seed phrase.' },
 ];
 

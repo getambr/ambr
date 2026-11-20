@@ -31,6 +31,7 @@ import { FREE_TIER_CREDITS, PACKS, TEAM, ENTERPRISE, formatUsd } from '@/lib/pri
 import { listDrafts } from '@/lib/storage/indexed-db';
 import AmbrAgentOverlay from '@/components/ambr-agent/AmbrAgentOverlay';
 import BetaNotice from '@/components/dashboard/BetaNotice';
+import { isZKIdentityEnabled } from '@/lib/zk/feature';
 
 // ─── Types ──────────────────────────────────────────────
 type AuthMethod = 'api_key' | 'wallet';
@@ -1172,6 +1173,7 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
             })}
             {paramFields.length === 0 && <p className="text-xs text-text-secondary">This template has no required parameters.</p>}
 
+            {isZKIdentityEnabled() && (
             <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
               <button
                 type="button"
@@ -1191,6 +1193,7 @@ function ContractBuilder({ apiKey }: { apiKey: string }) {
                 <p className="text-xs text-text-secondary">Signers must verify identity via zero-knowledge proof before signing</p>
               </div>
             </div>
+            )}
 
             <button onClick={handleCreate} disabled={creating}
               className="rounded-lg bg-gradient-to-r from-amber to-amber-dark px-6 py-2.5 text-sm font-medium text-background hover:from-amber-light hover:to-amber transition-all disabled:opacity-50">

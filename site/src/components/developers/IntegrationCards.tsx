@@ -34,8 +34,8 @@ const integrations = [
   {
     name: 'ZK Identity',
     description: 'Zero-knowledge identity verification via Groth16/BN128 zk-SNARKs powered by the Demos Network. Prove entity status without revealing identity.',
-    category: 'Live',
-    status: 'live' as const,
+    category: 'Coming soon',
+    status: 'planned' as const,
   },
 ];
 

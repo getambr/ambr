@@ -27,7 +27,7 @@ const ecosystemProjects = [
     name: 'ZK Identity',
     layer: 'Trust',
     description: 'Proving who an agent is — privately. Identity attestation via Demos Network zero-knowledge proofs, enabling anonymous contract signing.',
-    status: 'live' as const,
+    status: 'planned' as const,
   },
 ];
 

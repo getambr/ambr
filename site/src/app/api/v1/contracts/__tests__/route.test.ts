@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { clearProviderUnavailable, getProviderUnavailableSeconds } from '@/lib/llm/availability';
 
 const PAYER = '0x' + 'a'.repeat(40);
@@ -697,5 +697,44 @@ describe('POST /api/v1/contracts: amendment fields come only from the amendment 
     expect((await callPost()).status).toBe(201);
     expect(callerOwnsParent).not.toHaveBeenCalled();
     expect((storeContract.mock.calls[0][0] as Record<string, unknown>).parentContractHash).toBeUndefined();
+  });
+});
+
+describe('POST /api/v1/contracts require_zk_identity', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('answers 400 zk_identity_unavailable and creates nothing while the flag is off', async () => {
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-1'));
+
+    const res = await callPost({ ...validBody, require_zk_identity: true });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: 'zk_identity_unavailable',
+      message: 'Signing with a verified identity is not available yet',
+    });
+    expect(decrementCredits).not.toHaveBeenCalled();
+    expect(generateContract).not.toHaveBeenCalled();
+    expect(storeContract).not.toHaveBeenCalled();
+  });
+
+  it('still accepts require_zk_identity: false while the flag is off', async () => {
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-1'));
+    decrementCredits.mockResolvedValue(999);
+
+    const res = await callPost({ ...validBody, require_zk_identity: false });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('accepts require_zk_identity: true when the flag is on', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ZK_IDENTITY_ENABLED', 'true');
+    authenticateRequest.mockResolvedValue(apiKeyAuth('key-1'));
+    decrementCredits.mockResolvedValue(999);
+
+    const res = await callPost({ ...validBody, require_zk_identity: true });
+
+    expect(res.status).toBe(201);
+    expect(storeContract).toHaveBeenCalledWith(expect.objectContaining({ requireZkIdentity: true }));
   });
 });

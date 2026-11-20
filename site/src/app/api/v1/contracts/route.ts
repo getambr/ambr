@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { createContractSchema } from '@/lib/validation/contract-schemas';
+import { isZKIdentityEnabled, ZK_IDENTITY_UNAVAILABLE_ERROR } from '@/lib/zk/feature';
 import { validateApiKey } from '@/lib/api-auth';
 import { generateContract } from '@/lib/llm/generate-contract';
 import {
@@ -208,6 +209,12 @@ export async function POST(request: Request) {
       { error: 'validation_error', details: parsed.error.issues },
       { status: 400 },
     );
+  }
+
+  // A contract that requires a ZK identity cannot be signed until identities can
+  // be registered, so it is not created while the feature is off.
+  if (parsed.data.require_zk_identity && !isZKIdentityEnabled()) {
+    return NextResponse.json(ZK_IDENTITY_UNAVAILABLE_ERROR, { status: 400 });
   }
 
   // 1a. A contract nobody could sign (one wallet on both sides, or a one-sided
