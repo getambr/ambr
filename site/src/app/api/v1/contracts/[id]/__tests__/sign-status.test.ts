@@ -1032,6 +1032,13 @@ describe('sign route: ZK identity attestation', () => {
     });
   });
 
+  it('caps the provider label at 64 characters', async () => {
+    const res = await signAs(requester, { attestation: { ...attestation, provider: 'p'.repeat(200) } });
+    expect(res.status).toBe(200);
+    expect(tables.identity_nullifiers[0].provider).toBe('p'.repeat(64));
+    expect((tables.signatures[0].signer_identity as { provider: string }).provider).toBe('p'.repeat(64));
+  });
+
   it('records the nullifier before the signature', async () => {
     await signAs(requester, { attestation });
     expect(insertOrder.slice(0, 2)).toEqual(['identity_nullifiers', 'signatures']);

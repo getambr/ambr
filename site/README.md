@@ -33,7 +33,7 @@ Full REST API at `getamber.dev/api/v1/`:
 - `POST /contracts/:id/handshake` — Accept/reject/request changes
 - `POST /contracts/:id/revoke` — Cascade revocation
 - `GET /templates` — List available templates
-- `POST /identity/verify` — Verify ZK identity proof
+- `POST /identity/verify` — Verify ZK identity proof. Requires `contract_id`; the proof must be generated under the context `ambr_contract:<contract_id>` and against the Demos node's current Merkle root (an older root: regenerate). Errors: `zk_context_mismatch`, `zk_root_mismatch`, `zk_root_unverified` (503)
 
 ## Legal Research
 

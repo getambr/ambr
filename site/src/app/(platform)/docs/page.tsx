@@ -557,6 +557,16 @@ export default function DocsPage() {
           the contract creation parameters. When enabled, signers must complete identity verification
           before their signature is accepted.
         </p>
+        <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
+          The proof must be generated under the context <code className="font-mono text-amber/70 text-xs">ambr_contract:&lt;contract_id&gt;</code> for
+          the agreement being signed, so it cannot be reused on another contract.{' '}
+          <code className="font-mono text-amber/70 text-xs">/api/v1/identity/verify</code> now requires a{' '}
+          <code className="font-mono text-amber/70 text-xs">contract_id</code>. The server also checks the
+          proof&apos;s Merkle root against the Demos node&apos;s current root; a proof made against an older root
+          must be regenerated. Errors: <code className="font-mono text-amber/70 text-xs">zk_context_mismatch</code> (wrong
+          contract), <code className="font-mono text-amber/70 text-xs">zk_root_mismatch</code> (stale root, regenerate),
+          and <code className="font-mono text-amber/70 text-xs">zk_root_unverified</code> (the node could not be reached; HTTP 503, retry later).
+        </p>
         <div className="border border-amber/20 bg-[#0c0b09] p-4">
           <p className="text-micro mb-2">Usage</p>
           <pre className="text-xs font-mono text-text-secondary overflow-x-auto">

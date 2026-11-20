@@ -238,9 +238,10 @@ export async function POST(
       );
     }
 
-    // A label only; the proof does not cover it.
+    // A label only; the proof does not cover it. Capped at 64 characters
+    // because it is stored with the nullifier and in signer_identity.
     const provider = typeof identity_attestation.provider === 'string' && identity_attestation.provider
-      ? identity_attestation.provider
+      ? identity_attestation.provider.slice(0, 64)
       : 'demos';
     zkNullifier = { hash: verified.nullifier, root: verified.merkleRoot, provider };
 
@@ -410,8 +411,12 @@ export async function POST(
   // be used again. The unique index on nullifier_hash makes this the replay
   // guard, so a violation is a replay even when two requests raced past the
   // lookup above. If the signature then fails to store, the nullifier is
-  // released below; if that release fails the nullifier stays used (the signer
-  // needs a new proof), which is the safe side.
+  // released below. If that release fails the row stays: the nullifier is
+  // Poseidon(provider_id, secret, context), so a new proof from the same
+  // identity gives the same nullifier and gets 409 for this contract. That
+  // identity is then locked out of this contract until an operator deletes the
+  // orphan identity_nullifiers row (matching nullifier_hash, contract_id and
+  // wallet_address) after confirming no signature exists. This is the safe side.
   const wallet = wallet_address.toLowerCase();
   if (zkNullifier) {
     const { error: nullifierError } = await db.from('identity_nullifiers').insert({
