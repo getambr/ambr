@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import type { IdentityAttestationPayload } from '@/lib/zk/types';
+import { contractAttestationContext } from '@/lib/zk/context';
 
 type VerifyState = 'idle' | 'generating' | 'verified' | 'error';
 
@@ -48,8 +49,10 @@ export default function ZKIdentityVerify({
       const rpcUrl = 'https://rpc.demos.sh';
       await identity.createCommitmentTransaction(rpcUrl);
 
-      // Generate attestation (ZK proof)
-      const context = `ambr_contract:${contractId}`;
+      // Generate attestation (ZK proof) under this contract's context, so the
+      // proof and its nullifier belong to this contract only. The sign route
+      // checks the proof's context signal against the same string.
+      const context = contractAttestationContext(contractId);
       const attestation = await identity.createAttestationTransaction(rpcUrl, context);
 
       // Verify locally before submitting

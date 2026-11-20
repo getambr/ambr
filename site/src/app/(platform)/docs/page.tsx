@@ -316,7 +316,7 @@ export default function DocsPage() {
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
                 <td className="py-3 pr-4 font-mono text-xs">/v1/identity/verify</td>
                 <td className="py-3 pr-4 text-xs">API Key or share token</td>
-                <td className="py-3 text-xs">Submit a ZK identity proof</td>
+                <td className="py-3 text-xs">Submit a ZK identity proof (coming soon)</td>
               </tr>
               <tr className="border-b border-border">
                 <td className="py-3 pr-4 font-mono text-amber/80">POST</td>
@@ -535,7 +535,7 @@ export default function DocsPage() {
       <section id="zk-identity" className="scroll-mt-24 mb-16">
         <p className="text-micro mb-3">§ 07 — Trust Layer</p>
         <div className="flex items-center gap-3 mb-4">
-          <h2 className="font-serif text-3xl text-text-primary">ZK Identity</h2>
+          <h2 className="font-serif text-3xl text-text-primary">ZK Identity <span className="text-base text-text-secondary">(coming soon)</span></h2>
           <div className="flex items-center gap-1.5 border border-amber/25 bg-[#0c0b09] px-3 py-1">
             <img src="/demos-logo.svg" alt="Demos" className="h-4 w-4" />
             <span className="text-xs font-mono text-text-secondary">Demos Network</span>
@@ -553,9 +553,22 @@ export default function DocsPage() {
           the contract signature in the immutable record.
         </p>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
-          Enable ZK identity verification on any contract by setting <code className="font-mono text-amber/70 text-xs">require_zk_identity: true</code> in
+          Signing with a verified identity is coming soon. Until identities can be registered,
+          contract creation rejects <code className="font-mono text-amber/70 text-xs">require_zk_identity: true</code> with
+          HTTP 400 <code className="font-mono text-amber/70 text-xs">zk_identity_unavailable</code>.
+          Once available, enable ZK identity verification on any contract by setting <code className="font-mono text-amber/70 text-xs">require_zk_identity: true</code> in
           the contract creation parameters. When enabled, signers must complete identity verification
           before their signature is accepted.
+        </p>
+        <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
+          The proof must be generated under the context <code className="font-mono text-amber/70 text-xs">ambr_contract:&lt;contract_id&gt;</code> for
+          the agreement being signed, so it cannot be reused on another contract.{' '}
+          <code className="font-mono text-amber/70 text-xs">/api/v1/identity/verify</code> now requires a{' '}
+          <code className="font-mono text-amber/70 text-xs">contract_id</code>. The server also checks the
+          proof&apos;s Merkle root against the Demos node&apos;s current root; a proof made against an older root
+          must be regenerated. Errors: <code className="font-mono text-amber/70 text-xs">zk_context_mismatch</code> (wrong
+          contract), <code className="font-mono text-amber/70 text-xs">zk_root_mismatch</code> (stale root, regenerate),
+          and <code className="font-mono text-amber/70 text-xs">zk_root_unverified</code> (the node could not be reached; HTTP 503, retry later).
         </p>
         <div className="border border-amber/20 bg-[#0c0b09] p-4">
           <p className="text-micro mb-2">Usage</p>

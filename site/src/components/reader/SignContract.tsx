@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { BrowserProvider } from 'ethers';
 import ZKIdentityBadge from './ZKIdentityBadge';
 import type { IdentityAttestationPayload } from '@/lib/zk/types';
+import { isZKIdentityEnabled, zkSigningGate, ZK_IDENTITY_COMING_SOON_NOTICE } from '@/lib/zk/feature';
 import { useWalletProviders, type EIP6963ProviderDetail } from '@/lib/wallet/providers';
 import { validateSigner } from '@/lib/wallet/validate-signer';
 import { sanitizeWalletError, isUserRejection } from '@/lib/wallet/error-messages';
@@ -56,6 +57,7 @@ export default function SignContract({
   requireZkIdentity,
   shareToken,
 }: SignContractProps) {
+  const zkGate = zkSigningGate(requireZkIdentity, isZKIdentityEnabled());
   const [state, setState] = useState<SignState>('idle');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +155,9 @@ export default function SignContract({
         // The server's own words go to the user as they are; sanitizeWalletError
         // below is for errors thrown by the wallet.
         setError(serverErrorMessage(data));
+        // A refused proof is of no further use (the Merkle root it was made
+        // against may have moved on), so ask for a fresh one on the retry.
+        if (data?.error === 'identity_verification_failed') setIdentityAttestation(null);
         setState('error');
         return;
       }
@@ -209,7 +214,13 @@ export default function SignContract({
               </span>
             </div>
 
-            {requireZkIdentity && !identityAttestation && (
+            {zkGate === 'coming_soon' && (
+              <p className="rounded-md border border-amber-600/30 bg-amber-600/10 px-3 py-2 text-sm text-amber-400">
+                {ZK_IDENTITY_COMING_SOON_NOTICE}
+              </p>
+            )}
+
+            {zkGate === 'verify' && !identityAttestation && (
               <ZKIdentityVerify
                 walletAddress={walletAddress}
                 contractId={contractId}
@@ -217,7 +228,7 @@ export default function SignContract({
               />
             )}
 
-            {requireZkIdentity && identityAttestation && (
+            {zkGate === 'verify' && identityAttestation && (
               <div className="flex items-center gap-2">
                 <ZKIdentityBadge />
               </div>
@@ -239,7 +250,7 @@ export default function SignContract({
 
             <button
               onClick={signContract}
-              disabled={requireZkIdentity && !identityAttestation}
+              disabled={zkGate === 'coming_soon' || (zkGate === 'verify' && !identityAttestation)}
               className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Confirm Signature
