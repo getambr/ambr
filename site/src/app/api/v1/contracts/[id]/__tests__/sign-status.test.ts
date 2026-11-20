@@ -16,6 +16,10 @@ let signatureInsertError: { code: string; message: string } | null = null;
 let beforeUpdate: (() => void) | null = null;
 // Test hook: every read of this table fails (the database being down).
 let failTable: string | null = null;
+// Test hooks for the ZK nullifier table: fail the next insert with an error
+// other than the unique index, and the order tables were inserted in.
+let nullifierInsertError: { code: string; message: string } | null = null;
+let insertOrder: string[] = [];
 
 // The status rule of enforce_status_transition() plus
 // enforce_awaiting_approval_transition(), written out independently of the app
@@ -46,7 +50,7 @@ function transitionError(from: string, to: string, oneSided: boolean): string | 
 class Query {
   private filters: Array<[string, unknown]> = [];
   private inFilters: Array<[string, unknown[]]> = [];
-  private op: 'select' | 'insert' | 'update' = 'select';
+  private op: 'select' | 'insert' | 'update' | 'delete' = 'select';
   private patch: Row = {};
   private returning = false;
   private error: unknown = null;
@@ -62,8 +66,18 @@ class Query {
       this.error = signatureInsertError;
       return this;
     }
-    // signatures_contract_slot_uniq: one row per slot per contract, where slot is set.
     const incoming = Array.isArray(row) ? row : [row];
+    if (this.table === 'identity_nullifiers') {
+      // nullifier_hash is globally UNIQUE (20260403020000_zk_identity.sql).
+      const clash = nullifierInsertError ?? ((tables.identity_nullifiers ?? []).some(
+        (r) => incoming.some((n) => n.nullifier_hash === r.nullifier_hash),
+      ) ? { code: '23505', message: 'duplicate key value violates unique constraint "identity_nullifiers_nullifier_hash_key"' } : null);
+      if (clash) {
+        this.error = clash;
+        return this;
+      }
+    }
+    // signatures_contract_slot_uniq: one row per slot per contract, where slot is set.
     if (this.table === 'signatures') {
       const taken = incoming.find(
         (n) => n.slot != null && (tables.signatures ?? []).some((r) => r.contract_id === n.contract_id && r.slot === n.slot),
@@ -76,10 +90,12 @@ class Query {
         return this;
       }
     }
+    insertOrder.push(this.table);
     (tables[this.table] ??= []).push(...incoming);
     return this;
   }
   update(patch: Row) { this.op = 'update'; this.patch = patch; return this; }
+  delete() { this.op = 'delete'; return this; }
   private rows() {
     return (tables[this.table] ?? []).filter(
       (r) => this.filters.every(([c, v]) => r[c] === v) && this.inFilters.every(([c, vs]) => vs.includes(r[c])),
@@ -95,6 +111,10 @@ class Query {
   then(resolve: (v: { data: Row[] | null; error: unknown }) => unknown) {
     if (this.table === failTable) return Promise.resolve({ data: null, error: { message: 'down' } }).then(resolve);
     let updated: Row[] = [];
+    if (this.op === 'delete') {
+      const gone = this.rows();
+      tables[this.table] = (tables[this.table] ?? []).filter((r) => !gone.includes(r));
+    }
     if (this.op === 'update') {
       beforeUpdate?.();
       updated = this.rows();
@@ -119,9 +139,11 @@ vi.mock('@/lib/chain/cnft-metadata', () => ({ getMetadataUri: () => 'https://exa
 vi.mock('@/lib/email/notify-contract', () => ({ notifyContract: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({ getSupabase: () => ({}) }));
 vi.mock('@/lib/api-auth', () => ({ validateApiKey: vi.fn().mockResolvedValue(null) }));
+vi.mock('@/lib/zk/verify-identity-proof', () => ({ verifyZKIdentityProof: vi.fn() }));
 
 import { validateApiKey } from '@/lib/api-auth';
 import { notifyContract } from '@/lib/email/notify-contract';
+import { verifyZKIdentityProof } from '@/lib/zk/verify-identity-proof';
 import { handleMcpMessage } from '@/lib/mcp/server';
 import { POST as sign } from '../sign/route';
 import { GET as getStatus } from '../status/route';
@@ -155,6 +177,8 @@ function seed(over: Row = {}) {
   tables.audit_log = [];
   tables.api_keys = [];
   tables.identity_nullifiers = [];
+  nullifierInsertError = null;
+  insertOrder = [];
   tables.share_tokens = [];
   tables.account_wallets = [];
   failTable = null;
@@ -164,7 +188,10 @@ function seed(over: Row = {}) {
 // as the real one. 'creator-key' is the key the open-slot tests create with.
 const KEYS: Record<string, string> = { 'creator-key': 'key-1', 'other-key': 'key-2' };
 
-async function signAs(w: Signer, opts: { headers?: Record<string, string>; shareToken?: string } = {}) {
+async function signAs(
+  w: Signer,
+  opts: { headers?: Record<string, string>; shareToken?: string; attestation?: Record<string, unknown> } = {},
+) {
   const message = `I sign ${HASH}`;
   const req = new Request(`https://x.test/api/v1/contracts/${CID}/sign`, {
     method: 'POST',
@@ -174,6 +201,7 @@ async function signAs(w: Signer, opts: { headers?: Record<string, string>; share
       signature: await w.signMessage(message),
       message,
       ...(opts.shareToken ? { share_token: opts.shareToken } : {}),
+      ...(opts.attestation ? { identity_attestation: opts.attestation } : {}),
     }),
   });
   const res = await sign(req, { params: Promise.resolve({ id: CID }) });
@@ -964,5 +992,133 @@ describe('sign route: when the party check cannot run', () => {
     const res = await signAs(stranger);
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('counterparty_invite_required');
+  });
+});
+
+describe('sign route: ZK identity attestation', () => {
+  // What the verified proof says (its public signals), and what the request
+  // claims in its own nullifier_hash / merkle_root fields. They differ on purpose.
+  const SIGNAL = { nullifier: '1111', root: '2222' };
+  const attestation = {
+    nullifier_hash: '9999',
+    merkle_root: '8888',
+    proof: { pi_a: [], pi_b: [], pi_c: [], protocol: 'groth16' },
+    public_signals: [SIGNAL.nullifier, '3333', SIGNAL.root],
+    provider: 'wallet',
+  };
+  const verified = () =>
+    vi.mocked(verifyZKIdentityProof).mockResolvedValue({ valid: true, nullifier: SIGNAL.nullifier, merkleRoot: SIGNAL.root });
+
+  beforeEach(() => {
+    vi.mocked(verifyZKIdentityProof).mockReset();
+    verified();
+    seed({ require_zk_identity: true });
+  });
+
+  it('verifies the proof for this contract and stores the signals\' nullifier, not the request\'s field', async () => {
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(200);
+    expect(verifyZKIdentityProof).toHaveBeenCalledWith(attestation, CID);
+    expect(tables.identity_nullifiers).toHaveLength(1);
+    expect(tables.identity_nullifiers[0]).toMatchObject({
+      nullifier_hash: SIGNAL.nullifier,
+      merkle_root: SIGNAL.root,
+      contract_id: 'row-1',
+      wallet_address: lc(requester),
+    });
+    expect(tables.signatures[0]).toMatchObject({
+      signature_level: 'advanced',
+      signer_identity: { nullifier_hash: SIGNAL.nullifier, merkle_root: SIGNAL.root },
+    });
+  });
+
+  it('records the nullifier before the signature', async () => {
+    await signAs(requester, { attestation });
+    expect(insertOrder.slice(0, 2)).toEqual(['identity_nullifiers', 'signatures']);
+  });
+
+  it('looks replays up by the signals\' nullifier: a different request field does not get past it', async () => {
+    tables.identity_nullifiers.push({ nullifier_hash: SIGNAL.nullifier, contract_id: 'row-1', wallet_address: 'x' });
+    const res = await signAs(requester, { attestation: { ...attestation, nullifier_hash: '4444' } });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('nullifier_replay');
+    expect(tables.signatures).toHaveLength(0);
+    expect(tables.identity_nullifiers).toHaveLength(1);
+  });
+
+  it('a unique violation on the nullifier insert is a replay, and no signature is stored', async () => {
+    // Used on another contract's row, so the per-contract lookup misses it and the unique index fires.
+    tables.identity_nullifiers.push({ nullifier_hash: SIGNAL.nullifier, contract_id: 'row-other', wallet_address: 'x' });
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('nullifier_replay');
+    expect(tables.signatures).toHaveLength(0);
+    expect(status()).toBe('draft');
+  });
+
+  it('any other nullifier insert error is 500 storage_failed, and no signature is stored', async () => {
+    nullifierInsertError = { code: '08006', message: 'connection failure' };
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('storage_failed');
+    expect(tables.signatures).toHaveLength(0);
+    expect(status()).toBe('draft');
+  });
+
+  it('releases the nullifier when the signature then fails to store, so the signer can retry', async () => {
+    signatureInsertError = { code: '23505', message: 'duplicate key value violates unique constraint' };
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(409);
+    expect(tables.signatures).toHaveLength(0);
+    expect(tables.identity_nullifiers).toHaveLength(0);
+
+    signatureInsertError = null;
+    expect((await signAs(requester, { attestation })).status).toBe(200);
+    expect(tables.identity_nullifiers).toHaveLength(1);
+  });
+
+  it('does not use up a nullifier on a request the party gate refuses', async () => {
+    const res = await signAs(stranger, { attestation });
+    expect(res.status).toBe(403);
+    expect(tables.identity_nullifiers).toHaveLength(0);
+  });
+
+  it('a proof that does not verify is 400 identity_verification_failed and stores nothing', async () => {
+    vi.mocked(verifyZKIdentityProof).mockResolvedValue({
+      valid: false, nullifier: '', merkleRoot: '', code: 'zk_context_mismatch', error: 'The proof was not made for this contract',
+    });
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('identity_verification_failed');
+    expect(res.body.code).toBe('zk_context_mismatch');
+    expect(tables.signatures).toHaveLength(0);
+    expect(tables.identity_nullifiers).toHaveLength(0);
+  });
+
+  it('a Merkle root that cannot be checked is 503 identity_root_unavailable and stores nothing', async () => {
+    vi.mocked(verifyZKIdentityProof).mockResolvedValue({
+      valid: false, nullifier: '', merkleRoot: '', code: 'zk_root_unverified', error: 'node down',
+    });
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('identity_root_unavailable');
+    expect(tables.signatures).toHaveLength(0);
+    expect(tables.identity_nullifiers).toHaveLength(0);
+  });
+
+  it('still asks for the attestation when the contract requires one', async () => {
+    const res = await signAs(requester);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('identity_required');
+    expect(verifyZKIdentityProof).not.toHaveBeenCalled();
+  });
+
+  it('is not run for a contract that does not require ZK identity', async () => {
+    seed();
+    const res = await signAs(requester, { attestation });
+    expect(res.status).toBe(200);
+    expect(verifyZKIdentityProof).not.toHaveBeenCalled();
+    expect(tables.identity_nullifiers).toHaveLength(0);
+    expect(tables.signatures[0].signature_level).toBe('simple');
   });
 });

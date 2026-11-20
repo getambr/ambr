@@ -6,7 +6,7 @@ import { verifyMessage } from 'ethers';
 import { mintContractNFTAsync } from '@/lib/chain/cnft-mint';
 import { getMetadataUri } from '@/lib/chain/cnft-metadata';
 import { corsOptions } from '@/lib/cors';
-import { DemosIdentityAdapter } from '@/lib/adapters/identity/demos';
+import { verifyZKIdentityProof } from '@/lib/zk/verify-identity-proof';
 import type { IdentityAttestationPayload } from '@/lib/zk/types';
 import { notifyContract } from '@/lib/email/notify-contract';
 import { validateApiKey } from '@/lib/api-auth';
@@ -202,8 +202,11 @@ export async function POST(
     );
   }
 
-  // ZK Identity verification — required when contract has require_zk_identity
+  // ZK Identity verification — required when contract has require_zk_identity.
+  // The nullifier and root used below are the ones read from the verified
+  // proof's public signals, never the request's own fields.
   let identityResult: Record<string, unknown> | null = null;
+  let zkNullifier: { hash: string; root: string; provider: string } | null = null;
   if (contract.require_zk_identity) {
     if (!identity_attestation) {
       return NextResponse.json(
@@ -212,20 +215,40 @@ export async function POST(
       );
     }
 
-    const adapter = new DemosIdentityAdapter();
-    const result = await adapter.verify(JSON.stringify(identity_attestation), wallet_address);
-    if (!result || !result.verified) {
+    const verified = await verifyZKIdentityProof(identity_attestation, contract.contract_id);
+    if (!verified.valid) {
+      if (verified.code === 'zk_root_unverified') {
+        return NextResponse.json(
+          {
+            error: 'identity_root_unavailable',
+            code: verified.code,
+            message: 'Could not check the identity proof against the Demos network right now. Nothing was stored. Try again shortly.',
+          },
+          { status: 503 },
+        );
+      }
       return NextResponse.json(
-        { error: 'identity_verification_failed', message: 'ZK identity proof verification failed. Generate a valid proof via the DemosSDK.' },
+        {
+          error: 'identity_verification_failed',
+          code: verified.code,
+          message: 'ZK identity proof verification failed. Generate a valid proof via the DemosSDK for this contract.',
+          detail: verified.error,
+        },
         { status: 400 },
       );
     }
+
+    // A label only; the proof does not cover it.
+    const provider = typeof identity_attestation.provider === 'string' && identity_attestation.provider
+      ? identity_attestation.provider
+      : 'demos';
+    zkNullifier = { hash: verified.nullifier, root: verified.merkleRoot, provider };
 
     // Check nullifier replay for this contract
     const { data: existingNullifier } = await db
       .from('identity_nullifiers')
       .select('id')
-      .eq('nullifier_hash', identity_attestation.nullifier_hash)
+      .eq('nullifier_hash', zkNullifier.hash)
       .eq('contract_id', contract.id)
       .single();
 
@@ -236,7 +259,13 @@ export async function POST(
       );
     }
 
-    identityResult = result.metadata ?? { provider: 'demos', verified: true };
+    identityResult = {
+      nullifier_hash: verified.nullifier,
+      merkle_root: verified.merkleRoot,
+      proof_protocol: 'groth16',
+      provider,
+      verified_at: new Date().toISOString(),
+    };
   }
 
   const { data: signerRows } = await db
@@ -376,6 +405,53 @@ export async function POST(
     );
   }
 
+  // Record the nullifier BEFORE the signature is stored: an 'advanced'
+  // signature must never exist without its nullifier, or the same proof could
+  // be used again. The unique index on nullifier_hash makes this the replay
+  // guard, so a violation is a replay even when two requests raced past the
+  // lookup above. If the signature then fails to store, the nullifier is
+  // released below; if that release fails the nullifier stays used (the signer
+  // needs a new proof), which is the safe side.
+  const wallet = wallet_address.toLowerCase();
+  if (zkNullifier) {
+    const { error: nullifierError } = await db.from('identity_nullifiers').insert({
+      nullifier_hash: zkNullifier.hash,
+      wallet_address: wallet,
+      contract_id: contract.id,
+      provider: zkNullifier.provider,
+      merkle_root: zkNullifier.root,
+    });
+    if (nullifierError) {
+      if ((nullifierError as { code?: string }).code === '23505') {
+        return NextResponse.json(
+          { error: 'nullifier_replay', message: 'This identity proof has already been used for this contract.' },
+          { status: 409 },
+        );
+      }
+      console.error(`[sign] nullifier insert failed for ${contract.contract_id}: ${nullifierError.message}`);
+      return NextResponse.json(
+        { error: 'storage_failed', message: 'Failed to record the identity proof. Nothing was stored.' },
+        { status: 500 },
+      );
+    }
+  }
+  const releaseNullifier = async () => {
+    if (!zkNullifier) return;
+    try {
+      const { error: releaseError } = await db
+        .from('identity_nullifiers')
+        .delete()
+        .eq('nullifier_hash', zkNullifier.hash)
+        .eq('contract_id', contract.id)
+        .eq('wallet_address', wallet);
+      if (releaseError) {
+        console.error(`[sign] nullifier release failed for ${contract.contract_id}: ${releaseError.message}`);
+      }
+    } catch (err) {
+      console.error(`[sign] nullifier release failed for ${contract.contract_id}:`, err);
+    }
+  };
+
   const { error: sigError } = await db.from('signatures').insert({
     contract_id: contract.id,
     signer_wallet: wallet_address.toLowerCase(),
@@ -392,6 +468,7 @@ export async function POST(
   });
 
   if (sigError) {
+    await releaseNullifier();
     const e = sigError as { code?: string; message?: string; details?: string };
     if (e.code === '23505' && `${e.message ?? ''} ${e.details ?? ''}`.includes('signatures_contract_slot_uniq')) {
       return NextResponse.json(
@@ -414,17 +491,6 @@ export async function POST(
       { error: 'storage_failed', message: 'Failed to store signature' },
       { status: 500 },
     );
-  }
-
-  // Record nullifier to prevent replay
-  if (contract.require_zk_identity && identity_attestation) {
-    await db.from('identity_nullifiers').insert({
-      nullifier_hash: identity_attestation.nullifier_hash,
-      wallet_address: wallet_address.toLowerCase(),
-      contract_id: contract.id,
-      provider: identity_attestation.provider || 'demos',
-      merkle_root: identity_attestation.merkle_root,
-    });
   }
 
   // Status follows from who has signed, not from the previous status alone:

@@ -7,13 +7,14 @@ import { verifyZKIdentityProof } from '@/lib/zk/verify-identity-proof';
  *
  * The token parameter is a JSON-serialized IdentityAttestationPayload containing
  * the nullifier hash, merkle root, and Groth16 proof generated client-side by
- * the DemosSDK.
+ * the DemosSDK. The proof must be for `contractId` (its context signal), so the
+ * contract is a required third argument; without it nothing verifies.
  */
 export class DemosIdentityAdapter implements IdentityAdapter {
   name = 'demos';
 
-  async verify(token: string, walletAddress: string): Promise<IdentityResult | null> {
-    if (!token || !walletAddress) return null;
+  async verify(token: string, walletAddress: string, contractId?: string): Promise<IdentityResult | null> {
+    if (!token || !walletAddress || !contractId) return null;
 
     let attestation: IdentityAttestationPayload;
     try {
@@ -22,11 +23,11 @@ export class DemosIdentityAdapter implements IdentityAdapter {
       return null;
     }
 
-    if (!attestation.proof || !attestation.public_signals || !attestation.nullifier_hash) {
+    if (!attestation.proof || !attestation.public_signals) {
       return null;
     }
 
-    const result = await verifyZKIdentityProof(attestation);
+    const result = await verifyZKIdentityProof(attestation, contractId);
     if (!result.valid) return null;
 
     return {
@@ -35,8 +36,8 @@ export class DemosIdentityAdapter implements IdentityAdapter {
       address: walletAddress.toLowerCase(),
       linked_identities: {},
       metadata: {
-        nullifier_hash: attestation.nullifier_hash,
-        merkle_root: attestation.merkle_root,
+        nullifier_hash: result.nullifier,
+        merkle_root: result.merkleRoot,
         proof_protocol: 'groth16',
         provider: attestation.provider || 'demos',
         verified_at: new Date().toISOString(),

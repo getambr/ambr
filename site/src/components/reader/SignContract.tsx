@@ -153,6 +153,9 @@ export default function SignContract({
         // The server's own words go to the user as they are; sanitizeWalletError
         // below is for errors thrown by the wallet.
         setError(serverErrorMessage(data));
+        // A refused proof is of no further use (the Merkle root it was made
+        // against may have moved on), so ask for a fresh one on the retry.
+        if (data?.error === 'identity_verification_failed') setIdentityAttestation(null);
         setState('error');
         return;
       }
