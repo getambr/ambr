@@ -37,15 +37,15 @@ export default function UseCasesPage() {
           <Reveal><Eyebrow>§ 01 — Use Cases</Eyebrow></Reveal>
           <Reveal delay={0.08}>
             <h1 className="mt-6 max-w-4xl" style={DISPLAY.hero}>
-              Where a mandate becomes<br /><span style={{ color: EDITORIAL.brass }}>the record.</span>
+              Where authority becomes<br /><span style={{ color: EDITORIAL.brass }}>the record.</span>
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-              An Agent Mandate records who authorized an agent, in what scope, under which law. Readable as
+              Each Ambr delegation records who authorized an agent, in what scope, under which law. Readable as
               prose, executable as code, revocable on record. Four scenarios show how companies use Ambr, the
               signed record of agent authority, to authorize AI agents, let them act under recorded terms,
-              and hold a signed record of every action.
+              and keep a signed record of every action.
             </p>
           </Reveal>
         </div>
@@ -63,7 +63,7 @@ export default function UseCasesPage() {
           </Reveal>
           <Reveal delay={0.14}>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.detail }}>
-              Each mandate names a principal, a scope, and a counterparty. It is minted as a single cNFT on Base
+              Each agreement names a principal, a scope, and a counterparty. It is minted as a single cNFT on Base
               L2, with its SHA-256 hash stored permanently on-chain.
             </p>
           </Reveal>
@@ -160,7 +160,7 @@ export default function UseCasesPage() {
               </h2>
               <p className="mt-6 text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
                 Whether an agent buys supplies, procures compute, signs a service agreement, or fills a quarter of
-                audit history, the same artifact carries the weight: an Agent Mandate that names the authorizing
+                audit history, the same artifact carries the weight: a signed record of the delegation that names the authorizing
                 entity, its scope, and the governing law. Human-readable, machine-parsable, minted as a single cNFT
                 on Base L2, revocable on record.
               </p>
@@ -173,12 +173,12 @@ export default function UseCasesPage() {
       <section className="px-6 pb-36 pt-8 text-center sm:px-10 lg:px-16">
         <Reveal>
           <h2 style={DISPLAY.cta}>
-            Build your first mandate.
+            Build your first agreement.
           </h2>
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-            Start with the developer docs, or get an API key and mint your first Agent Mandate.
+            Start with the developer docs, or get an API key and mint your first agreement.
           </p>
         </Reveal>
         <Reveal delay={0.18}>

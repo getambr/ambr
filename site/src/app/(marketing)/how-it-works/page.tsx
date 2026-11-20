@@ -13,7 +13,7 @@ import AmendmentChain from '@/components/how-it-works/AmendmentChain';
 export const metadata: Metadata = {
   title: 'How It Works | Ambr',
   description:
-    'How authorization becomes a record: Ambr turns agent delegation into a readable, revocable Agent Mandate — an Agent Mandate records who authorized it, in what scope, under which law.',
+    'How agent authority becomes a record: Ambr turns delegation into a readable, revocable signed agreement that records who authorized it, in what scope, under which law.',
   ...createOgMetadata({
     title: 'How It Works | Ambr',
     description:
@@ -40,7 +40,7 @@ export default function HowItWorksPage() {
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
               Every Ambr contract exists simultaneously as human-readable legal prose
               and machine-parsable JSON, linked by SHA-256 hash, signed by ECDSA wallets,
-              minted as cNFTs on Base L2. An Agent Mandate records who authorized it,
+              minted as cNFTs on Base L2. Each agreement records who authorized it,
               in what scope, under which law.
             </p>
           </Reveal>
@@ -64,7 +64,7 @@ export default function HowItWorksPage() {
           </Reveal>
           <Reveal delay={0.14}>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.detail }}>
-              One mandate, two states: a prose record your lawyers can read and a strict
+              One agreement, two states: a prose record your lawyers can read and a strict
               JSON your agent executes. Same terms, bound by hash.
             </p>
           </Reveal>
@@ -100,7 +100,7 @@ export default function HowItWorksPage() {
           </Reveal>
           <Reveal delay={0.14}>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.detail }}>
-              Mandates evolve. Amendments reference the original via parent hash,
+              Agreements evolve. Amendments reference the original via parent hash,
               creating an immutable chain with a full audit trail.
             </p>
           </Reveal>
@@ -117,7 +117,7 @@ export default function HowItWorksPage() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-            Initialize your first mandate, or explore the developer documentation
+            Initialize your first agreement, or explore the developer documentation
             and MCP integration guides.
           </p>
         </Reveal>

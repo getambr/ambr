@@ -8,7 +8,7 @@ const steps = [
   // overclaim as in CoreCapabilities.tsx. brief.md records this copy as deleted;
   // keep it out of every copy, not only MandateDemo.tsx.
   { n: '01', t: 'Authorize', d: 'Spend caps, allowed counterparties, action scopes, time windows. One API call records the boundaries — signed and hash-verifiable, so anyone can check whether an action fell inside them.' },
-  { n: '02', t: 'Act', d: 'When your agent transacts, Ambr issues an Agent Mandate both sides can trust — readable by humans, parsable by agents. No more handshake-by-prompt-injection.' },
+  { n: '02', t: 'Act', d: 'When your agent transacts, Ambr issues a signed agreement both sides can trust — readable by humans, parsable by agents. No more handshake-by-prompt-injection.' },
   { n: '03', t: 'Prove', d: 'Every authorized action is recorded on-chain with a cryptographic hash. Prove exactly who decided what, when, and under whose authority.' },
 ];
 

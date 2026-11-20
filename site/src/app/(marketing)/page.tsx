@@ -15,7 +15,7 @@ import SmoothScroll from '@/components/ui/SmoothScroll';
 export const metadata: Metadata = {
   title: 'Ambr | The signed record of what an AI agent may do',
   description:
-    'Ambr records who let your AI act, within which limits, under which law. Readable by people and by code, revocable at any time.',
+    'Ambr records who let your AI act, within which limits, under which law. Readable by people and by code, revoked or ended on record.',
   ...createOgMetadata({
     title: 'Agent authority, on record',
     description: 'The signed record of what an AI agent may do.',

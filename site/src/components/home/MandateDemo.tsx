@@ -72,7 +72,7 @@ export default function MandateDemo() {
         );
         const authorized = result.verdict !== 'out_of_scope';
         const categoryFailed = result.checks.some((c) => c.rule === 'category' && c.result === 'fail');
-        const row: Row = { ...t, authorized, reason: authorized ? '' : categoryFailed ? 'category not in mandate scope' : 'exceeds monthly cap' };
+        const row: Row = { ...t, authorized, reason: authorized ? '' : categoryFailed ? 'category not in recorded scope' : 'exceeds monthly cap' };
         return { rows: [...acc.rows, row], running: authorized ? acc.running + t.amount : acc.running };
       },
       { rows: [] as Row[], running: 0 },
@@ -90,7 +90,7 @@ export default function MandateDemo() {
           <div style={{ height: 1, background: 'linear-gradient(to right, rgba(198,168,124,0.45), transparent)' }} />
         </Reveal>
         <Reveal delay={0.05}>
-          <p className="mt-6 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>Mandate scope — drag the cap</p>
+          <p className="mt-6 text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>Delegation scope — drag the cap</p>
         </Reveal>
         <Reveal delay={0.1}>
           <h2 className="mt-5 max-w-3xl" style={{ ...serif, fontSize: 'clamp(2.4rem, 5vw, 4.4rem)', lineHeight: 0.98, letterSpacing: '-0.02em' }}>
@@ -99,7 +99,7 @@ export default function MandateDemo() {
         </Reveal>
         <Reveal delay={0.16}>
           <p className="mt-5 max-w-xl text-[15px] leading-relaxed" style={{ color: '#a39b8c' }}>
-            Drag the cap and the mandate rewrites, rehashes and re-signs. This is the record your signer
+            Drag the cap and the record rewrites, rehashes and re-signs. This is the record your signer
             checks before it releases funds, and the record you hold afterwards.
           </p>
         </Reveal>
@@ -108,7 +108,7 @@ export default function MandateDemo() {
           {/* control */}
           <Reveal delay={0.2}>
             <div className="border-t pt-7 lg:pr-10" style={{ borderColor: 'rgba(198,168,124,0.4)' }}>
-              <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.2em' }}>Agent mandate · acme-delegate-bot</p>
+              <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.2em' }}>Delegation · acme-delegate-bot</p>
 
               <div className="mt-8 flex items-baseline justify-between">
                 <span className="text-[11px] uppercase" style={{ ...mono, color: '#8a8170', letterSpacing: '0.14em' }}>Spend cap</span>
@@ -135,12 +135,12 @@ export default function MandateDemo() {
                   <div style={{ width: `${pct}%`, height: '100%', background: '#c6a87c', transition: 'width .45s cubic-bezier(.22,1,.36,1)' }} />
                 </div>
                 <p className="mt-3 text-[11px] uppercase" style={{ ...mono, color: blocked ? '#c6a87c' : '#6f675b', letterSpacing: '0.12em' }}>
-                  {blocked} transaction{blocked === 1 ? '' : 's'} outside the mandate&apos;s scope
+                  {blocked} transaction{blocked === 1 ? '' : 's'} outside the recorded scope
                 </p>
               </div>
 
               <div className="mt-8 border-t pt-5" style={{ borderColor: 'rgba(198,168,124,0.15)' }}>
-                <p className="text-[10px] uppercase" style={{ ...mono, color: '#6f675b', letterSpacing: '0.16em' }}>Mandate fingerprint · SHA-256</p>
+                <p className="text-[10px] uppercase" style={{ ...mono, color: '#6f675b', letterSpacing: '0.16em' }}>Record fingerprint · SHA-256</p>
                 <p className="mt-2 break-all text-[12px]" style={{ ...mono, color: '#c6a87c' }}>{hash ? hash.slice(0, 40) + '…' : 'computing…'}</p>
                 <p className="mt-2 text-[10px] uppercase" style={{ ...mono, color: '#6f675b', letterSpacing: '0.14em' }}>recomputed live as the cap changes</p>
               </div>
@@ -175,15 +175,15 @@ export default function MandateDemo() {
               </div>
               <p className="mt-5 text-[12px] leading-relaxed" style={{ color: '#8a8170' }}>
                 An illustration, not a live agent. Ambr never holds your keys, so it cannot stop a transaction. It makes
-                authority <span style={{ color: '#c6a87c' }}>provable</span>: a signed, hashed mandate your signer reads
-                before it releases funds, and a permanent record on Base&nbsp;L2 of what was authorised.
+                authority <span style={{ color: '#c6a87c' }}>provable</span>: a signed, hashed record your signer reads
+                before it releases funds, and a permanent record on Base&nbsp;L2 of what was authorized.
               </p>
               <a
                 href="/activate"
                 className="mt-5 inline-block text-[11px] uppercase transition-colors hover:text-[#f4f4f0]"
                 style={{ ...mono, color: '#c6a87c', letterSpacing: '0.16em' }}
               >
-                Write your first mandate&nbsp;→
+                Write your first agreement&nbsp;→
               </a>
             </div>
           </Reveal>

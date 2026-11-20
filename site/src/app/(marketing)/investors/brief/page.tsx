@@ -144,7 +144,7 @@ export default async function InvestorBriefPage() {
             Ambr issues the signed record of the authority an AI agent
             acts under — human-readable legal text and machine-parsable JSON bound by one SHA-256
             hash, signed by both parties and minted as paired cNFTs on Base mainnet. When an agent
-            acts in someone&apos;s name, the mandate says who authorized it, what it covered, and
+            acts in someone&apos;s name, the record says who authorized it, what it covered, and
             whether it was still valid.
           </p>
         </div>

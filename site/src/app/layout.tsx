@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://ambr.run'),
   title: 'Ambr | The signed record of what an AI agent may do',
   description:
-    'Ambr is the signed record of what an AI agent may do: who let it act, within which limits, under which law. Readable by people and by code, revocable at any time.',
+    'Ambr is the signed record of what an AI agent may do: who let it act, within which limits, under which law. Readable by people and by code, revoked or ended on record.',
   alternates: {
     canonical: 'https://ambr.run',
   },
@@ -91,7 +91,7 @@ const jsonLd = {
     sameAs: [BRAND.social.twitter, BRAND.social.github],
   },
   featureList: [
-    'Agent Mandate generation (dual-format Ricardian contracts)',
+    'Signed agreement generation (dual-format Ricardian contracts)',
     'SHA-256 integrity verification',
     'A2A and MCP agent protocols',
     'Declared spending limits, revocable on record',

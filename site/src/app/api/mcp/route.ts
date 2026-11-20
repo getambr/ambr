@@ -193,7 +193,7 @@ export async function GET(request: Request) {
       name: 'ambr-mcp-server',
       version: '1.0.0',
       description:
-        'Ambr MCP Server — create, verify, and manage Agent Mandates (Ricardian contracts) for AI agents. Stateless JSON-RPC over POST.',
+        'Ambr MCP Server — create, verify, and manage signed agreements (Ricardian contracts) for AI agents. Stateless JSON-RPC over POST.',
       protocol: 'mcp',
       // Kept for anything already parsing the singular field; the array is the
       // truth. Both are hand-maintained here — if SUPPORTED_PROTOCOL_VERSIONS in

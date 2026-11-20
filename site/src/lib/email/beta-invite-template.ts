@@ -14,9 +14,9 @@ const FEATURE_COPY = {
   ai_chat: {
     headline: 'Beta access: Ambr Agent',
     description:
-      'Chat-driven deployment of Agent Mandates — Power of Attorney (P2), Delegation (D1), and Agent-to-Agent (A2A).',
+      'Chat-driven deployment of signed agreements — Power of Attorney (P2), Delegation (D1), and Agent-to-Agent (A2A).',
     bullets: [
-      'Describe the authority you want to grant and the agent drafts the mandate.',
+      'Describe the authority you want to grant, and the agent drafts the agreement.',
       'Review the structured fields, edit anything, then deploy in one click.',
       'Drafts auto-save locally — nothing leaves your browser until you deploy.',
     ],

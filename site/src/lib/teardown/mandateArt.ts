@@ -27,7 +27,7 @@ const CLAUSES = [
   "The Principal authorizes the Agent to buy cloud compute in the Principal's name.",
   'Each purchase stays inside the spend cap set in the schedule.',
   'Only the counterparties listed in the schedule may be paid.',
-  'The mandate expires 90 days after signing. The Principal can revoke it at any time, on record.',
+  'The agreement expires 90 days after signing. The Principal can revoke it at any time, on record.',
   'Governing law and venue are named in the schedule.',
 ];
 
@@ -219,7 +219,7 @@ export class MandateArt {
     if (this.lines) return this.lines;
     const body = `400 21px ${this.f.sans}`;
     const out: Line[] = [
-      { text: 'Agent Mandate', font: `76px ${this.f.serif}`, color: '#f4f4f0', x: PAD, y: 182 },
+      { text: 'Agent Agreement', font: `76px ${this.f.serif}`, color: '#f4f4f0', x: PAD, y: 182 },
       { text: 'Between the Principal and the Agent named below.', font: body, color: '#a59c8c', x: PAD, y: 222 },
     ];
     let y = 282;

@@ -14,13 +14,13 @@ const capabilities = [
     variant: 'dark' as const,
     geoPattern: 'ellipse' as const,
     label: '// STEP.01',
-    meta: 'REF: MANDATE\nAUTH: ACTIVE',
-    footer: { left: 'SET.LIMITS', right: '>_ ENFORCE' },
+    meta: 'REF: AGREEMENT\nAUTH: ACTIVE',
+    footer: { left: 'SET.LIMITS', right: '>_ RECORD' },
   },
   {
     title: 'Act',
     description:
-      'When your agent transacts, Ambr issues an Agent Mandate both sides can trust — readable by humans, parsable by other agents. No more handshake-by-prompt-injection.',
+      'When your agent transacts, Ambr issues a signed agreement both sides can trust — readable by humans, parsable by other agents. No more handshake-by-prompt-injection.',
     variant: 'light' as const,
     geoPattern: 'circle' as const,
     label: '// STEP.02',

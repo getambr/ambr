@@ -358,7 +358,7 @@ export default function MandateChat() {
             {/* mandate preview */}
             <div className="relative z-10 flex flex-col p-5 sm:p-6" style={{ background: '#0c0b09' }}>
               <div className="mb-5 flex items-center justify-between px-4">
-                <span className="text-[10px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.2em' }}>Agent mandate · D1</span>
+                <span className="text-[10px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.2em' }}>Agreement · D1</span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] uppercase" style={{ ...mono, color: ready ? '#34D399' : '#4a463e', letterSpacing: '0.16em' }}>
                   <motion.span className="h-1.5 w-1.5 rounded-full" style={{ background: ready ? '#34D399' : '#4a463e' }} animate={reduce || !ready ? {} : { opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} />
                   {ready ? 'ready' : 'drafting…'}

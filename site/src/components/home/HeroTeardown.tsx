@@ -34,7 +34,7 @@ function StillMandate() {
         <span>AMB-0142 · example</span>
         <span style={{ color: '#34D399', border: '1px solid #34D399', padding: '3px 7px' }}>Executed</span>
       </div>
-      <div className="mt-4" style={{ ...serif, fontSize: 30, lineHeight: 1, color: '#f4f4f0' }}>Agent Mandate</div>
+      <div className="mt-4" style={{ ...serif, fontSize: 30, lineHeight: 1.05, color: '#f4f4f0' }}>Agent Agreement</div>
       <ol className="mt-4 space-y-1.5" style={{ fontSize: 10, lineHeight: 1.4, color: '#d8d2c6' }}>
         <li>1 · The Principal authorizes the Agent to buy cloud compute in the Principal&apos;s name.</li>
         <li>2 · Each purchase stays inside the spend cap set in the schedule.</li>
@@ -232,9 +232,7 @@ export default function HeroTeardown() {
               </h1>
               <div className="ht-in ht-in-2 mt-10 max-w-md">
                 <p className="text-[15px] leading-relaxed" style={{ color: '#cfc8ba' }}>
-                  Every act leaves a fossil. An <span style={{ color: '#f4f4f0' }}>Agent Mandate</span> records
-                  who authorized it, in what scope, under which law. Readable as
-                  prose, executable as code, revocable on record.
+                  Every act leaves a fossil. A signed record says who let the agent act, within which limits, under which law. Readable by people and by code; revoked or ended on record.
                 </p>
               </div>
               <div className="ht-in ht-in-3 pointer-events-auto mt-9 flex flex-wrap items-center gap-7">
@@ -256,12 +254,12 @@ export default function HeroTeardown() {
                   type="button"
                   className="ht-hit"
                   aria-pressed={apart}
-                  aria-label={apart ? 'Put the mandate back together' : 'Take the mandate apart into its layers'}
+                  aria-label={apart ? 'Put the agreement back together' : 'Take the agreement apart into its layers'}
                   onClick={() => engineRef.current?.toggleApart()}
                 />
               )}
               {!still && (
-                <ol ref={railRef} className="ht-rail" aria-label="States of a mandate">
+                <ol ref={railRef} className="ht-rail" aria-label="States of an agreement">
                   {STATES.map((s, i) => (
                     <li key={s}>
                       <button type="button" onClick={() => engineRef.current?.goto(i)}>{s}</button>

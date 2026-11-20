@@ -294,7 +294,7 @@ export default function HeroUnicornCombo() {
             <div className="hu-in hu-in-2 mt-10 max-w-md">
               <p className="text-[15px] leading-relaxed" style={{ color: '#cfc8ba' }}>
                 Every act leaves a fossil. Ambr records who let it act, within which limits,
-                under which law. Readable by people and by code, revocable at any time.
+                under which law. Readable by people and by code, revoked or ended on record.
               </p>
             </div>
             <div className="hu-in hu-in-3 mt-9 flex flex-wrap items-center gap-7">

@@ -10,7 +10,7 @@ export default function MandateFlow() {
       <div className="mx-auto max-w-[1500px]">
         <Reveal>
           <div className="flex items-baseline justify-between gap-6">
-            <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>The lifecycle of a mandate</p>
+            <p className="text-[11px] uppercase" style={{ ...mono, color: '#c6a87c', letterSpacing: '0.3em' }}>The lifecycle of an agreement</p>
             <p className="hidden text-[11px] uppercase sm:block" style={{ ...mono, color: '#6f675b', letterSpacing: '0.18em' }}>intent → proof</p>
           </div>
         </Reveal>

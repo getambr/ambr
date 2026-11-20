@@ -235,9 +235,9 @@ export default function ApiOverview() {
           <span className="pointer-events-none absolute right-2 top-2 h-1 w-1 bg-amber" aria-hidden />
           <span className="pointer-events-none absolute bottom-2 left-2 h-1 w-1 bg-amber" aria-hidden />
           <span className="pointer-events-none absolute bottom-2 right-2 h-1 w-1 bg-amber" aria-hidden />
-          <h3 className="font-serif text-lg text-amber mb-2">Mandate Lifecycle</h3>
+          <h3 className="font-serif text-lg text-amber mb-2">Agreement Lifecycle</h3>
           <p className="text-sm text-[#a39b8c] leading-relaxed">
-            Mandates are created as <strong className="text-text-primary">drafts</strong>. The counterparty
+            Agreements are created as <strong className="text-text-primary">drafts</strong>. The counterparty
             reviews and submits a <strong className="text-text-primary">handshake</strong> — accepting, rejecting,
             or requesting changes. Once accepted, the first ECDSA wallet signature moves the contract
             to <strong className="text-text-primary">pending_signature</strong>.
@@ -249,7 +249,7 @@ export default function ApiOverview() {
             API key), and an open counterparty side by the holder of the invite token from the share link.
           </p>
           <p className="text-sm text-[#a39b8c] leading-relaxed mt-3">
-            An active mandate can end three recorded ways: <strong className="text-text-primary">amended</strong>{' '}
+            An active agreement can end three recorded ways: <strong className="text-text-primary">amended</strong>{' '}
             (replaced by a successor contract), <strong className="text-text-primary">revoked</strong>{' '}
             (a party&apos;s human override), or <strong className="text-text-primary">terminated</strong>.
             Expiry is <em>derived</em>: past its expiry date (taken from the contract&apos;s own terms,
@@ -292,7 +292,7 @@ export default function ApiOverview() {
           <h3 className="font-serif text-lg text-text-primary mb-4">MCP Integration</h3>
           <p className="text-sm text-[#a39b8c] mb-4">
             Add Ambr to your AI agent with one config block. Works with Claude Code, Cursor, and any MCP-compatible client.
-            Your agent gets 7 tools: list templates, create mandates, get/verify mandates, check status, check a payment, and agent handshake.
+            Your agent gets 7 tools: list templates, create agreements, get/verify agreements, check status, check a payment, and agent handshake.
           </p>
 
           <div className="space-y-4">

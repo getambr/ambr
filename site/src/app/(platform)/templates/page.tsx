@@ -71,18 +71,18 @@ export default async function TemplatesPage() {
           lands the hero at the same height as /founders. */}
       <section className="px-6 pt-56 pb-24 sm:px-10 lg:px-16">
         <div className={MEASURE}>
-          <Reveal><Eyebrow>§ 01 — Mandate Templates</Eyebrow></Reveal>
+          <Reveal><Eyebrow>§ 01 — Agreement Templates</Eyebrow></Reveal>
           <Reveal delay={0.08}>
             <h1 className="mt-6 max-w-4xl" style={DISPLAY.hero}>
-              Agent Mandate<br />
+              Agreement<br />
               <span style={{ color: EDITORIAL.brass }}>Templates.</span>
             </h1>
           </Reveal>
           <Reveal delay={0.16}>
             <p className="mt-8 max-w-2xl text-[16px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
-              Each template generates an Agent Mandate — a dual-format Ricardian Contract with
+              Each template generates a signed agreement — a dual-format Ricardian Contract with
               human-readable legal text and machine-parsable JSON, linked by a SHA-256 hash.
-              Choose a template, provide parameters via the API, and receive a verified mandate.
+              Choose a template, provide parameters via the API, and receive a verified agreement.
             </p>
           </Reveal>
           <Reveal delay={0.22}>

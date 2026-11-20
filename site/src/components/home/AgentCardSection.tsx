@@ -47,7 +47,7 @@ export default function AgentCardSection() {
               </h3>
               <p className="mt-6 max-w-md text-[15px] leading-relaxed" style={{ color: '#a39b8c' }}>
                 Ambr exposes a standard A2A Agent Card, so other agents can find it, check its capabilities,
-                and initiate mandate workflows. No human intermediary required.
+                and initiate agreement workflows. No human intermediary required.
               </p>
               <div className="mt-9 flex flex-wrap items-center gap-6">
                 <a

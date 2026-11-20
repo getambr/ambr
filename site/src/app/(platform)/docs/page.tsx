@@ -35,9 +35,9 @@ export default function DocsPage() {
       </section>
 
       <section id="first-contract" className="scroll-mt-24 mb-16">
-        <h3 className="font-serif text-xl text-text-primary mb-4">Your First Mandate</h3>
+        <h3 className="font-serif text-xl text-text-primary mb-4">Your First Agreement</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
-          Create a delegation mandate (template <code className="font-mono text-amber/80">d1-general-auth</code>)
+          Create a delegation agreement (template <code className="font-mono text-amber/80">d1-general-auth</code>)
           with a single POST request. Every request needs a <code className="font-mono text-amber/80">template</code>{' '}
           slug, a <code className="font-mono text-amber/80">principal_declaration</code>, and the template&apos;s
           required <code className="font-mono text-amber/80">parameters</code>:
@@ -70,7 +70,7 @@ export default function DocsPage() {
   }'`}
         </pre>
         <p className="text-[#a39b8c] text-sm leading-relaxed mt-4">
-          The response returns the mandate&apos;s <code className="font-mono text-amber/80">contract_id</code>,
+          The response returns the agreement&apos;s <code className="font-mono text-amber/80">contract_id</code>,
           a SHA-256 content hash, a reader URL for the counterparty, and a sign URL for wallet-based execution.
           Call <code className="font-mono text-amber/80">GET /api/v1/templates</code> for each template&apos;s full
           parameter list.
@@ -88,8 +88,8 @@ export default function DocsPage() {
         <h2 className="font-serif text-3xl text-text-primary mb-4">Create</h2>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
           <code className="font-mono text-amber/80">POST /api/v1/contracts</code> creates a new
-          Agent Mandate (a dual-format Ricardian contract) from a template. The response includes the
-          mandate&apos;s ID, a SHA-256 content hash, a reader URL (with embedded share token), a sign URL,
+          agreement draft (a dual-format Ricardian contract) from a template. The response includes the
+          agreement&apos;s ID, a SHA-256 content hash, a reader URL (with embedded share token), a sign URL,
           and a handshake URL.
         </p>
         <pre className="bg-[#111] border border-amber/20 rounded-none p-4 font-mono text-sm text-text-secondary overflow-x-auto">
@@ -109,7 +109,7 @@ export default function DocsPage() {
         <h3 className="font-serif text-xl text-text-primary mb-4">Share</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed">
           The <code className="font-mono text-amber/80">reader_url</code> in the create response
-          is your own link: it opens the full mandate without an API key, but it cannot fill an
+          is your own link: it opens the full agreement without an API key, but it cannot fill an
           open counterparty side. To invite the counterparty, call{' '}
           <code className="font-mono text-amber/80">POST /api/v1/contracts/:id/share</code> with your
           API key and send them the <code className="font-mono text-amber/80">share_url</code> it
@@ -126,7 +126,7 @@ export default function DocsPage() {
         <h3 className="font-serif text-xl text-text-primary mb-4">Handshake</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
           <code className="font-mono text-amber/80">POST /api/v1/contracts/:id/handshake</code>{' '}
-          lets the counterparty accept, reject, or request changes to a mandate. The handshake
+          lets the counterparty accept, reject, or request changes to an agreement. The handshake
           also records a visibility preference (private, metadata-only, public, or encrypted).
         </p>
         <pre className="bg-[#111] border border-amber/20 rounded-none p-4 font-mono text-sm text-text-secondary overflow-x-auto">
@@ -142,9 +142,9 @@ export default function DocsPage() {
         <h3 className="font-serif text-xl text-text-primary mb-4">Sign</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
           <code className="font-mono text-amber/80">POST /api/v1/contracts/:id/sign</code>{' '}
-          submits an ECDSA wallet signature. Bilateral mandates require two signatures: the first
-          moves the mandate to <code className="font-mono text-amber/80">pending</code> status,
-          the second activates it and triggers on-chain minting. One-sided mandates (P2 Power of
+          submits an ECDSA wallet signature. Bilateral agreements require two signatures: the first
+          moves the agreement to <code className="font-mono text-amber/80">pending</code> status,
+          the second activates it and triggers on-chain minting. One-sided agreements (P2 Power of
           Attorney) activate on the principal&apos;s single signature.
         </p>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
@@ -162,8 +162,8 @@ export default function DocsPage() {
         <h3 className="font-serif text-xl text-text-primary mb-4">Verify</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed">
           <code className="font-mono text-amber/80">GET /api/v1/contracts/:id</code> returns the
-          full mandate including its SHA-256 hash. Compare this hash against the on-chain record
-          to verify the mandate has not been tampered with since signing.
+          full agreement including its SHA-256 hash. Compare this hash against the on-chain record
+          to verify the agreement has not been tampered with since signing.
         </p>
       </section>
 
@@ -211,7 +211,7 @@ export default function DocsPage() {
           <code className="font-mono text-amber/80">ambr_verify_hash</code>,{' '}
           <code className="font-mono text-amber/80">ambr_check_transaction</code>, and{' '}
           <code className="font-mono text-amber/80">ambr_agent_handshake</code> -- so any MCP-compatible agent
-          can manage mandates natively. Contract creation accepts an API key or x402 pay-per-call.
+          can manage agreements natively. Contract creation accepts an API key or x402 pay-per-call.
         </p>
       </section>
 
@@ -226,11 +226,11 @@ export default function DocsPage() {
       </section>
 
       <section id="x402-payments" className="scroll-mt-24 mb-16">
-        <h3 className="font-serif text-xl text-text-primary mb-4">x402 Pay-per-mandate</h3>
+        <h3 className="font-serif text-xl text-text-primary mb-4">Pay per agreement with x402</h3>
         <p className="text-[#a39b8c] text-sm leading-relaxed">
-          Instead of an API key, agents can pay per mandate using the x402 protocol. Include a
+          Instead of an API key, agents can pay per agreement using the x402 protocol. Include a
           payment header with each request. The server validates the payment proof on-chain before
-          processing the mandate creation. This enables fully autonomous agent-to-agent commerce
+          processing the agreement creation. This enables fully autonomous agent-to-agent commerce
           without pre-registration.
         </p>
       </section>
@@ -394,16 +394,16 @@ export default function DocsPage() {
         <p className="text-micro mb-3">§ 06 — Payment Methods</p>
         <h2 className="font-serif text-3xl text-text-primary mb-4">Pricing</h2>
 
-        <h4 className="font-serif text-lg text-text-primary mb-3 mt-6">x402 Pay-per-Mandate (Agent-Native)</h4>
+        <h4 className="font-serif text-lg text-text-primary mb-3 mt-6">Pay per agreement with x402 (agent-native)</h4>
         <p className="text-[#a39b8c] text-sm leading-relaxed mb-4">
-          No account needed. Agents pay per mandate in USDC on Base L2 with a standard x402 v2 client: the first call returns 402 with a <code className="font-mono text-amber/80">PAYMENT-REQUIRED</code> header, and the retry carries a signed <code className="font-mono text-amber/80">PAYMENT-SIGNATURE</code> header.
+          No account needed. Agents pay per agreement in USDC on Base L2 with a standard x402 v2 client: the first call returns 402 with a <code className="font-mono text-amber/80">PAYMENT-REQUIRED</code> header, and the retry carries a signed <code className="font-mono text-amber/80">PAYMENT-SIGNATURE</code> header.
           Live rates for the full catalog: <code className="font-mono text-amber/80">GET /api/v1/pricing</code>.
         </p>
         <div className="overflow-x-auto mb-6">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-amber/30">
-                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Mandate</th>
+                <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Agreement</th>
                 <th className="text-left py-2 pr-4 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Price</th>
                 <th className="text-left py-2 font-mono text-[0.7rem] uppercase tracking-wider text-amber/70">Use Case</th>
               </tr>

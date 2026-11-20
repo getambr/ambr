@@ -95,9 +95,8 @@ export default function HeroAwwwards() {
             </h1>
 
             <p className="ambr-reveal mt-7 max-w-xl text-lg font-light leading-relaxed" style={{ color: '#aaa', animationDelay: '0.14s' }}>
-              Ambr is the accountability record for autonomous agents. It issues{' '}
-              <span className="text-text-primary">Agent Mandates</span> — binding authorizations that set
-              spend limits and approved actions, with a cryptographic record of every decision.
+              Ambr is the signed record of what an AI agent may do. It issues{' '}
+              <span className="text-text-primary">signed agreements</span> that set spend limits and approved actions, with a cryptographic record of every decision.
             </p>
 
             <div className="ambr-reveal mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center" style={{ animationDelay: '0.22s' }}>
@@ -129,7 +128,7 @@ export default function HeroAwwwards() {
               <div className="overflow-x-auto p-5 text-[13px] leading-[1.8]" style={{ ...mono, color: '#cfcabd' }}>
                 <div><span style={{ color: '#8a8577' }}>import</span> {'{ Ambr }'} <span style={{ color: '#8a8577' }}>from</span> <span style={{ color: '#c6a87c' }}>&apos;@ambr/sdk&apos;</span></div>
                 <div><span style={{ color: '#8a8577' }}>const</span> ambr = <span style={{ color: '#8a8577' }}>new</span> <span style={{ color: '#e8d9bb' }}>Ambr</span>(AMBR_KEY)</div>
-                <div className="mt-3"><span style={{ color: '#8a8577' }}>const</span> mandate = <span style={{ color: '#8a8577' }}>await</span> ambr.<span style={{ color: '#e8d9bb' }}>authorize</span>({'{'}</div>
+                <div className="mt-3"><span style={{ color: '#8a8577' }}>const</span> agreement = <span style={{ color: '#8a8577' }}>await</span> ambr.<span style={{ color: '#e8d9bb' }}>authorize</span>({'{'}</div>
                 <div className="pl-5">agent, limit: <span style={{ color: '#c6a87c' }}>&apos;500 USDC&apos;</span>, expires: <span style={{ color: '#c6a87c' }}>&apos;24h&apos;</span></div>
                 <div>{'}'}) <span style={{ color: '#34D399' }}>{'// → signed · on-chain · verifiable'}</span></div>
               </div>
@@ -138,7 +137,7 @@ export default function HeroAwwwards() {
             <div className="mt-4 flex items-center justify-between border border-amber/30 bg-surface px-4 py-3">
               <div className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.5)' }} />
-                <span className="text-micro" style={{ color: 'var(--color-amber)' }}>Agent Mandate · Active</span>
+                <span className="text-micro" style={{ color: 'var(--color-amber)' }}>Agreement · Active</span>
               </div>
               <span className="text-[11px]" style={{ ...mono, color: '#777' }}>≤ $500 USDC · 24h · revocable</span>
             </div>
