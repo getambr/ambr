@@ -84,8 +84,8 @@ export default function WaitlistPage() {
                   ))}
                 </ul>
                 <p className="mt-8 text-[13px] leading-relaxed" style={{ color: '#6f675b' }}>
-                  An Agent Mandate records who authorized it, in what scope, under which law.
-                  Readable as prose, executable as code, revocable on record.
+                  Ambr records who let an agent act, within which limits, under which law.
+                  Readable by people and by code, revocable at any time.
                 </p>
               </div>
             </Reveal>

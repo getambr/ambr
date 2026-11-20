@@ -156,7 +156,7 @@ export function notReadyQuestion(input: { nextField: string | undefined; templat
   const { nextField, template } = input;
   if (nextField) return `One more thing — what's the ${nextField.replace(/_/g, ' ')}?`;
   if (!template) {
-    return 'Which kind of mandate is this — power of attorney (P2), delegation (D1), or agent-to-agent (A2A)? Pick one and I will fill the preview with what you have already told me.';
+    return 'Which kind of agreement is this — power of attorney (P2), delegation (D1), or agent-to-agent (A2A)? Pick one and I will fill the preview with what you have already told me.';
   }
   return 'Tell me the next detail, or click Deploy if everything looks right.';
 }

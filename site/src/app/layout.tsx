@@ -91,7 +91,7 @@ const jsonLd = {
     sameAs: [BRAND.social.twitter, BRAND.social.github],
   },
   featureList: [
-    'Agent Mandate generation (dual-format Ricardian contracts)',
+    'Signed agreement generation (dual-format Ricardian contracts)',
     'SHA-256 integrity verification',
     'A2A and MCP agent protocols',
     'Declared spending limits, revocable on record',

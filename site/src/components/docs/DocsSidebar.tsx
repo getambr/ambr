@@ -20,11 +20,11 @@ const sections: NavSection[] = [
     items: [
       { id: 'what-is-ambr', label: 'What is Ambr' },
       { id: 'get-api-key', label: 'Get an API Key' },
-      { id: 'first-contract', label: 'Your First Mandate' },
+      { id: 'first-contract', label: 'Your First Agreement' },
     ],
   },
   {
-    label: 'Mandate Lifecycle',
+    label: 'Agreement Lifecycle',
     icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', // document
     items: [
       { id: 'create', label: 'Create' },
@@ -41,7 +41,7 @@ const sections: NavSection[] = [
       { id: 'a2a-discovery', label: 'A2A Discovery' },
       { id: 'mcp-server', label: 'MCP Server' },
       { id: 'rest-api', label: 'REST API' },
-      { id: 'x402-payments', label: 'x402 Pay-per-mandate' },
+      { id: 'x402-payments', label: 'x402 Pay-per-agreement' },
     ],
   },
   {
@@ -57,7 +57,7 @@ const sections: NavSection[] = [
     items: [
       { id: 'connect-wallet', label: 'Connect Wallet' },
       { id: 'wallet-auth', label: 'Wallet Auth' },
-      { id: 'cnft', label: 'Mandate NFTs' },
+      { id: 'cnft', label: 'Agreement NFTs' },
       { id: 'transfers', label: 'Transfers' },
     ],
   },

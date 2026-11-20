@@ -12,9 +12,9 @@ const COPY = {
   short: {
     eyebrow: '§ — Milestone',
     headline: 'Live on Base mainnet.',
-    sub: 'Agent Mandates signed, hashed, and minted as paired cNFTs.',
+    sub: 'Signed agreements, hashed and minted as paired cNFTs.',
     footL: '@ambr_run',
-    footR: 'Agent Mandate & Binding Registry',
+    footR: 'Agent authority, on record',
   },
   typical: {
     eyebrow: '§ 02 — Mechanics',
@@ -22,7 +22,7 @@ const COPY = {
     sub: 'Human-readable legal text and machine-parsable JSON, linked by a single SHA-256 hash.',
     monoLine: 'contract_type: "delegation_of_authority" · sha256: a1b2c3…',
     footL: '@ambr_run',
-    footR: 'The liability record for autonomous agents',
+    footR: 'The signed record of what an AI agent may do',
   },
   long: {
     eyebrow: '§ — Founder note',

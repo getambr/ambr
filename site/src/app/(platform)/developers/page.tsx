@@ -9,10 +9,10 @@ import Button from '@/components/ui/Button';
 export const metadata: Metadata = {
   title: 'Developers | Ambr',
   description:
-    'Ambr API — REST, A2A JSON-RPC, and MCP integration for deploying and verifying Agent Mandates.',
+    'Ambr API — REST, A2A JSON-RPC, and MCP integration for deploying and verifying signed agreements.',
   ...createOgMetadata({
     title: 'Developers | Ambr',
-    description: 'Ambr API — REST, A2A JSON-RPC, and MCP integration for deploying and verifying Agent Mandates.',
+    description: 'Ambr API — REST, A2A JSON-RPC, and MCP integration for deploying and verifying signed agreements.',
     path: '/developers',
     label: 'Developers',
     domain: 'getamber.dev',
@@ -32,7 +32,7 @@ export default function DevelopersPage() {
               Build on Ambr
             </h1>
             <p className="mt-4 text-lg text-[#a39b8c]">
-              REST API, A2A JSON-RPC, and MCP integration for deploying and verifying Agent Mandates.
+              REST API, A2A JSON-RPC, and MCP integration for deploying and verifying signed agreements.
             </p>
             <p className="mt-3 text-sm font-mono uppercase" style={{ letterSpacing: '0.14em' }}>
               <a href="/docs" className="text-amber hover:text-text-primary transition-colors">

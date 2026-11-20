@@ -1,4 +1,4 @@
-const tokens = ['x402', 'A2A', 'cNFT', 'Base L2', 'MCP', 'ERC-721', 'SHA-256', 'USDC', 'Ricardian', 'Agent Mandate'];
+const tokens = ['x402', 'A2A', 'cNFT', 'Base L2', 'MCP', 'ERC-721', 'SHA-256', 'USDC', 'Ricardian', 'Signed Record'];
 
 /** Infinite horizontal ribbon of protocol tokens. Pure CSS (paused under reduced-motion via globals). */
 export default function TokenMarquee() {

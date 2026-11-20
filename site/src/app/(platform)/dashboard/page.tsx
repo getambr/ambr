@@ -3263,7 +3263,7 @@ export default function DashboardPage() {
                             </svg>
                             <p className="text-xs text-text-secondary leading-relaxed">
                               <span className="text-text-primary">Prefer plain language?</span>{' '}
-                              The Ambr Agent — an AI assistant that drafts the mandate from a sentence — is in private beta.
+                              The Ambr Agent — an AI assistant that drafts the agreement from a sentence — is in private beta.
                               It requires an email-registered API key with beta access:{' '}
                               <a href="/activate" className="text-amber hover:underline">claim a free key</a>, then request
                               access at <a href="mailto:support@ambr.run" className="text-amber hover:underline">support@ambr.run</a>.

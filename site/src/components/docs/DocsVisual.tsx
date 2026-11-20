@@ -42,7 +42,7 @@ function ArchitectureDiagram() {
 
         {/* Contract box */}
         <rect x="60" y="64" width="160" height="32" stroke="#c6a87c" strokeWidth="1.5" fill="#c6a87c" fillOpacity="0.08" />
-        <text x="140" y="84" textAnchor="middle" fill="#f4f4f0" fontSize="11" fontFamily="monospace" fontWeight="500">Agent Mandate</text>
+        <text x="140" y="84" textAnchor="middle" fill="#f4f4f0" fontSize="11" fontFamily="monospace" fontWeight="500">Agreement</text>
 
         {/* Two arrows down */}
         <line x1="100" y1="96" x2="70" y2="130" stroke="#c6a87c" strokeWidth="0.5" strokeDasharray="3 3" />
@@ -506,7 +506,7 @@ const sectionCaptions: Record<string, string> = {
   'verify': 'Compare the SHA-256 hash against the on-chain record to verify the contract has not been tampered with.',
   'a2a-discovery': 'AI agents discover Ambr at /.well-known/agent.json — standard A2A protocol with 6 available skills.',
   'mcp-server': 'Add Ambr to Claude, Cursor, or any MCP-compatible agent with a single JSON config block.',
-  'rest-api': 'Full REST endpoint reference — mandate creation, signing, verification, revocation, and key management.',
+  'rest-api': 'Full REST endpoint reference — agreement creation, signing, verification, revocation, and key management.',
   'x402-payments': 'Pay per contract with any of 7 supported tokens on Base L2. No account or credits required.',
   'endpoints': 'Full API reference: POST/GET endpoints with API key, x402, share token, or wallet signature auth.',
   'connect-wallet': 'Dashboard supports dual login: API key for developers, wallet connect for on-chain identity.',

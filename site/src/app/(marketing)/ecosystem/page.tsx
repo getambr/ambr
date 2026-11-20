@@ -24,7 +24,7 @@ const ecosystemProjects = [
   {
     name: 'x402 V2',
     description:
-      'Primary payment rail. Ambr functions as an x402 extension — mandate hashes embedded in payment metadata. Multi-token support across Base, ACH, SEPA, and cards.',
+      'Primary payment rail. Ambr functions as an x402 extension — agreement hashes embedded in payment metadata. Multi-token support across Base, ACH, SEPA, and cards.',
     layer: 'Payments',
     status: 'live' as const,
   },
@@ -104,7 +104,7 @@ export default function EcosystemPage() {
           <Reveal delay={0.05}><div className="mt-6"><Eyebrow>§ 02 — The stack</Eyebrow></div></Reveal>
           <Reveal delay={0.1}>
             <h2 className="mt-5 max-w-3xl" style={DISPLAY.section}>
-              Ambr sits at the mandate layer.
+              Ambr sits at the record layer.
             </h2>
           </Reveal>
           <Reveal delay={0.14}>
@@ -159,7 +159,7 @@ export default function EcosystemPage() {
               <p className="mt-6 text-[15px] leading-relaxed" style={{ color: EDITORIAL.lead }}>
                 Discovery protocols help agents find each other. Trust registries verify identity. Escrow holds
                 funds. Payment rails move money. But none of it works without a record of who authorized the
-                agent, in what scope, under which law. That is what Ambr provides: an Agent Mandate that is
+                agent, in what scope, under which law. That is what Ambr provides: a signed agreement that is
                 human-readable, machine-parsable, and minted as a single cNFT on Base L2, with its SHA-256 hash
                 stored permanently on-chain.
               </p>
