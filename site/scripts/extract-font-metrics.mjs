@@ -6,7 +6,7 @@
  *
  * Why a committed table rather than parsing at runtime: card layout has to
  * measure text to decide type size, and that has to work identically in the
- * render script and in the edge route. A table of advance widths is a few KB,
+ * render script and in the image route. A table of advance widths is a few KB,
  * needs no dependency, and cannot drift between the two.
  *
  * Minimal TrueType reader — only `head` (unitsPerEm), `hhea` (numberOfHMetrics),

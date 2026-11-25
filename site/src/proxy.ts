@@ -10,7 +10,7 @@ const MARKETING_PATHS = ['/', '/how-it-works', '/use-cases', '/ecosystem', '/wai
 // Platform-only paths (redirect to getamber.dev if accessed on ambr.run)
 const PLATFORM_PREFIXES = ['/docs', '/dashboard', '/reader', '/activate', '/templates', '/developers'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const { pathname } = request.nextUrl;
 
