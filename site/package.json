@@ -30,7 +30,7 @@
     "gsap": "^3.14.2",
     "lenis": "^1.3.23",
     "lucide-react": "^1.7.0",
-    "next": "16.1.6",
+    "next": "16.4.6",
     "poseidon-lite": "^0.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -39,7 +39,7 @@
     "stripe": "^20.4.1",
     "three": "^0.184.0",
     "unicornstudio-react": "^2.0.1-1",
-    "zod": "^4.3.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -48,7 +48,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"
