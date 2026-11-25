@@ -9,6 +9,9 @@ All notable changes to Ambr are documented here. This file follows [Keep a Chang
 - `POST /api/v1/identity/verify` now requires `contract_id`, and a ZK proof must be generated under the context `ambr_contract:<contract_id>`. The server checks the proof's public signals and its Merkle root against the Demos node; errors are `zk_context_mismatch`, `zk_root_mismatch` and `zk_root_unverified` (HTTP 503).
 - The Demos SDK (`@kynesyslabs/demosdk`) is upgraded from 2.11.5 to 4.0.22.
 
+### Security
+- Next.js is upgraded from 16.1.6 to 16.4.6 and zod from 4.3.6 to 4.6.7, which fix published advisories in both packages.
+
 ## [0.4.0] — 2026-10-27
 
 ### Added
