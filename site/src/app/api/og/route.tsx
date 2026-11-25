@@ -1,7 +1,12 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { ImageResponse } from 'next/og';
 import { OG } from '@/lib/og/og-constants';
 
-export const runtime = 'edge';
+// Node Buffer -> exact ArrayBuffer slice (Satori wants an ArrayBuffer)
+function toArrayBuffer(b: Buffer): ArrayBuffer {
+  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,12 +17,8 @@ export async function GET(request: Request) {
 
   // Load fonts
   const [instrumentSerifData, jetBrainsMonoData] = await Promise.all([
-    fetch(new URL('../../../lib/og/fonts/InstrumentSerif-Regular.ttf', import.meta.url)).then(
-      (res) => res.arrayBuffer()
-    ),
-    fetch(new URL('../../../lib/og/fonts/JetBrainsMono-Regular.ttf', import.meta.url)).then(
-      (res) => res.arrayBuffer()
-    ),
+    readFile(path.join(process.cwd(), 'src/lib/og/fonts/InstrumentSerif-Regular.ttf')).then(toArrayBuffer),
+    readFile(path.join(process.cwd(), 'src/lib/og/fonts/JetBrainsMono-Regular.ttf')).then(toArrayBuffer),
   ]);
 
   return new ImageResponse(

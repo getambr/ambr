@@ -16,18 +16,23 @@
  *   /api/card?template=founder&format=wide&headline=Who%20is%20liable%3F
  */
 
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { ImageResponse } from 'next/og';
 import { OG, OG_FONTS } from '@/lib/og/og-constants';
 import { layoutCard } from '@/lib/cards/layout';
 import { TEMPLATES, FORMATS, isTemplateName, isFormatName } from '@/lib/cards/templates';
-
-export const runtime = 'edge';
 
 const MAX_LEN = 240;
 
 function clamp(v: string | null, fallback = ''): string {
   if (!v) return fallback;
   return v.length > MAX_LEN ? v.slice(0, MAX_LEN) : v;
+}
+
+// Node Buffer -> exact ArrayBuffer slice (Satori wants an ArrayBuffer)
+function toArrayBuffer(b: Buffer): ArrayBuffer {
+  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 }
 
 export async function GET(request: Request) {
@@ -53,12 +58,8 @@ export async function GET(request: Request) {
   const L = layoutCard({ width, height, eyebrow, headline, sub, monoLine, footL, footR });
 
   const [serifData, monoData] = await Promise.all([
-    fetch(new URL('../../../lib/og/fonts/InstrumentSerif-Regular.ttf', import.meta.url)).then((r) =>
-      r.arrayBuffer(),
-    ),
-    fetch(new URL('../../../lib/og/fonts/JetBrainsMono-Regular.ttf', import.meta.url)).then((r) =>
-      r.arrayBuffer(),
-    ),
+    readFile(path.join(process.cwd(), 'src/lib/og/fonts/InstrumentSerif-Regular.ttf')).then(toArrayBuffer),
+    readFile(path.join(process.cwd(), 'src/lib/og/fonts/JetBrainsMono-Regular.ttf')).then(toArrayBuffer),
   ]);
 
   const tick = (pos: Record<string, number | string>) => (

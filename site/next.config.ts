@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
     // they live in private-assets to stay out of git, not to stay out of reach.
     '/what-it-is': ['./private-assets/ambr-what-it-is.pdf'],
     '/portfolio': ['./private-assets/ilvers-portfolio.pdf'],
+    // og + card render on the Node.js runtime and read these fonts from disk
+    '/api/og': ['./src/lib/og/fonts/*.ttf'],
+    '/api/card': ['./src/lib/og/fonts/*.ttf'],
     '/investors': ['./private-data/**'],
     // The brief page reads figures from private-data at request time, same as
     // /investors — without this it renders with the redacted PLACEHOLDER values
